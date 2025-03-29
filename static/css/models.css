@@ -15,12 +15,12 @@
 }
 
 .card {
-    background: linear-gradient(135deg, #ffffff 0%, #3582d0 100%);
+    background: linear-gradient(313deg, #530000 0%, #001956 100%);
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease-in-out;
-    color: black;
+    transition: transform 0.3sease-in-out;
+    color: #ffffff;
     margin-bottom: 6px;
 }
 

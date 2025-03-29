@@ -1218,3 +1218,5 @@ function init() {
 
 // Call init when DOM is loaded
 document.addEventListener('DOMContentLoaded', init); 
+
+
