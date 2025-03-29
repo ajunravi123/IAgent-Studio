@@ -49,15 +49,5 @@
       "Custom"
     ],
     "is_added": false
-  },
-  {
-    "id": "dc948990-c053-405b-b95f-eca92c34a938",
-    "name": "qaqa",
-    "description": "qa",
-    "icon": "/static/images/default-tool-icon.svg",
-    "tags": [
-      "qa"
-    ],
-    "is_added": false
   }
 ]
