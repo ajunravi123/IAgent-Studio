@@ -1,0 +1,65 @@
+.page.users .page-content {
+    padding-top: 1rem;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    overflow: hidden; /* Ensures border radius applies to table */
+    border: 1px solid var(--border-color);
+}
+
+.users-table th,
+.users-table td {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.users-table th {
+    background-color: var(--surface-color-secondary);
+    color: var(--text-color-secondary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.users-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.users-table td {
+    color: var(--text-color);
+    font-size: 0.95rem;
+}
+
+.users-table .status-active {
+    color: var(--green-600);
+    font-weight: 500;
+}
+
+.users-table .status-pending {
+    color: var(--yellow-600);
+    font-style: italic;
+}
+
+.users-table td button {
+    margin-right: 0.5rem;
+}
+
+.users-table td button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.users-table .action-buttons {
+    display: flex;
+    gap: 0.5rem; /* Adjust gap between buttons as needed */
+} 
+
+
+.subtitle{
+    padding-left: 20px !important;
+}

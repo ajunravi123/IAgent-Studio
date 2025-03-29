@@ -1,0 +1,50 @@
+<div class="page settings">
+    <div class="page-header">
+        <h1>Settings</h1>
+        <p class="subtitle">Manage your account, company details, and subscription.</p>
+    </div>
+
+    <div class="page-content settings-layout">
+        <div class="settings-section">
+            <h2>Account Information</h2>
+            <div class="form-group">
+                <label for="companyName">Company Name</label>
+                <input type="text" id="companyName" value="Your Company Inc." disabled>
+            </div>
+             <div class="form-group">
+                <label for="userEmail">Email</label>
+                <input type="email" id="userEmail" value="user@example.com" disabled>
+            </div>
+             <button class="btn-secondary" disabled>Edit Profile (Coming Soon)</button>
+        </div>
+
+        <div class="settings-section">
+            <h2>Subscription</h2>
+            <p>Your current plan: <span class="current-plan">Pro Plan</span></p>
+            <p>Status: <span class="subscription-status active">Active</span></p>
+            <button class="btn-secondary" disabled>Manage Subscription (Coming Soon)</button>
+        </div>
+        
+         <div class="settings-section">
+            <h2>API Keys & Integrations</h2>
+            <p>Manage connections to external services.</p>
+            <button class="btn-secondary" disabled>Manage Integrations (Coming Soon)</button>
+        </div>
+
+         <div class="settings-section">
+            <h2>Preferences</h2>
+             <div class="form-group">
+                <label for="themeSelect">Theme</label>
+                <select id="themeSelect" disabled>
+                    <option>Default (System)</option>
+                    <option>Light</option>
+                    <option>Dark</option>
+                </select>
+             </div>
+              <button class="btn-secondary" disabled>Save Preferences (Coming Soon)</button>
+        </div>
+    </div>
+</div>
+
+<!-- We can add a specific CSS file for settings layout later if needed -->
+<link rel="stylesheet" href="/static/css/settings.css"> 

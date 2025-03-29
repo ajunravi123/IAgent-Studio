@@ -64,7 +64,7 @@ function loadPage(pagePath) {
                 setTimeout(() => {
                     // Page specific JS initializations
                     if (basePage === 'agents') {
-                        loadAgents();
+                    loadAgents();
                         // Initialize search for agents page
                         const searchInput = document.querySelector('.page.agents .search-bar input'); // Assuming this selector is correct for the agents page search bar
                         if (searchInput && !searchInput.dataset.listenerAttached) {

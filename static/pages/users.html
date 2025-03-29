@@ -1,0 +1,65 @@
+<div class="page users">
+    <div class="page-header">
+        <h1>Users</h1>
+        <p class="subtitle">Manage users and their roles within your organization.</p>
+         <div class="header-actions">
+            <button class="btn-primary" disabled>+ Invite User (Coming Soon)</button>
+        </div>
+    </div>
+
+    <div class="page-content">
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Alice Johnson</td>
+                    <td>alice.j@example.com</td>
+                    <td>Admin</td>
+                    <td><span class="status-active">Active</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-secondary btn-sm" disabled>Edit</button> 
+                            <!-- <button class="btn-danger btn-sm" disabled>Remove</button> -->
+                        </div>
+                    </td>
+                </tr>
+                 <tr>
+                    <td>Bob Williams</td>
+                    <td>bob.w@example.com</td>
+                    <td>Member</td>
+                    <td><span class="status-active">Active</span></td>
+                     <td>
+                        <div class="action-buttons">
+                            <button class="btn-secondary btn-sm" disabled>Edit</button> 
+                            <!-- <button class="btn-danger btn-sm" disabled>Remove</button> -->
+                        </div>
+                     </td>
+                </tr>
+                 <tr>
+                    <td>Charlie Brown</td>
+                    <td>charlie.b@example.com</td>
+                    <td>Member</td>
+                    <td><span class="status-pending">Pending Invite</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-secondary btn-sm" disabled>Resend Invite</button> 
+                            <!-- <button class="btn-danger btn-sm" disabled>Remove</button> -->
+                        </div>
+                    </td>
+                </tr>
+                <!-- Add more dummy users as needed -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Optional: Add specific CSS link if needed -->
+<link rel="stylesheet" href="/static/css/users.css"> 

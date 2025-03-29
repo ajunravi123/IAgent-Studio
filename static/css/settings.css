@@ -1,0 +1,73 @@
+.page.settings .page-content {
+    max-width: 800px; /* Limit width for settings form */
+    margin: 0 auto; /* Center the content */
+}
+
+.settings-layout {
+    display: grid;
+    gap: 2rem; /* Spacing between sections */
+}
+
+.settings-section {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.settings-section h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    color: var(--text-color);
+}
+
+.settings-section p {
+    color: var(--text-color-secondary);
+    margin-bottom: 1rem;
+}
+
+.settings-section .form-group {
+    margin-bottom: 1rem;
+}
+
+.settings-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-color-secondary);
+    font-size: 0.9rem;
+}
+
+.settings-section input[type="text"],
+.settings-section input[type="email"],
+.settings-section select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+.settings-section input:disabled,
+.settings-section select:disabled {
+    background-color: var(--surface-color-secondary);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.settings-section button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.current-plan {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.subscription-status.active {
+    color: var(--green-600);
+    font-weight: bold;
+} 
