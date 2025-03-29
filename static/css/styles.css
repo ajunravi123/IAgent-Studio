@@ -211,6 +211,7 @@ main {
     flex: 1;
     padding: 30px;
     overflow-y: auto;
+    min-height: 0;
 }
 
 /* Dashboard specific styles */
@@ -428,8 +429,9 @@ main {
 
 .header-actions {
     display: flex;
-    gap: 12px;
     align-items: center;
+    gap: 16px;
+    margin-left: auto;
 }
 
 .btn-secondary {
@@ -1412,4 +1414,232 @@ input:checked + .slider:before {
 .tool-schema code {
     display: block;
     overflow-x: auto;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.app-header {
+    height: 64px;
+    background-color: #1A1A1A;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-logo i {
+    font-size: 24px;
+    background: linear-gradient(135deg, #2563EB, #60A5FA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header-logo h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    background: linear-gradient(135deg, #fff, #888);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: auto;
+}
+
+.notification-btn {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    position: relative;
+    border-radius: 8px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.notification-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #EF4444;
+    color: white;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 10px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-profile {
+    position: relative;
+}
+
+.profile-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.profile-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-btn img {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    transition: transform 0.3s;
+}
+
+.profile-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #1A1A1A;
+    border: 1px solid #333;
+    border-radius: 12px;
+    width: 240px;
+    padding: 8px;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.profile-menu.show {
+    display: block;
+}
+
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #333;
+}
+
+.profile-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+}
+
+.profile-info h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+}
+
+.profile-info p {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: #888;
+}
+
+.menu-items {
+    padding: 8px;
+}
+
+.menu-items a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    color: #888;
+    text-decoration: none;
+    font-size: 14px;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.menu-items a:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.menu-items hr {
+    border: none;
+    border-top: 1px solid #333;
+    margin: 8px 0;
+}
+
+.menu-items .logout {
+    color: #EF4444;
+}
+
+.menu-items .logout:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.app-footer {
+    margin-top: auto;
+    padding: 24px;
+    background-color: #1A1A1A;
+    border-top: 1px solid #333;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-content p {
+    color: #888;
+    font-size: 14px;
+    margin: 0;
+}
+
+.footer-links {
+    display: flex;
+    gap: 24px;
+}
+
+.footer-links a {
+    color: #888;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s;
+}
+
+.footer-links a:hover {
+    color: white;
 } 

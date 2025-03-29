@@ -804,7 +804,32 @@ function toggleTool(toolId, event) {
     }
 }
 
+// Profile dropdown functionality
+function initializeProfileDropdown() {
+    const profileBtn = document.querySelector('.profile-btn');
+    const profileMenu = document.querySelector('.profile-menu');
+
+    if (profileBtn && profileMenu) {
+        profileBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            profileMenu.classList.toggle('show');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!profileMenu.contains(e.target) && !profileBtn.contains(e.target)) {
+                profileMenu.classList.remove('show');
+            }
+        });
+    }
+}
+
+// Initialize all components
 function init() {
+    // Initialize profile dropdown
+    initializeProfileDropdown();
+
     const links = document.querySelectorAll('.sidebar nav ul li a');
     links.forEach(link => {
         link.addEventListener('click', (event) => {
@@ -827,4 +852,5 @@ function init() {
     }
 }
 
-window.onload = init; 
+// Call init when DOM is loaded
+document.addEventListener('DOMContentLoaded', init); 

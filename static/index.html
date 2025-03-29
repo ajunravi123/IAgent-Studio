@@ -35,9 +35,53 @@
                 </ul>
             </nav>
         </aside>
-        <main id="app">
-            <!-- Main content will be loaded here -->
-        </main>
+        <div class="main-content">
+            <header class="app-header">
+                <div class="header-logo">
+                    <i class="fas fa-robot"></i>
+                    <h1>IAgent Studio</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="notification-btn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <div class="user-profile">
+                        <button class="profile-btn">
+                            <img src="https://ui-avatars.com/api/?name=Ajun&background=2563EB&color=fff" alt="Profile" />
+                        </button>
+                        <div class="profile-menu">
+                            <div class="profile-info">
+                                <img src="https://ui-avatars.com/api/?name=Ajun&background=2563EB&color=fff" alt="Profile" />
+                                <div>
+                                    <h4>Ajun</h4>
+                                    <p>ajun@example.com</p>
+                                </div>
+                            </div>
+                            <div class="menu-items">
+                                <a href="/profile"><i class="fas fa-user"></i> Profile</a>
+                                <a href="/settings"><i class="fas fa-cog"></i> Settings</a>
+                                <hr>
+                                <a href="/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <main id="app">
+                <!-- Main content will be loaded here -->
+            </main>
+            <footer class="app-footer">
+                <div class="footer-content">
+                    <p>&copy; 2024 IAgent Studio. All rights reserved.</p>
+                    <div class="footer-links">
+                        <a href="/privacy">Privacy Policy</a>
+                        <a href="/terms">Terms of Service</a>
+                        <a href="/contact">Contact</a>
+                    </div>
+                </div>
+            </footer>
+        </div>
     </div>
     <script src="/static/js/main.js"></script>
 </body>
