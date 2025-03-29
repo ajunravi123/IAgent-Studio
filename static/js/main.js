@@ -21,6 +21,11 @@ function loadPage(page) {
                         if (buttonText) {
                             buttonText.textContent = isEditing ? 'Save' : 'Create Agent';
                         }
+                        // Initialize search functionality for tools
+                        const searchInput = document.querySelector('.search-bar input[type="text"]');
+                        if (searchInput) {
+                            searchInput.addEventListener('input', (e) => searchAgentTools(e.target.value));
+                        }
                         // Verify form elements are present
                         const formElements = [
                             'agentName',
@@ -723,7 +728,7 @@ function searchExternalTools(query) {
                        toolDescription.includes(searchQuery) ||
                        toolTags.some(tag => tag.includes(searchQuery));
 
-        card.style.display = matches ? 'block' : 'none';
+        card.style.display = matches ? '' : 'none';
     });
 }
 
@@ -1163,6 +1168,24 @@ function initializeNotifications() {
     }
 }
 
+function searchAgentTools(query) {
+    const toolCards = document.querySelectorAll('.tool-card');
+    const searchQuery = query.toLowerCase();
+
+    toolCards.forEach(card => {
+        const toolName = card.querySelector('.tool-name').textContent.toLowerCase();
+        const toolDescription = card.querySelector('.tool-description').textContent.toLowerCase();
+        const toolTags = Array.from(card.querySelectorAll('.tag'))
+            .map(tag => tag.textContent.toLowerCase());
+
+        const matches = toolName.includes(searchQuery) || 
+                       toolDescription.includes(searchQuery) ||
+                       toolTags.some(tag => tag.includes(searchQuery));
+
+        card.style.display = matches ? '' : 'none';
+    });
+}
+
 // Initialize all components
 function init() {
     // Initialize notifications
@@ -1186,7 +1209,7 @@ function init() {
         loadExternalTools();
         
         // Add search functionality
-        const searchInput = document.querySelector('.search-input');
+        const searchInput = document.querySelector('input[type="text"]');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => searchExternalTools(e.target.value));
         }
