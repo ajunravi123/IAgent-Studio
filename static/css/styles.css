@@ -2662,3 +2662,12 @@ input:checked + .slider:before {
 .btn-create i {
     font-size: 18px;
 } 
+
+
+
+
+.agent-api-link {
+    opacity: 0.4;
+    cursor: no-drop;
+    color: #b3b3b3;
+}
