@@ -2671,3 +2671,9 @@ input:checked + .slider:before {
     cursor: no-drop;
     color: #b3b3b3;
 }
+
+
+
+#agentInstructions {
+    min-height: 180px !important;
+}

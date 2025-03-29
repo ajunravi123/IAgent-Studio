@@ -5,7 +5,8 @@
     "description": "ddd",
     "icon": "/static/images/default-tool-icon.svg",
     "tags": [
-      "dd"
+      "dd",
+      "io"
     ],
     "is_added": false
   },
