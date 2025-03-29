@@ -825,8 +825,208 @@ function initializeProfileDropdown() {
     }
 }
 
+// Notifications API handling
+const NotificationsAPI = {
+    async getNotifications() {
+        try {
+            const response = await fetch('/api/notifications');
+            if (!response.ok) {
+                throw new Error('Failed to fetch notifications');
+            }
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            return [];
+        }
+    },
+
+    async markAsRead(notificationId) {
+        try {
+            const response = await fetch(`/api/notifications/${notificationId}/mark-read`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to mark notification as read');
+            }
+            const data = await response.json();
+            return { success: true };
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            return { success: false };
+        }
+    },
+
+    async markAllAsRead() {
+        try {
+            const response = await fetch('/api/notifications/mark-all-read', {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to mark all notifications as read');
+            }
+            const data = await response.json();
+            return { success: true };
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+            return { success: false };
+        }
+    }
+};
+
+// Notifications functionality
+let notifications = [];
+
+async function fetchNotifications() {
+    try {
+        notifications = await NotificationsAPI.getNotifications();
+        updateNotificationBadge();
+        renderNotifications();
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+    }
+}
+
+function updateNotificationBadge() {
+    const badge = document.querySelector('.notification-badge');
+    const unreadCount = notifications.filter(n => !n.read).length;
+    
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function renderNotifications() {
+    const notificationsList = document.querySelector('.notifications-list');
+    if (!notificationsList) return;
+
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = `
+            <div class="no-notifications">
+                <i class="fas fa-bell-slash"></i>
+                <p>No notifications</p>
+            </div>
+        `;
+        return;
+    }
+
+    notificationsList.innerHTML = notifications
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .map(notification => `
+            <div class="notification-item ${notification.read ? '' : 'unread'}" data-id="${notification.id}">
+                <div class="notification-icon ${notification.type || 'info'}">
+                    <i class="fas ${getNotificationIcon(notification.type)}"></i>
+                </div>
+                <div class="notification-content">
+                    <p>${notification.message}</p>
+                    <div class="notification-time">${formatNotificationTime(notification.timestamp)}</div>
+                </div>
+            </div>
+        `).join('');
+}
+
+function getNotificationIcon(type) {
+    switch (type) {
+        case 'success': return 'fa-check';
+        case 'warning': return 'fa-exclamation-triangle';
+        case 'error': return 'fa-times-circle';
+        default: return 'fa-info-circle';
+    }
+}
+
+function formatNotificationTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Less than 1 minute
+    if (diff < 60000) {
+        return 'Just now';
+    }
+    // Less than 1 hour
+    if (diff < 3600000) {
+        const minutes = Math.floor(diff / 60000);
+        return `${minutes}m ago`;
+    }
+    // Less than 24 hours
+    if (diff < 86400000) {
+        const hours = Math.floor(diff / 3600000);
+        return `${hours}h ago`;
+    }
+    // More than 24 hours
+    return date.toLocaleDateString();
+}
+
+function initializeNotifications() {
+    const notificationBtn = document.querySelector('.notification-btn');
+    const notificationsMenu = document.querySelector('.notifications-menu');
+    const markAllReadBtn = document.querySelector('.mark-all-read');
+
+    if (notificationBtn && notificationsMenu) {
+        // Fetch notifications when initialized
+        fetchNotifications();
+
+        // Refresh notifications every 5 minutes
+        setInterval(fetchNotifications, 5 * 60 * 1000);
+
+        // Toggle notifications menu
+        notificationBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            notificationsMenu.classList.toggle('show');
+            
+            // Fetch latest notifications when opening the menu
+            if (notificationsMenu.classList.contains('show')) {
+                fetchNotifications();
+            }
+        });
+
+        // Close notifications when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!notificationsMenu.contains(e.target) && !notificationBtn.contains(e.target)) {
+                notificationsMenu.classList.remove('show');
+            }
+        });
+
+        // Handle mark all as read
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', async function() {
+                const result = await NotificationsAPI.markAllAsRead();
+                if (result.success) {
+                    notifications.forEach(n => n.read = true);
+                    updateNotificationBadge();
+                    renderNotifications();
+                }
+            });
+        }
+
+        // Handle individual notification clicks
+        notificationsMenu.addEventListener('click', async function(e) {
+            const notificationItem = e.target.closest('.notification-item');
+            if (notificationItem && !notificationItem.classList.contains('read')) {
+                const notificationId = notificationItem.dataset.id;
+                const result = await NotificationsAPI.markAsRead(notificationId);
+                if (result.success) {
+                    const notification = notifications.find(n => n.id === notificationId);
+                    if (notification) {
+                        notification.read = true;
+                        updateNotificationBadge();
+                        renderNotifications();
+                    }
+                }
+            }
+        });
+    }
+}
+
 // Initialize all components
 function init() {
+    // Initialize notifications
+    initializeNotifications();
+    
     // Initialize profile dropdown
     initializeProfileDropdown();
 

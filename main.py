@@ -6,6 +6,7 @@ from typing import Dict, Optional, List
 import json
 import os
 import uuid
+from datetime import datetime
 
 app = FastAPI()
 
@@ -70,6 +71,31 @@ class CustomTool(BaseModel):
     tags: List[str]
     schema: OpenAPISchema
     is_custom: bool = True
+
+# Notification Models
+class Notification(BaseModel):
+    id: str
+    type: str  # info, success, warning, error
+    message: str
+    timestamp: str
+    read: bool = False
+
+class NotificationUpdate(BaseModel):
+    read: bool
+
+# Helper function to load notifications
+def load_notifications() -> List[dict]:
+    try:
+        with open('static/data/notifications.json', 'r') as f:
+            data = json.load(f)
+            return data.get('notifications', [])
+    except FileNotFoundError:
+        return []
+
+# Helper function to save notifications
+def save_notifications(notifications: List[dict]):
+    with open('static/data/notifications.json', 'w') as f:
+        json.dump({'notifications': notifications}, f, indent=4)
 
 # File to store agents
 AGENTS_FILE = "agents.json"
@@ -335,4 +361,29 @@ async def delete_tool(tool_id: str):
             agent['tools'].remove(tool_id)
     save_agents(agents)
     
-    return {"message": "Tool deleted"} 
+    return {"message": "Tool deleted"}
+
+@app.get("/api/notifications")
+async def get_notifications():
+    """Get all notifications"""
+    return load_notifications()
+
+@app.post("/api/notifications/{notification_id}/mark-read")
+async def mark_notification_read(notification_id: str):
+    """Mark a single notification as read"""
+    notifications = load_notifications()
+    for notification in notifications:
+        if notification["id"] == notification_id:
+            notification["read"] = True
+            save_notifications(notifications)
+            return {"message": "Notification marked as read"}
+    raise HTTPException(status_code=404, detail="Notification not found")
+
+@app.post("/api/notifications/mark-all-read")
+async def mark_all_notifications_read():
+    """Mark all notifications as read"""
+    notifications = load_notifications()
+    for notification in notifications:
+        notification["read"] = True
+    save_notifications(notifications)
+    return {"message": "All notifications marked as read"} 
