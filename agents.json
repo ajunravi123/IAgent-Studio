@@ -1,1 +1,1 @@
-[]
+[{"id": "b4fbb5cc-917a-4ba6-ad23-bcbac87810d3", "name": "Summarizer", "description": "Test description", "llmProvider": "google", "llmModel": "gpt-4", "role": "test role", "instructions": "kkfjhjf", "isManager": false, "features": {"knowledgeBase": false, "dataQuery": false}, "tools": ["c42a7ce1-fb90-436e-8856-0201aaa21c7e", "1d337de1-1669-4a35-afb2-bec2c465b1d2"]}]
