@@ -21,162 +21,11 @@
     <div class="tools-content">
         <h2>External Tools</h2>
         <div class="external-tools-grid" id="externalToolsGrid">
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo github">
-                            <i class="fab fa-github"></i>
-                        </div>
-                        <h3>Github</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('github')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">A platform for version control and collaboration, allowing you to work together on projects from anywhere.</p>
-                <div class="tool-tags">
-                    <span class="tag">Dev-Tools</span>
-                    <span class="tag">Version-Control</span>
-                    <span class="tag">+1</span>
-                </div>
-            </div>
-
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo slack">
-                            <i class="fab fa-slack"></i>
-                        </div>
-                        <h3>Slack</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('slack')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">Slack is a channel-based messaging platform. With Slack, people can work together more effectively, connect all their software tools and services, and find the information they need.</p>
-                <div class="tool-tags">
-                    <span class="tag">Productivity</span>
-                </div>
-            </div>
-
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo discord">
-                            <i class="fab fa-discord"></i>
-                        </div>
-                        <h3>Discord</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('discord')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">An instant messaging and VoIP social platform.</p>
-                <div class="tool-tags">
-                    <span class="tag">Gaming</span>
-                    <span class="tag">Social</span>
-                </div>
-            </div>
-
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo clickup">
-                            <img src="/static/images/clickup-logo.png" alt="Clickup">
-                        </div>
-                        <h3>Clickup</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('clickup')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">Clickup is a productivity platform that provides a fundamentally new way to work.</p>
-                <div class="tool-tags">
-                    <span class="tag">Productivity</span>
-                    <span class="tag">Ticketing</span>
-                </div>
-            </div>
-
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo spotify">
-                            <i class="fab fa-spotify"></i>
-                        </div>
-                        <h3>Spotify</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('spotify')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">Spotify is a digital music service that gives you access to millions of songs.</p>
-                <div class="tool-tags">
-                    <span class="tag">Music</span>
-                    <span class="tag">Entertainment</span>
-                </div>
-            </div>
-
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo twitter">
-                            <i class="fab fa-twitter"></i>
-                        </div>
-                        <h3>Twitter</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('twitter')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">Twitter, Inc. was an American social media company based in San Francisco, California, which operated and was named for its flagship social media service.</p>
-                <div class="tool-tags">
-                    <span class="tag">Social</span>
-                    <span class="tag">Marketing</span>
-                </div>
-            </div>
-
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo notion">
-                            <img src="/static/images/notion-logo.png" alt="Notion">
-                        </div>
-                        <h3>Notion</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('notion')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">A modern project management tool designed for efficiency and performance.</p>
-                <div class="tool-tags">
-                    <span class="tag">Project Management</span>
-                    <span class="tag">Productivity</span>
-                    <span class="tag">+1</span>
-                </div>
-            </div>
-
-            <div class="tool-integration-card">
-                <div class="tool-header">
-                    <div class="tool-info">
-                        <div class="tool-logo outlook">
-                            <i class="fab fa-microsoft"></i>
-                        </div>
-                        <h3>Outlook</h3>
-                    </div>
-                    <button class="btn-add" onclick="addTool('outlook')">
-                        + Add
-                    </button>
-                </div>
-                <p class="tool-description">Outlook is a personal information manager web app from Microsoft.</p>
-                <div class="tool-tags">
-                    <span class="tag">Productivity</span>
-                    <span class="tag">Email</span>
-                    <span class="tag">+1</span>
-                </div>
-            </div>
+            <!-- Tools will be populated by JavaScript -->
         </div>
     </div>
 
+    <!-- Add Custom Tool Modal -->
     <div class="modal" id="addCustomToolModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -214,6 +63,10 @@
 
     <!-- Tool Actions Menu -->
     <div id="toolActionsMenu" class="agent-actions-menu">
+        <div class="menu-item" onclick="viewTool(selectedToolId)">
+            <i class="fas fa-eye"></i>
+            View
+        </div>
         <div class="menu-item" onclick="editTool(selectedToolId)">
             <i class="fas fa-edit"></i>
             Edit
@@ -225,6 +78,19 @@
         <div class="menu-item delete" onclick="deleteTool(selectedToolId)">
             <i class="fas fa-trash"></i>
             Delete
+        </div>
+    </div>
+
+    <!-- View Tool Modal -->
+    <div class="modal" id="viewToolModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>View Tool</h2>
+                <button class="btn-close" onclick="closeViewTool()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Content will be dynamically populated -->
+            </div>
         </div>
     </div>
 </div> 

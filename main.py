@@ -24,9 +24,11 @@ class Agent(BaseModel):
     description: str
     llmProvider: str
     llmModel: str
+    apiKey: str
     role: str
+    backstory: str = ""
     instructions: str
-    isManager: bool = False
+    verbose: bool = False
     features: AgentFeatures
     tools: List[str] = []  # List of tool IDs
 
@@ -35,9 +37,11 @@ class AgentCreate(BaseModel):
     description: str
     llmProvider: str
     llmModel: str
+    apiKey: str
     role: str
+    backstory: str = ""
     instructions: str
-    isManager: bool = False
+    verbose: bool = False
     features: AgentFeatures
     tools: List[str] = []  # List of tool IDs
 

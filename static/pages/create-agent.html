@@ -18,7 +18,7 @@
                     Name
                     <i class="fas fa-info-circle" title="Give your agent a unique name"></i>
                 </label>
-                <input type="text" id="agentName" placeholder="Agent name" class="form-input">
+                <input type="text" id="agentName" placeholder="Agent name" class="form-input" autocomplete="off">
             </div>
 
             <div class="form-group">
@@ -26,36 +26,7 @@
                     Description
                     <i class="fas fa-info-circle" title="Describe what your agent does"></i>
                 </label>
-                <input type="text" id="agentDescription" placeholder="Agent description" class="form-input">
-            </div>
-
-            <div class="form-group">
-                <label>
-                    LLM Provider
-                    <i class="fas fa-info-circle" title="Select your LLM provider"></i>
-                </label>
-                <select id="llmProvider" class="form-select">
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic</option>
-                    <option value="google">Google</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    LLM Model
-                    <i class="fas fa-info-circle" title="Select the model"></i>
-                </label>
-                <div class="model-select-group">
-                    <select id="llmModel" class="form-select">
-                        <option value="gpt-4o-mini">gpt-4o-mini</option>
-                        <option value="gpt-4">GPT-4</option>
-                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                    </select>
-                    <button class="btn-icon" title="Need help choosing?">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                </div>
+                <input type="text" id="agentDescription" placeholder="Agent description" class="form-input" autocomplete="off">
             </div>
 
             <div class="form-group">
@@ -64,6 +35,14 @@
                     <i class="fas fa-info-circle" title="Define your agent's role"></i>
                 </label>
                 <textarea id="agentRole" class="form-textarea" placeholder="You are an expert customer support agent."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Agent Backstory
+                    <i class="fas fa-info-circle" title="Provide background context for your agent"></i>
+                </label>
+                <textarea id="agentBackstory" class="form-textarea" placeholder="Enter your agent's backstory and context..."></textarea>
             </div>
 
             <div class="form-group">
@@ -85,8 +64,8 @@
                         <input type="checkbox" id="managerAgent">
                         <span class="slider"></span>
                     </label>
-                    <span>Manager Agent</span>
-                    <i class="fas fa-info-circle" title="Enable manager capabilities"></i>
+                    <span>Verbose</span>
+                    <i class="fas fa-info-circle" title="Enable verbose mode for detailed output"></i>
                 </div>
             </div>
 
@@ -109,6 +88,53 @@
                         <!-- Tools will be populated by JavaScript -->
                     </div>
                 </div>
+            </div>
+
+            <div class="section-group">
+                <h3 class="section-title">LLM Settings</h3>
+                <div class="form-group">
+                    <label>
+                        LLM Provider
+                        <i class="fas fa-info-circle" title="Select your LLM provider"></i>
+                    </label>
+                    <select id="llmProvider" class="form-select" autocomplete="off">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="google">Google</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        LLM Model
+                        <i class="fas fa-info-circle" title="Select the model"></i>
+                    </label>
+                    <div class="model-select-group">
+                        <select id="llmModel" class="form-select" autocomplete="off">
+                            <option value="gpt-4o-mini">gpt-4o-mini</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        </select>
+                        <button class="btn-icon" title="Need help choosing?">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        API Key
+                        <i class="fas fa-info-circle" title="Enter your LLM provider's API key"></i>
+                    </label>
+                    <input type="text" id="apiKey" placeholder="Enter API key" class="form-input" autocomplete="off">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn-primary btn-create" onclick="saveAgent()" id="saveButton">
+                    <i class="fas fa-robot"></i>
+                    <span id="buttonText">Create Agent</span>
+                </button>
             </div>
         </div>
 
@@ -178,5 +204,34 @@
                 <button class="btn-primary" onclick="saveAgent()">Create</button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- View Tool Modal -->
+<div class="modal" id="viewToolModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>View Tool</h2>
+            <button class="btn-close" onclick="closeViewTool()">×</button>
+        </div>
+        <div class="modal-body">
+            <!-- Content will be dynamically populated -->
+        </div>
+    </div>
+</div>
+
+<!-- Tool Actions Menu -->
+<div id="toolActionsMenu" class="agent-actions-menu">
+    <div class="menu-item" onclick="editTool(selectedToolId)">
+        <i class="fas fa-edit"></i>
+        Edit
+    </div>
+    <div class="menu-item" onclick="cloneTool(selectedToolId)">
+        <i class="fas fa-copy"></i>
+        Clone
+    </div>
+    <div class="menu-item delete" onclick="deleteTool(selectedToolId)">
+        <i class="fas fa-trash"></i>
+        Delete
     </div>
 </div> 

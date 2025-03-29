@@ -12,7 +12,7 @@
   {
     "id": "1d337de1-1669-4a35-afb2-bec2c465b1d2",
     "name": "ajun",
-    "description": "ddd",
+    "description": "90",
     "icon": "/static/images/default-tool-icon.svg",
     "tags": [
       "Custom"
@@ -36,6 +36,26 @@
     "icon": "/static/images/default-tool-icon.svg",
     "tags": [
       "Custom"
+    ],
+    "is_added": false
+  },
+  {
+    "id": "35b62087-e587-4588-91ad-4b822d8f7220",
+    "name": "ajun loop",
+    "description": "lopp",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "Custom"
+    ],
+    "is_added": false
+  },
+  {
+    "id": "dc948990-c053-405b-b95f-eca92c34a938",
+    "name": "qaqa",
+    "description": "qa",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "qa"
     ],
     "is_added": false
   }

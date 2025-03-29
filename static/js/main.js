@@ -3,20 +3,50 @@
 function loadPage(page) {
     const app = document.getElementById('app');
     if (app) {
-        fetch(`/${page}`)
+        // Extract the base page name without query parameters
+        const basePage = page.split('?')[0];
+        fetch(`/${basePage}`)
             .then(response => response.text())
             .then(html => {
                 app.innerHTML = html;
-                if (page === 'agents') {
-                    loadAgents();
-                } else if (page === 'create-agent') {
-                    loadTools();
-                } else if (page === 'tools') {
-                    loadTools();
-                }
+                // Add a small delay to ensure DOM is fully loaded
+                setTimeout(() => {
+                    if (basePage === 'agents') {
+                        loadAgents();
+                    } else if (basePage === 'create-agent') {
+                        loadTools();
+                        // Check if we're editing an agent
+                        const isEditing = page.includes('?edit=true');
+                        const buttonText = document.getElementById('buttonText');
+                        if (buttonText) {
+                            buttonText.textContent = isEditing ? 'Save' : 'Create Agent';
+                        }
+                        // Verify form elements are present
+                        const formElements = [
+                            'agentName',
+                            'agentDescription',
+                            'llmProvider',
+                            'llmModel',
+                            'apiKey',
+                            'agentRole',
+                            'agentBackstory',
+                            'agentInstructions',
+                            'managerAgent'
+                        ];
+                        formElements.forEach(id => {
+                            const element = document.getElementById(id);
+                            if (!element) {
+                                console.error(`Form element ${id} not found`);
+                            }
+                        });
+                    } else if (basePage === 'tools') {
+                        loadExternalTools();
+                    }
+                }, 100);
             })
             .catch(error => {
                 app.innerHTML = '<p>Error loading page.</p>';
+                console.error('Error loading page:', error);
             });
     }
 }
@@ -127,7 +157,9 @@ function launchAgent(agentId) {
                 document.getElementById('agentDescription').value = agent.description;
                 document.getElementById('llmProvider').value = agent.llmProvider;
                 document.getElementById('llmModel').value = agent.llmModel;
+                document.getElementById('apiKey').value = agent.apiKey;
                 document.getElementById('agentRole').value = agent.role;
+                document.getElementById('agentBackstory').value = agent.backstory || '';
                 document.getElementById('agentInstructions').value = agent.instructions;
                 
                 // Load agent tools
@@ -158,12 +190,12 @@ function loadAgentTools(toolIds) {
                             <div class="tool-icon-wrapper ${colorClass}">
                                 ${firstLetter}
                             </div>
-                            <div class="tool-info interface_tool_info">
+                            <div class="tool-info">
                                 <div class="tool-name">${tool.name}</div>
-                            </div>
                                 <div class="tool-description">${tool.description || 'No description available'}</div>
-                            <div class="tool-tags">
-                                ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
+                                <div class="tool-tags">
+                                    ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -403,7 +435,7 @@ async function saveCustomTool() {
         
         if (response.ok) {
             closeAddCustomTool();
-            loadTools(); // Refresh tools list
+            loadExternalTools(); // Refresh tools list
         } else {
             const error = await response.json();
             alert('Failed to save tool: ' + error.message);
@@ -523,7 +555,7 @@ function updateTool(toolId) {
     })
     .then(() => {
         closeAddCustomTool();
-        loadTools();
+        loadExternalTools(); // Refresh tools list
     })
     .catch(error => {
         console.error('Error updating tool:', error);
@@ -589,7 +621,7 @@ function deleteTool(toolId) {
                 })
                 .then(response => {
                     if (!response.ok) throw new Error('Failed to delete tool');
-                    loadTools();
+                    loadExternalTools(); // Refresh tools list
                 })
                 .catch(error => {
                     console.error('Error deleting tool:', error);
@@ -600,7 +632,12 @@ function deleteTool(toolId) {
 }
 
 function viewTool(toolId) {
-    closeToolMenu();
+    // Only try to close the menu if it exists
+    const toolMenu = document.getElementById('toolActionsMenu');
+    if (toolMenu) {
+        closeToolMenu();
+    }
+    
     fetch(`/api/tools/${toolId}`)
         .then(response => response.json())
         .then(tool => {
@@ -640,120 +677,109 @@ function closeViewTool() {
     modal.classList.remove('show');
 }
 
-async function loadTools() {
-    try {
-        const response = await fetch('/api/tools');
-        const tools = await response.json();
-        
-        // Check which page we're on
-        const toolsGrid = document.querySelector('.tools-grid');
-        const externalToolsGrid = document.querySelector('.external-tools-grid');
-        
-        if (toolsGrid) {
-            // We're on the create-agent page
-            toolsGrid.innerHTML = '';
-            
-            // Add view tool modal to the page if it doesn't exist
-            if (!document.getElementById('viewToolModal')) {
-                const viewModal = document.createElement('div');
-                viewModal.id = 'viewToolModal';
-                viewModal.className = 'modal';
-                viewModal.innerHTML = `
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2>Tool Details</h2>
-                            <button class="btn-close" onclick="closeViewTool()">×</button>
-                        </div>
-                        <div class="modal-body"></div>
-                    </div>
-                `;
-                document.body.appendChild(viewModal);
-            }
-            
-            // Add tool actions menu if it doesn't exist
-            if (!document.getElementById('toolActionsMenu')) {
-                const actionsMenu = document.createElement('div');
-                actionsMenu.id = 'toolActionsMenu';
-                actionsMenu.className = 'agent-actions-menu';
-                actionsMenu.innerHTML = `
-                    <div class="menu-item" onclick="viewTool(selectedToolId)">
-                        <i class="fas fa-eye"></i>
-                        View
-                    </div>
-                `;
-                document.body.appendChild(actionsMenu);
-            }
-            
-            tools.forEach(tool => {
-                const isSelected = selectedTools.has(tool.id);
-                const toolCard = document.createElement('div');
-                toolCard.className = `tool-card ${isSelected ? 'selected' : ''}`;
-                toolCard.setAttribute('data-tool-id', tool.id);
-                toolCard.innerHTML = `
-                    <div class="tool-content">
-                        <div class="checkbox" onclick="toggleTool('${tool.id}', event)">
-                            <input type="checkbox" ${isSelected ? 'checked' : ''}>
-                            <i class="fas fa-check"></i>
-                        </div>
-                        <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
-                            ${tool.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div class="tool-name">${tool.name}</div>
-                        <div class="tool-description">${tool.description}</div>
-                        <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
-                            <i class="fas fa-ellipsis-v"></i>
-                        </button>
-                    </div>
-                `;
+function loadExternalTools() {
+    fetch('/api/tools')
+        .then(response => response.json())
+        .then(tools => {
+            const toolsGrid = document.getElementById('externalToolsGrid');
+            if (!toolsGrid) return;
 
-                // Add click event to the card (excluding the checkbox and three-dot button)
-                toolCard.addEventListener('click', (event) => {
-                    if (!event.target.closest('.checkbox') && !event.target.closest('.btn-more')) {
-                        toggleTool(tool.id, event);
-                    }
-                });
-
-                toolsGrid.appendChild(toolCard);
-            });
-        } else if (externalToolsGrid) {
-            // Add view tool modal to the page if it doesn't exist
-            if (!document.getElementById('viewToolModal')) {
-                const viewModal = document.createElement('div');
-                viewModal.id = 'viewToolModal';
-                viewModal.className = 'modal';
-                viewModal.innerHTML = `
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2>Tool Details</h2>
-                            <button class="btn-close" onclick="closeViewTool()">×</button>
-                        </div>
-                        <div class="modal-body"></div>
-                    </div>
-                `;
-                document.body.appendChild(viewModal);
-            }
-            
-            // We're on the tools page
-            externalToolsGrid.innerHTML = tools.map(tool => `
-                <div class="tool-integration-card">
-                    <div class="tool-header">
-                        <div class="tool-info">
-                            <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
-                                ${tool.name.charAt(0).toUpperCase()}
+            toolsGrid.innerHTML = tools.map(tool => {
+                const firstLetter = tool.name.charAt(0).toUpperCase();
+                return `
+                    <div class="tool-integration-card">
+                        <div class="tool-header">
+                            <div class="tool-info tool-tab-title">
+                                <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
+                                    ${firstLetter}
+                                </div>
+                                <h3>${tool.name}</h3>
                             </div>
-                            <h3>${tool.name}</h3>
+                            <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
                         </div>
-                        <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
-                            <i class="fas fa-ellipsis-v"></i>
-                        </button>
+                        <p class="tool-description">${tool.description || 'No description available'}</p>
+                        <div class="tool-tags">
+                            ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
                     </div>
-                    <p class="tool-description">${tool.description}</p>
-                    <div class="tool-tags">
-                        ${tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>
-                </div>
-            `).join('');
-        }
+                `;
+            }).join('');
+        });
+}
+
+function searchExternalTools(query) {
+    const toolCards = document.querySelectorAll('.tool-integration-card');
+    const searchQuery = query.toLowerCase();
+
+    toolCards.forEach(card => {
+        const toolName = card.querySelector('h3').textContent.toLowerCase();
+        const toolDescription = card.querySelector('.tool-description').textContent.toLowerCase();
+        const toolTags = Array.from(card.querySelectorAll('.tag'))
+            .map(tag => tag.textContent.toLowerCase());
+
+        const matches = toolName.includes(searchQuery) || 
+                       toolDescription.includes(searchQuery) ||
+                       toolTags.some(tag => tag.includes(searchQuery));
+
+        card.style.display = matches ? 'block' : 'none';
+    });
+}
+
+function refreshTools() {
+    if (document.querySelector('.page.tools')) {
+        loadExternalTools();
+    } else {
+        loadTools();
+    }
+}
+
+function loadTools() {
+    try {
+        fetch('/api/tools')
+            .then(response => response.json())
+            .then(tools => {
+                const toolsGrid = document.querySelector('.tools-grid');
+                if (!toolsGrid) return;
+
+                toolsGrid.innerHTML = tools.map(tool => {
+                    const isSelected = selectedTools.has(tool.id);
+                    const firstLetter = tool.name.charAt(0).toUpperCase();
+                    return `
+                        <div class="tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}">
+                            <div class="tool-content">
+                                <div class="tool-header">
+                                    <div class="tool-header-left">
+                                        <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
+                                            ${firstLetter}
+                                        </div>
+                                        <h3 class="tool-name">${tool.name}</h3>
+                                    </div>
+                                </div>
+                                <div class="tool-description">${tool.description || 'No description available'}</div>
+                                <div class="tool-tags">
+                                    ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                </div>
+                                <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
+                            </div>
+                            <div class="checkbox" onclick="toggleTool('${tool.id}', event)">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Add click event listeners
+                toolsGrid.querySelectorAll('.tool-card').forEach(card => {
+                    card.addEventListener('click', (event) => {
+                        if (!event.target.closest('.checkbox') && !event.target.closest('.view-btn')) {
+                            const toolId = card.dataset.toolId;
+                            toggleTool(toolId, event);
+                        }
+                    });
+                });
+            });
     } catch (error) {
         console.error('Error loading tools:', error);
     }
@@ -807,9 +833,11 @@ function saveAgent() {
         description: document.getElementById('agentDescription').value,
         llmProvider: document.getElementById('llmProvider').value,
         llmModel: document.getElementById('llmModel').value,
+        apiKey: document.getElementById('apiKey').value,
         role: document.getElementById('agentRole').value,
+        backstory: document.getElementById('agentBackstory').value,
         instructions: document.getElementById('agentInstructions').value,
-        isManager: document.getElementById('managerAgent').checked,
+        verbose: document.getElementById('managerAgent').checked,
         tools: Array.from(selectedTools),
         features: {
             knowledgeBase: document.getElementById('knowledgeBase').checked,
@@ -847,21 +875,29 @@ function editAgent(agentId) {
     fetch(`/api/agents/${agentId}`)
         .then(response => response.json())
         .then(agent => {
-            loadPage('create-agent');
+            // Add edit parameter to URL when loading create-agent page
+            loadPage('create-agent?edit=true');
             // Fill form with agent data
             setTimeout(() => {
-                // Update page title and button text
+                // Update page title and button texts
                 document.querySelector('.page-header h1').textContent = agent.name;
                 document.querySelector('.build-section .btn-primary').textContent = 'Save';
+                // Update the main form button text
+                const buttonText = document.getElementById('buttonText');
+                if (buttonText) {
+                    buttonText.textContent = 'Save';
+                }
                 
                 // Fill form fields
                 document.getElementById('agentName').value = agent.name;
                 document.getElementById('agentDescription').value = agent.description;
                 document.getElementById('llmProvider').value = agent.llmProvider;
                 document.getElementById('llmModel').value = agent.llmModel;
+                document.getElementById('apiKey').value = agent.apiKey;
                 document.getElementById('agentRole').value = agent.role;
+                document.getElementById('agentBackstory').value = agent.backstory || '';
                 document.getElementById('agentInstructions').value = agent.instructions;
-                document.getElementById('managerAgent').checked = agent.isManager;
+                document.getElementById('managerAgent').checked = agent.verbose;
                 document.getElementById('knowledgeBase').checked = agent.features.knowledgeBase;
                 document.getElementById('dataQuery').checked = agent.features.dataQuery;
                 
@@ -1147,12 +1183,12 @@ function init() {
 
     // Add tools page initialization
     if (window.location.pathname.includes('tools.html')) {
-        loadTools();
+        loadExternalTools();
         
         // Add search functionality
         const searchInput = document.querySelector('.search-input');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => searchTools(e.target.value));
+            searchInput.addEventListener('input', (e) => searchExternalTools(e.target.value));
         }
     }
 }

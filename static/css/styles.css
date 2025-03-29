@@ -987,183 +987,186 @@ input:checked + .slider:before {
 
 /* Tools section styles */
 .tools-section {
-    background: #1A1A1A;
-    border: 1px solid #333;
+    background: linear-gradient(to bottom, #0A192F, #112240);
     border-radius: 12px;
-    padding: 20px;
+    padding: 24px;
+    margin: 24px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tools-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
-.tools-header .search-bar {
+.search-bar {
+    position: relative;
     flex: 1;
+    max-width: 400px;
+    margin-right: 16px;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #E5E7EB;
+    font-size: 14px;
+}
+
+.search-bar i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748B;
 }
 
 .tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-    max-height: 300px;
-    overflow-y: auto;
-    padding-right: 8px;
-    padding-top: 12px;
-}
-
-.tools-grid::-webkit-scrollbar {
-    width: 8px;
-}
-
-.tools-grid::-webkit-scrollbar-track {
-    background: #252525;
-    border-radius: 4px;
-}
-
-.tools-grid::-webkit-scrollbar-thumb {
-    background: #333;
-    border-radius: 4px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
 }
 
 .tool-card {
-    background: rgba(26, 26, 26, 0.8);
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
+    border-radius: 12px;
     padding: 20px;
-    transition: all 0.2s;
     cursor: pointer;
     position: relative;
-    display: flex;
-    flex-direction: column;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
 }
 
 .tool-card:hover {
-    border-color: #2563EB;
+    background: rgba(255, 255, 255, 0.05);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
-    background: rgba(26, 26, 26, 0.9);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .tool-card.selected {
-    border: 2px solid #2563EB;
-    background: rgba(37, 99, 235, 0.08);
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2),
-                0 8px 24px rgba(37, 99, 235, 0.15);
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.5);
 }
 
 .tool-content {
     position: relative;
     display: flex;
     flex-direction: column;
-    flex: 1;
+    min-height: 200px;
 }
 
-.tool-card .checkbox {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 20px;
-    height: 20px;
-    border: 2px solid #333;
-    border-radius: 4px;
+.tool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.tool-header-left {
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    z-index: 2;
-    cursor: pointer;
-    background: rgba(26, 26, 26, 0.8);
-}
-
-.tool-card .checkbox:hover {
-    border-color: #2563EB;
-}
-
-.tool-card.selected .checkbox {
-    background: #2563EB;
-    border-color: #2563EB;
-}
-
-.tool-card .checkbox input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-.tool-card .checkbox .fa-check {
-    color: white;
-    font-size: 12px;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-}
-
-.tool-card.selected .checkbox .fa-check {
-    opacity: 1;
+    gap: 12px;
 }
 
 .tool-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 16px;
-    font-size: 18px;
+    border-radius: 8px;
     color: white;
+    font-size: 16px;
     font-weight: 600;
 }
 
 .tool-name {
+    color: #E5E7EB;
     font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 8px;
-    color: white;
-    padding-right: 28px;
-    line-height: 1.4;
+    font-weight: 600;
+    margin: 0;
 }
 
 .tool-description {
+    color: #94A3B8;
     font-size: 14px;
-    color: #888;
     line-height: 1.5;
+    margin-bottom: 16px;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    margin-bottom: auto;
-    text-align: center;
 }
 
-.tool-card .btn-more {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    background: none;
-    border: none;
-    color: #888;
-    cursor: pointer;
+.tool-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.tag {
+    background: rgba(255, 255, 255, 0.05);
+    color: #94A3B8;
     padding: 4px 8px;
-    font-size: 16px;
-    line-height: 1;
-    transition: all 0.2s;
     border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
 }
 
-.tool-card .btn-more:hover {
-    color: white;
+.view-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: #94A3B8;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: auto;
+    align-self: flex-end;
+}
+
+.view-btn:hover {
     background: rgba(255, 255, 255, 0.1);
+    color: #E5E7EB;
+}
+
+.checkbox {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.tool-card.selected .checkbox {
+    background: #3B82F6;
+    border-color: #3B82F6;
+}
+
+.checkbox i {
+    color: white;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.tool-card.selected .checkbox i {
+    opacity: 1;
 }
 
 /* Tools page styles */
@@ -1207,6 +1210,10 @@ input:checked + .slider:before {
 .tool-info {
     align-items: center;
     gap: 12px;
+}
+
+.tool-tab-title {
+    display: flex !important;
 }
 
 .tool-logo {
@@ -2020,23 +2027,37 @@ input:checked + .slider:before {
     justify-content: center;
     font-size: 20px;
     font-weight: 600;
-    transition: all 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 4px;
 }
 
 .tool-icon-wrapper.yellow {
-    background: rgba(234, 179, 8, 0.15);
-    color: #F59E0B;
+    background: linear-gradient(145deg, #B45309, #D97706);
+    color: #FCD34D;
 }
 
 .tool-icon-wrapper.green {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10B981;
+    background: linear-gradient(145deg, #065F46, #047857);
+    color: #6EE7B7;
 }
 
 .tool-icon-wrapper.purple {
-    background: rgba(168, 85, 247, 0.15);
-    color: #A855F7;
+    background: linear-gradient(145deg, #5B21B6, #7C3AED);
+    color: #DDD6FE;
+}
+
+.tool-icon-wrapper.blue {
+    background: linear-gradient(145deg, #1E40AF, #2563EB);
+    color: #BFDBFE;
+}
+
+.tool-icon-wrapper.red {
+    background: linear-gradient(145deg, #991B1B, #DC2626);
+    color: #FECACA;
+}
+
+.tool-icon-wrapper.orange {
+    background: linear-gradient(145deg, #9A3412, #EA580C);
+    color: #FED7AA;
 }
 
 .tool-checkbox {
@@ -2068,24 +2089,48 @@ input:checked + .slider:before {
     opacity: 1;
 }
 
-.tool-info {
-    /* flex: 1; */
-    display: flex;
+.tool-card .checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
 }
 
-.interface_tool_info {
-    display: block !important;
+.tool-card .checkbox .fa-check {
+    color: white;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+
+.tool-card.selected .checkbox .fa-check {
+    opacity: 1;
+}
+
+.tool-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 18px;
+    color: white;
+    font-weight: 600;
 }
 
 .tool-name {
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
+    margin-bottom: 8px;
     color: #ffffff;
-    margin: 0;
-    letter-spacing: -0.3px;
+    padding-right: 28px;
     line-height: 1.4;
-    width: 100%;
-    text-align: center;
 }
 
 .tool-description {
@@ -2097,8 +2142,29 @@ input:checked + .slider:before {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    width: 100%;
     text-align: center;
+}
+
+.tool-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.tool-tags .tag {
+    background: rgba(255, 255, 255, 0.08);
+    color: #888;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.tool-card:hover .tool-tags .tag {
+    background: rgba(37, 99, 235, 0.1);
+    color: #60A5FA;
 }
 
 .tool-footer {
@@ -2424,15 +2490,10 @@ input:checked + .slider:before {
     background: linear-gradient(145deg, rgba(26, 26, 26, 0.9), rgba(34, 34, 34, 0.9));
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 24px;
+    padding: 16px;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    /* height: 100%; */
 }
 
 .agent-config-section .tool-card:hover {
@@ -2443,12 +2504,23 @@ input:checked + .slider:before {
 }
 
 .agent-config-section .tool-content {
-    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     width: 100%;
+}
+
+.agent-config-section .tool-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
 }
 
 .agent-config-section .tool-name {
@@ -2456,9 +2528,7 @@ input:checked + .slider:before {
     font-weight: 600;
     color: #ffffff;
     margin: 0;
-    letter-spacing: -0.3px;
     line-height: 1.4;
-    width: 100%;
     text-align: center;
 }
 
@@ -2471,7 +2541,6 @@ input:checked + .slider:before {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    width: 100%;
     text-align: center;
 }
 
@@ -2480,7 +2549,7 @@ input:checked + .slider:before {
     flex-wrap: wrap;
     gap: 6px;
     justify-content: center;
-    width: 100%;
+    margin-top: 4px;
 }
 
 .agent-config-section .tool-tags .tag {
@@ -2490,7 +2559,6 @@ input:checked + .slider:before {
     border-radius: 6px;
     font-size: 12px;
     transition: all 0.2s;
-    font-weight: 500;
 }
 
 .agent-config-section .tool-card:hover .tool-tags .tag {
@@ -2527,4 +2595,70 @@ input:checked + .slider:before {
 .agent-config-section .tool-icon-wrapper.orange {
     background: linear-gradient(145deg, #9A3412, #EA580C);
     color: #FED7AA;
+}
+
+.section-group {
+    background: linear-gradient(297deg, #350703, #000720);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #E5E7EB;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-group .form-group {
+    margin-bottom: 20px;
+    background: rgba(26, 26, 26, 0.4);
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.section-group .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.section-group .form-group:hover {
+    background: rgba(26, 26, 26, 0.6);
+    border-color: rgba(37, 99, 235, 0.3);
+}
+
+.form-actions {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-create {
+    background: linear-gradient(145deg, #2563EB, #1D4ED8);
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-create:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(145deg, #1D4ED8, #1E40AF);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+}
+
+.btn-create i {
+    font-size: 18px;
 } 
