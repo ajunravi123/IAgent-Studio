@@ -744,7 +744,7 @@ input:checked + .slider:before {
     display: flex;
     gap: 20px;
     transition: transform 0.2s;
-    cursor: pointer;
+    /* cursor: pointer; */
 }
 
 .featured-card:hover {
@@ -2689,3 +2689,19 @@ input:checked + .slider:before {
 
 
 
+.btn-feat{
+    font-size: 12px;
+    padding: 6px 10px !important;
+    float: right;
+    margin-top: 28px;
+}
+
+
+.btn-feat-off{
+    font-size: 12px;
+    padding: 6px 10px !important;
+    float: right;
+    margin-top: 28px;
+    opacity: 0.3;
+    cursor: no-drop;
+}

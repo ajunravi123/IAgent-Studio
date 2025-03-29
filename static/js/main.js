@@ -518,7 +518,7 @@ async function saveCustomTool() {
             errorElement.textContent = 'Tool name is required';
             errorElement.style.display = 'block';
         } else {
-            alert('Tool name is required');
+        alert('Tool name is required');
         }
         document.getElementById('toolName').focus();
         return;
@@ -529,7 +529,7 @@ async function saveCustomTool() {
             errorElement.textContent = 'Description is required';
             errorElement.style.display = 'block';
         } else {
-            alert('Description is required');
+        alert('Description is required');
         }
         document.getElementById('toolDescription').focus();
         return;
@@ -1424,3 +1424,6 @@ function init() {
 document.addEventListener('DOMContentLoaded', init); 
 
 
+function openROIALLY() {
+    window.open('http://ajunsmachine.theworkpc.com:8000/v1', '_blank');
+}
