@@ -2677,3 +2677,12 @@ input:checked + .slider:before {
 #agentInstructions {
     min-height: 180px !important;
 }
+
+.headmarket {
+    height: 74px;
+    padding-top: 25px;
+    font-size: 21px;
+    font-weight: 800;
+    padding-left: 71px;
+    color: #e0e0e0;
+}
