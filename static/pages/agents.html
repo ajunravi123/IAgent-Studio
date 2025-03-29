@@ -1,0 +1,39 @@
+<div class="page agents">
+    <div class="page-header">
+        <div class="header-left">
+            <h1>Agents</h1>
+            <p class="subtitle">Create and manage your agents</p>
+        </div>
+        <div class="header-actions">
+            <div class="search-bar">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" placeholder="Search agents..." onkeyup="searchAgents(this.value)">
+            </div>
+            <button class="btn-secondary" onclick="refreshAgents()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn-primary" onclick="createNewAgent()">
+                + Create New
+            </button>
+        </div>
+    </div>
+
+    <div class="agents-content">
+        <!-- This div will be populated by JavaScript -->
+    </div>
+</div>
+
+<div class="agent-actions-menu" id="agentActionsMenu">
+    <div class="menu-item" onclick="editAgent(selectedAgentId)">
+        <i class="fas fa-edit"></i> Edit
+    </div>
+    <div class="menu-item" onclick="launchAgent(selectedAgentId)">
+        <i class="fas fa-rocket"></i> Launch Agent
+    </div>
+    <div class="menu-item" onclick="duplicateAgent(selectedAgentId)">
+        <i class="fas fa-copy"></i> Duplicate Agent
+    </div>
+    <div class="menu-item delete" onclick="deleteAgent(selectedAgentId)">
+        <i class="fas fa-trash"></i> Delete
+    </div>
+</div> 

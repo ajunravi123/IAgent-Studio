@@ -1,0 +1,182 @@
+<div class="page create-agent">
+    <div class="page-header">
+        <div class="header-left">
+            <button class="btn-back" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1>Create Agent</h1>
+        </div>
+        <a href="#" class="agent-api-link">
+            <i class="fas fa-code"></i> Agent API
+        </a>
+    </div>
+
+    <div class="create-agent-content">
+        <div class="main-form">
+            <div class="form-group">
+                <label>
+                    Name
+                    <i class="fas fa-info-circle" title="Give your agent a unique name"></i>
+                </label>
+                <input type="text" id="agentName" placeholder="Agent name" class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Description
+                    <i class="fas fa-info-circle" title="Describe what your agent does"></i>
+                </label>
+                <input type="text" id="agentDescription" placeholder="Agent description" class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label>
+                    LLM Provider
+                    <i class="fas fa-info-circle" title="Select your LLM provider"></i>
+                </label>
+                <select id="llmProvider" class="form-select">
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="google">Google</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    LLM Model
+                    <i class="fas fa-info-circle" title="Select the model"></i>
+                </label>
+                <div class="model-select-group">
+                    <select id="llmModel" class="form-select">
+                        <option value="gpt-4o-mini">gpt-4o-mini</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                    <button class="btn-icon" title="Need help choosing?">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Agent Role
+                    <i class="fas fa-info-circle" title="Define your agent's role"></i>
+                </label>
+                <textarea id="agentRole" class="form-textarea" placeholder="You are an expert customer support agent."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Agent Instructions
+                    <i class="fas fa-info-circle" title="Provide detailed instructions"></i>
+                </label>
+                <div class="instructions-group">
+                    <textarea id="agentInstructions" class="form-textarea"></textarea>
+                    <button class="btn-expand">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="switch-group">
+                    <label class="switch">
+                        <input type="checkbox" id="managerAgent">
+                        <span class="slider"></span>
+                    </label>
+                    <span>Manager Agent</span>
+                    <i class="fas fa-info-circle" title="Enable manager capabilities"></i>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Tool Configuration
+                    <i class="fas fa-info-circle" title="Select tools for your agent"></i>
+                </label>
+                <div class="tools-section">
+                    <div class="tools-header">
+                        <div class="search-bar">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" placeholder="Search tools..." onkeyup="searchTools(this.value)" class="form-input">
+                        </div>
+                        <button class="btn-secondary" onclick="loadPage('tools')">
+                            <i class="fas fa-plus"></i> Create Tool
+                        </button>
+                    </div>
+                    <div class="tools-grid" id="toolsGrid">
+                        <!-- Tools will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="search-features">
+                <input type="text" placeholder="Search features..." class="form-input">
+            </div>
+
+            <div class="features-section">
+                <h2>Core Features</h2>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-info">
+                            <span>Knowledge Base</span>
+                            <i class="fas fa-info-circle" title="Enable knowledge base"></i>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="knowledgeBase">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-info">
+                            <span>Data Query</span>
+                            <i class="fas fa-info-circle" title="Enable data query"></i>
+                            <span class="beta-tag">Beta</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="dataQuery">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Add other features similarly -->
+                </div>
+            </div>
+
+            <div class="build-section">
+                <div class="rocket-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h2>Start Building</h2>
+                <div class="build-steps">
+                    <div class="build-step">
+                        <span class="step-number">1</span>
+                        <div class="step-content">
+                            <h3>Choose LLM & Define Role</h3>
+                            <p>Select your preferred large language model and define your agent's purpose</p>
+                        </div>
+                    </div>
+                    <div class="build-step">
+                        <span class="step-number">2</span>
+                        <div class="step-content">
+                            <h3>Add Tools (Optional)</h3>
+                            <p>Enhance your agent with external tools and capabilities</p>
+                        </div>
+                    </div>
+                    <div class="build-step">
+                        <span class="step-number">3</span>
+                        <div class="step-content">
+                            <h3>Enable Features (Optional)</h3>
+                            <p>Add advanced features to boost your agent's internal powers</p>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="saveAgent()">Create</button>
+            </div>
+        </div>
+    </div>
+</div> 

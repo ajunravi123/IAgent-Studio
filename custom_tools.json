@@ -1,0 +1,22 @@
+[
+  {
+    "id": "c42a7ce1-fb90-436e-8856-0201aaa21c7e",
+    "name": "test",
+    "description": "ddd",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "dd"
+    ],
+    "is_added": false
+  },
+  {
+    "id": "1d337de1-1669-4a35-afb2-bec2c465b1d2",
+    "name": "ajun",
+    "description": "ddd",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "Custom"
+    ],
+    "is_added": false
+  }
+]
