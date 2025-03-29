@@ -64,7 +64,13 @@ function loadPage(pagePath) {
                 setTimeout(() => {
                     // Page specific JS initializations
                     if (basePage === 'agents') {
-                    loadAgents();
+                        loadAgents();
+                        // Initialize search for agents page
+                        const searchInput = document.querySelector('.page.agents .search-bar input'); // Assuming this selector is correct for the agents page search bar
+                        if (searchInput && !searchInput.dataset.listenerAttached) {
+                            searchInput.addEventListener('input', (e) => searchAgents(e.target.value));
+                            searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
+                        }
                     } else if (basePage === 'create-agent') {
                     loadTools();
                         // Check if we're editing an agent
@@ -351,8 +357,31 @@ function duplicateAgent(agentId) {
 }
 
 function searchAgents(query) {
-    // Implement agent search functionality
-    console.log('Searching agents:', query);
+    const agentCards = document.querySelectorAll('.agents-content .agent-card');
+    const searchQuery = query.toLowerCase().trim();
+
+    agentCards.forEach(card => {
+        // Find relevant elements within the card
+        const nameElement = card.querySelector('.agent-details h3');
+        const descriptionElement = card.querySelector('.agent-details p');
+        const modelElement = card.querySelector('.agent-stats .stat:nth-child(1) .stat-value'); // Assuming model is first stat
+        const providerElement = card.querySelector('.agent-stats .stat:nth-child(2) .stat-value'); // Assuming provider is second stat
+
+        // Extract text content, checking if elements exist
+        const name = nameElement ? nameElement.textContent.toLowerCase() : '';
+        const description = descriptionElement ? descriptionElement.textContent.toLowerCase() : '';
+        const model = modelElement ? modelElement.textContent.toLowerCase() : '';
+        const provider = providerElement ? providerElement.textContent.toLowerCase() : '';
+
+        // Check for matches
+        const matches = name.includes(searchQuery) || 
+                       description.includes(searchQuery) ||
+                       model.includes(searchQuery) ||
+                       provider.includes(searchQuery);
+
+        // Show or hide the card
+        card.style.display = matches ? '' : 'none'; 
+    });
 }
 
 // Custom Tool functions
