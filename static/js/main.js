@@ -502,18 +502,51 @@ async function saveCustomTool() {
     const tags = document.getElementById('toolTags').value.split(',').map(tag => tag.trim()).filter(tag => tag);
     const schema = document.getElementById('toolSchema').value.trim();
     
-    // Validation
+    // Find the error message element within the modal
+    const modal = document.getElementById('addCustomToolModal');
+    const errorElement = modal ? modal.querySelector('#tool-modal-error') : null;
+
+    // Clear previous error messages
+    if (errorElement) {
+        errorElement.textContent = '';
+        errorElement.style.display = 'none';
+    }
+
+    // Client-side Validation
     if (!name) {
-        alert('Tool name is required');
+        if (errorElement) {
+            errorElement.textContent = 'Tool name is required';
+            errorElement.style.display = 'block';
+        } else {
+            alert('Tool name is required');
+        }
+        document.getElementById('toolName').focus();
         return;
     }
     
     if (!description) {
-        alert('Description is required');
+         if (errorElement) {
+            errorElement.textContent = 'Description is required';
+            errorElement.style.display = 'block';
+        } else {
+            alert('Description is required');
+        }
+        document.getElementById('toolDescription').focus();
         return;
     }
     
     if (!schema || !validateOpenAPISchema(schema)) {
+        // validateOpenAPISchema already shows an alert, 
+        // but we can also update the modal error element if it exists
+         if (errorElement && !schema) { 
+             errorElement.textContent = 'OpenAPI Schema is required.';
+             errorElement.style.display = 'block';
+         } else if (errorElement && schema && !validateOpenAPISchema(schema)) {
+             // Attempt to show the validation error reason in the modal too
+             try { JSON.parse(schema) } catch (e) { errorElement.textContent = 'Invalid OpenAPI Schema: ' + e.message; }
+             errorElement.style.display = 'block';
+         }
+        document.getElementById('toolSchema').focus();
         return;
     }
     
@@ -541,11 +574,23 @@ async function saveCustomTool() {
             loadExternalTools(); // Refresh tools list
         } else {
             const error = await response.json();
-            alert('Failed to save tool: ' + error.message);
+            const errorMessage = error.detail || 'Failed to save tool. Please check the details.'; // Use detail from FastAPI HTTPException
+            if (errorElement) {
+                errorElement.textContent = errorMessage;
+                errorElement.style.display = 'block';
+            } else {
+                alert(errorMessage); // Fallback to alert if element not found
+            }
         }
     } catch (error) {
         console.error('Error saving custom tool:', error);
-        alert('Failed to save tool. Please try again.');
+        const errorMessage = 'An unexpected error occurred. Please try again.';
+         if (errorElement) {
+            errorElement.textContent = errorMessage;
+            errorElement.style.display = 'block';
+        } else {
+            alert(errorMessage); // Fallback
+        }
     }
 }
 
@@ -668,12 +713,15 @@ function updateTool(toolId) {
 
 function cloneTool(toolId) {
     closeToolMenu();
+    let originalToolName = ''; // Store the original name for better error messages
+
     fetch(`/api/tools/${toolId}`)
         .then(response => response.json())
         .then(tool => {
+            originalToolName = tool.name;
             // Get the schema for the tool
             return fetch(`/api/tools/${toolId}/schema`)
-                .then(response => response.json())
+                .then(response => response.json()) // Assuming schema endpoint always returns JSON
                 .then(schema => {
                     const clonedTool = {
                         name: `${tool.name} (Copy)`,
@@ -691,14 +739,29 @@ function cloneTool(toolId) {
                     });
                 });
         })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to clone tool');
-            return response.json();
+        .then(async response => { // Make this async to use await for response.json()
+            if (!response.ok) { 
+                 // Try to get specific error from API response
+                 let errorMessage = `Failed to clone tool '${originalToolName}'.`;
+                 try {
+                     const errorData = await response.json();
+                     // Use the detail field from FastAPI's HTTPException
+                     errorMessage += ` Reason: ${errorData.detail || response.statusText}`;
+                 } catch (e) {
+                     // If response is not JSON or empty
+                     errorMessage += ` Status: ${response.statusText}`;
+                 }
+                 throw new Error(errorMessage); // Throw error to be caught below
+            }
+            return response.json(); // Return the created tool data
         })
-        .then(() => loadTools())
+        .then(() => {
+            loadExternalTools(); // Use loadExternalTools to refresh the main tools page
+        })
         .catch(error => {
             console.error('Error cloning tool:', error);
-            alert('Failed to clone tool. Please try again.');
+            // Display the specific error message from the Error object
+            alert(error.message || 'An unexpected error occurred while cloning the tool.');
         });
 }
 
