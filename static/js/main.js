@@ -119,6 +119,8 @@ function loadPage(pagePath) {
                          }
                          // Marketplace JS likely initializes itself via DOMContentLoaded listener in marketplace.js
                          // If not, explicitly call its init function here: loadMarketplace(); 
+                    } else if (basePage === 'notifications') {
+                        loadAllNotifications(); // Call function to load notifications for the page
                     }
                     // Add other page specific initializations here
 
@@ -866,7 +868,7 @@ function loadExternalTools() {
                         </button>
                         </div>
                         <p class="tool-description">${tool.description || 'No description available'}</p>
-                        <div class="tool-tags">
+                        <div class="tool-tags tool-underline">
                             ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
                         </div>
                     </div>
@@ -1212,11 +1214,15 @@ const NotificationsAPI = {
 // Notifications functionality
 let notifications = [];
 
-async function fetchNotifications() {
+async function fetchNotifications(renderTarget = null) { // renderTarget can be '.notifications-list' or '#allNotificationsList'
     try {
         notifications = await NotificationsAPI.getNotifications();
         updateNotificationBadge();
-        renderNotifications();
+        if (renderTarget) {
+            renderNotifications(renderTarget); // Render to specific target if provided
+        } else {
+            renderNotifications('.notifications-list'); // Default to dropdown list
+        }
     } catch (error) {
         console.error('Error fetching notifications:', error);
     }
@@ -1234,9 +1240,12 @@ function updateNotificationBadge() {
     }
 }
 
-function renderNotifications() {
-    const notificationsList = document.querySelector('.notifications-list');
-    if (!notificationsList) return;
+function renderNotifications(targetSelector = '.notifications-list') { // Default to dropdown list
+    const notificationsList = document.querySelector(targetSelector);
+    if (!notificationsList) {
+        console.warn(`Notification render target '${targetSelector}' not found.`);
+        return;
+    }
 
     if (notifications.length === 0) {
         notificationsList.innerHTML = `
@@ -1259,6 +1268,7 @@ function renderNotifications() {
                     <p>${notification.message}</p>
                     <div class="notification-time">${formatNotificationTime(notification.timestamp)}</div>
                 </div>
+                <!-- Add more details or actions specific to the full page view if needed -->
             </div>
         `).join('');
 }
@@ -1293,6 +1303,23 @@ function formatNotificationTime(timestamp) {
     }
     // More than 24 hours
     return date.toLocaleDateString();
+}
+
+// Function specifically for loading notifications on the dedicated page
+function loadAllNotifications() {
+    fetchNotifications('#allNotificationsList'); // Fetch and render to the full page list
+}
+
+// Function for the "Mark All Read" button on the notifications page
+async function markAllReadAndRefreshPage() {
+    const result = await NotificationsAPI.markAllAsRead();
+    if (result.success) {
+        notifications.forEach(n => n.read = true);
+        updateNotificationBadge(); // Update badge in header
+        renderNotifications('#allNotificationsList'); // Re-render the list on the page
+        // Optionally re-render the dropdown if it might be open, though less critical
+        // renderNotifications('.notifications-list'); 
+    }
 }
 
 function initializeNotifications() {
@@ -1338,22 +1365,32 @@ function initializeNotifications() {
             });
         }
 
-        // Handle individual notification clicks
-        notificationsMenu.addEventListener('click', async function(e) {
-            const notificationItem = e.target.closest('.notification-item');
-            if (notificationItem && !notificationItem.classList.contains('read')) {
-                const notificationId = notificationItem.dataset.id;
-                const result = await NotificationsAPI.markAsRead(notificationId);
-                if (result.success) {
-                    const notification = notifications.find(n => n.id === notificationId);
-                    if (notification) {
-                        notification.read = true;
-                        updateNotificationBadge();
-                        renderNotifications();
+        // Handle individual notification clicks (now potentially in dropdown or full page)
+        // Use event delegation on a common ancestor if possible, or ensure listeners are added appropriately
+        // Simplified: Add listener to dropdown specifically
+        const notificationsMenu = document.querySelector('.notifications-menu .notifications-list');
+        if (notificationsMenu) {
+             notificationsMenu.addEventListener('click', async function(e) {
+                const notificationItem = e.target.closest('.notification-item');
+                if (notificationItem && !notificationItem.classList.contains('read')) {
+                    const notificationId = notificationItem.dataset.id;
+                    const result = await NotificationsAPI.markAsRead(notificationId);
+                    if (result.success) {
+                        const notification = notifications.find(n => n.id === notificationId);
+                        if (notification) {
+                            notification.read = true;
+                            updateNotificationBadge();
+                            renderNotifications('.notifications-list'); // Re-render dropdown
+                            // If on the main notifications page, re-render that too
+                            if (document.querySelector('#allNotificationsList')) {
+                                renderNotifications('#allNotificationsList');
+                            }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
+        // Note: Interaction for the full page list might need separate handling if actions differ
     }
 }
 

@@ -1111,6 +1111,12 @@ input:checked + .slider:before {
     margin-bottom: 16px;
 }
 
+.tool-underline{
+    background: #1d1d1d;
+    margin-top: 25px !important;
+    border-radius: 116px;
+}
+
 .tag {
     background: rgba(255, 255, 255, 0.05);
     color: #94A3B8;
