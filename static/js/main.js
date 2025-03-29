@@ -1,10 +1,23 @@
 // Main JavaScript file for the FastAPI application
 
-function loadPage(page) {
+function updateActiveLink() {
+    const currentPath = window.location.pathname;
+    const links = document.querySelectorAll('.sidebar nav a');
+    links.forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
+
+function loadPage(pagePath) {
+    updateActiveLink();
     const app = document.getElementById('app');
     if (app) {
-        // Extract the base page name without query parameters
-        const basePage = page.split('?')[0];
+        // Extract the base page name without leading slash or query parameters
+        const basePage = pagePath.replace(/^\//, '').split('?')[0];
         fetch(`/${basePage}`)
             .then(response => response.text())
             .then(html => {
@@ -16,7 +29,7 @@ function loadPage(page) {
                     } else if (basePage === 'create-agent') {
                         loadTools();
                         // Check if we're editing an agent
-                        const isEditing = page.includes('?edit=true');
+                        const isEditing = pagePath.includes('?edit=true');
                         const buttonText = document.getElementById('buttonText');
                         if (buttonText) {
                             buttonText.textContent = isEditing ? 'Save' : 'Create Agent';
@@ -46,6 +59,9 @@ function loadPage(page) {
                         });
                     } else if (basePage === 'tools') {
                         loadExternalTools();
+                    } else if (basePage === 'marketplace') {
+                        // Ensure marketplace JS is loaded/initialized if needed
+                        // Assuming marketplace.js handles its own loading via DOMContentLoaded
                     }
                 }, 100);
             })
@@ -1194,26 +1210,39 @@ function init() {
     // Initialize profile dropdown
     initializeProfileDropdown();
 
-    const links = document.querySelectorAll('.sidebar nav ul li a');
-    links.forEach(link => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-            const page = link.getAttribute('href').replace('/', '');
-            loadPage(page);
+    // Handle sidebar navigation clicks using event delegation
+    const sidebarNav = document.querySelector('.sidebar nav');
+    if (sidebarNav) {
+        sidebarNav.addEventListener('click', (event) => {
+            const link = event.target.closest('a');
+            if (link) { // Check if a link was clicked
+                event.preventDefault();
+                const pagePath = link.getAttribute('href');
+                
+                // Check if it's the currently active page to prevent unnecessary reload
+                if (pagePath !== window.location.pathname) {
+                    window.history.pushState({ path: pagePath }, '', pagePath);
+                    loadPage(pagePath);
+                }
+            }
         });
-    });
-    loadPage('home');
-
-    // Add tools page initialization
-    if (window.location.pathname.includes('tools.html')) {
-        loadExternalTools();
-        
-        // Add search functionality
-        const searchInput = document.querySelector('input[type="text"]');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => searchExternalTools(e.target.value));
-        }
     }
+
+    // Handle browser back/forward navigation
+    window.addEventListener('popstate', (event) => {
+        const path = window.location.pathname;
+        loadPage(path);
+    });
+
+    // Load initial page based on the current URL
+    const initialPath = window.location.pathname;
+    // Redirect root path to '/home' or your default page
+    const pageToLoad = (initialPath === '/' || initialPath === '') ? '/home' : initialPath;
+    // Update history state for the initial load if it was root
+    if (initialPath === '/' || initialPath === '') {
+        window.history.replaceState({ path: pageToLoad }, '', pageToLoad);
+    }
+    loadPage(pageToLoad);
 }
 
 // Call init when DOM is loaded
