@@ -28,5 +28,15 @@
       "dd"
     ],
     "is_added": false
+  },
+  {
+    "id": "095a3bf3-c5d6-4ec9-8644-0ab445360fac",
+    "name": "ajun (Copy)",
+    "description": "ddd",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "Custom"
+    ],
+    "is_added": false
   }
 ]
