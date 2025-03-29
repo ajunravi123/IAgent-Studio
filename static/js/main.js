@@ -111,8 +111,113 @@ function closeAgentMenu() {
 }
 
 function launchAgent(agentId) {
-    // Implement agent launch functionality
-    console.log('Launching agent:', agentId);
+    selectedAgentId = agentId;
+    loadPage('launch-agent');
+    
+    // Fetch agent data and populate the form
+    fetch(`/api/agents/${agentId}`)
+        .then(response => response.json())
+        .then(agent => {
+            setTimeout(() => {
+                // Update page title
+                document.querySelector('.page-header h1').textContent = `Test ${agent.name}`;
+                
+                // Fill form fields
+                document.getElementById('agentName').value = agent.name;
+                document.getElementById('agentDescription').value = agent.description;
+                document.getElementById('llmProvider').value = agent.llmProvider;
+                document.getElementById('llmModel').value = agent.llmModel;
+                document.getElementById('agentRole').value = agent.role;
+                document.getElementById('agentInstructions').value = agent.instructions;
+                
+                // Load agent tools
+                loadAgentTools(agent.tools);
+            }, 100);
+        });
+}
+
+function loadAgentTools(toolIds) {
+    const colorClasses = ['blue', 'green', 'purple', 'yellow', 'red', 'orange'];
+    let colorIndex = 0;
+
+    fetch('/api/tools')
+        .then(response => response.json())
+        .then(tools => {
+            const agentTools = tools.filter(tool => toolIds.includes(tool.id));
+            const toolsGrid = document.getElementById('agentTools');
+            
+            toolsGrid.innerHTML = agentTools.map(tool => {
+                const colorClass = colorClasses[colorIndex];
+                colorIndex = (colorIndex + 1) % colorClasses.length;
+                
+                const firstLetter = tool.name.charAt(0).toUpperCase();
+                
+                return `
+                    <div class="tool-card" data-tool="${tool.id}">
+                        <div class="tool-content">
+                            <div class="tool-icon-wrapper ${colorClass}">
+                                ${firstLetter}
+                            </div>
+                            <div class="tool-info interface_tool_info">
+                                <div class="tool-name">${tool.name}</div>
+                            </div>
+                                <div class="tool-description">${tool.description || 'No description available'}</div>
+                            <div class="tool-tags">
+                                ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        });
+}
+
+function getRandomColor() {
+    const colors = ['yellow', 'green', 'purple'];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function sendMessage() {
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addMessageToChat('user', message);
+    
+    // Clear input
+    chatInput.value = '';
+    
+    // TODO: Send message to backend and get response
+    // For now, just add a mock response
+    setTimeout(() => {
+        addMessageToChat('agent', 'I understand your message. Let me help you with that.');
+    }, 1000);
+}
+
+function addMessageToChat(type, message) {
+    const chatContainer = document.getElementById('chatContainer');
+    const messageElement = document.createElement('div');
+    messageElement.className = 'chat-message';
+    
+    messageElement.innerHTML = `
+        <div class="message-avatar ${type}">
+            <i class="fas ${type === 'user' ? 'fa-user' : 'fa-robot'}"></i>
+        </div>
+        <div class="message-content ${type}">
+            ${message}
+        </div>
+    `;
+    
+    chatContainer.appendChild(messageElement);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function refreshAgent() {
+    if (selectedAgentId) {
+        launchAgent(selectedAgentId);
+    }
 }
 
 function duplicateAgent(agentId) {

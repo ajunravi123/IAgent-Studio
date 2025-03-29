@@ -1,0 +1,128 @@
+<!-- Launch Agent Page -->
+<div class="page launch-agent">
+    <div class="page-header">
+        <div class="header-left">
+            <button class="btn-back" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1>Test Agent Inference</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" onclick="refreshAgent()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <a href="#" class="agent-api-link">
+                <i class="fas fa-code"></i> Agent API
+            </a>
+        </div>
+    </div>
+
+    <div class="launch-agent-window">
+        <!-- Left side: Agent Configuration -->
+        <div class="agent-config-section">
+            <div class="form-group">
+                <label>
+                    Name
+                    <i class="fas fa-info-circle" title="Agent name"></i>
+                </label>
+                <input type="text" id="agentName" class="form-input" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Description
+                    <i class="fas fa-info-circle" title="Agent description"></i>
+                </label>
+                <input type="text" id="agentDescription" class="form-input" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    LLM Provider
+                    <i class="fas fa-info-circle" title="LLM provider"></i>
+                </label>
+                <input type="text" id="llmProvider" class="form-input" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    LLM Model
+                    <i class="fas fa-info-circle" title="LLM model"></i>
+                </label>
+                <input type="text" id="llmModel" class="form-input" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Agent Role
+                    <i class="fas fa-info-circle" title="Agent role"></i>
+                </label>
+                <textarea id="agentRole" class="form-textarea" readonly></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Agent Instructions
+                    <i class="fas fa-info-circle" title="Agent instructions"></i>
+                </label>
+                <textarea id="agentInstructions" class="form-textarea" readonly></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Enabled Tools
+                    <i class="fas fa-info-circle" title="Tools available to this agent"></i>
+                </label>
+                <div class="tools-grid" id="agentTools">
+                    <!-- Tools will be dynamically loaded by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right side: Test Inference -->
+        <div class="test-inference-section">
+            <div class="test-inference-header">
+                <h2>Test Inference</h2>
+            </div>
+            <div class="test-inference-content">
+                <div class="chat-container" id="chatContainer">
+                    <!-- Chat messages will be populated by JavaScript -->
+                    <div class="chat-message">
+                        <div class="message-avatar agent">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content agent">
+                            Hi! I'm your AI assistant. How can I help you today?
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <textarea class="chat-input" placeholder="Type your message here" rows="1"></textarea>
+                    <div class="chat-input-actions">
+                        <button class="chat-input-action" title="Upload file">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <button class="chat-input-action send" title="Send message">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="chat-suggestions">
+                        <button class="chat-suggestion">
+                            <i class="fas fa-question-circle"></i>
+                            What are your main features?
+                        </button>
+                        <button class="chat-suggestion">
+                            <i class="fas fa-info-circle"></i>
+                            How do I get started?
+                        </button>
+                        <button class="chat-suggestion">
+                            <i class="fas fa-book"></i>
+                            What knowledge are you trained on?
+                        </button>
+                    </div>
+                </div>
+                <div class="keyboard-shortcut">Press <span>Enter ↵</span> to send</div>
+            </div>
+        </div>
+    </div>
+</div> 
