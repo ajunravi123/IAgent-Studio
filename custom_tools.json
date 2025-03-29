@@ -59,15 +59,5 @@
       "qa"
     ],
     "is_added": false
-  },
-  {
-    "id": "ddb0b1a5-1494-4a53-8bfe-b5fbc7682adf",
-    "name": "RRR",
-    "description": "rr",
-    "icon": "/static/images/default-tool-icon.svg",
-    "tags": [
-      "Custom"
-    ],
-    "is_added": false
   }
 ]

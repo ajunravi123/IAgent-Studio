@@ -1,8 +1,15 @@
 // Main JavaScript file for the FastAPI application
 
+// Keep track of loaded stylesheets
+const loadedStylesheets = new Set();
+
+// Function to update the active state of sidebar links
 function updateActiveLink() {
     const currentPath = window.location.pathname;
     const links = document.querySelectorAll('.sidebar nav a');
+    // Add main stylesheet URL to prevent accidental removal if needed later
+    document.querySelectorAll('head > link[rel="stylesheet"]').forEach(link => loadedStylesheets.add(link.href));
+
     links.forEach(link => {
         if (link.getAttribute('href') === currentPath) {
             link.classList.add('active');
@@ -12,18 +19,50 @@ function updateActiveLink() {
     });
 }
 
+// Function to dynamically load CSS if needed
+function loadStylesheet(href) {
+    if (!loadedStylesheets.has(href)) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        document.head.appendChild(link);
+        loadedStylesheets.add(href);
+        console.log(`Loaded stylesheet: ${href}`);
+    }
+}
+
 function loadPage(pagePath) {
     updateActiveLink();
     const app = document.getElementById('app');
     if (app) {
-        // Extract the base page name without leading slash or query parameters
-        const basePage = pagePath.replace(/^\//, '').split('?')[0];
-        fetch(`/${basePage}`)
-            .then(response => response.text())
+        const basePage = pagePath.replace(/^\//, '').split('?')[0] || 'home'; // Default to home if path is "/"
+        
+        // Fetch the HTML fragment from the new endpoint
+        fetch(`/pages/${basePage}`) 
+            .then(response => {
+                if (!response.ok) {
+                    // If fragment not found, maybe show a 404 message in #app
+                    throw new Error(`Fragment not found: /pages/${basePage}`);
+                }
+                return response.text();
+            })
             .then(html => {
+                // Parse the HTML fragment to find stylesheets
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const fragmentStyles = doc.querySelectorAll('link[rel="stylesheet"]');
+                
+                fragmentStyles.forEach(link => {
+                    const absoluteHref = new URL(link.getAttribute('href'), window.location.origin).href;
+                    loadStylesheet(absoluteHref);
+                });
+
+                // Inject the HTML content
                 app.innerHTML = html;
-                // Add a small delay to ensure DOM is fully loaded
+
+                // Add a small delay to ensure DOM is fully loaded for JS initializations
                 setTimeout(() => {
+                    // Page specific JS initializations
                     if (basePage === 'agents') {
                         loadAgents();
                     } else if (basePage === 'create-agent') {
@@ -59,15 +98,29 @@ function loadPage(pagePath) {
                         });
                     } else if (basePage === 'tools') {
                         loadExternalTools();
+                        // Initialize search for tools page if needed
+                        const searchInput = document.querySelector('.page.tools .search-bar input');
+                        if (searchInput && !searchInput.dataset.listenerAttached) {
+                            searchInput.addEventListener('input', (e) => searchExternalTools(e.target.value));
+                            searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
+                        }
                     } else if (basePage === 'marketplace') {
-                        // Ensure marketplace JS is loaded/initialized if needed
-                        // Assuming marketplace.js handles its own loading via DOMContentLoaded
+                         // Initialize search for marketplace page if needed
+                         const searchInput = document.querySelector('.page.marketplace .search-bar input');
+                         if (searchInput && !searchInput.dataset.listenerAttached) {
+                            searchInput.addEventListener('input', (e) => searchMarketplaceAgents(e.target.value));
+                            searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
+                         }
+                         // Marketplace JS likely initializes itself via DOMContentLoaded listener in marketplace.js
+                         // If not, explicitly call its init function here: loadMarketplace(); 
                     }
+                    // Add other page specific initializations here
+
                 }, 100);
             })
             .catch(error => {
-                app.innerHTML = '<p>Error loading page.</p>';
-                console.error('Error loading page:', error);
+                app.innerHTML = '<p>Error loading page content.</p>';
+                console.error('Error loading page fragment:', error);
             });
     }
 }
@@ -1210,6 +1263,9 @@ function init() {
     // Initialize profile dropdown
     initializeProfileDropdown();
 
+    // Add the main stylesheet to the set initially
+    document.querySelectorAll('head > link[rel="stylesheet"]').forEach(link => loadedStylesheets.add(link.href));
+
     // Handle sidebar navigation clicks using event delegation
     const sidebarNav = document.querySelector('.sidebar nav');
     if (sidebarNav) {
@@ -1245,7 +1301,6 @@ function init() {
     loadPage(pageToLoad);
 }
 
-// Call init when DOM is loaded
 document.addEventListener('DOMContentLoaded', init); 
 
 

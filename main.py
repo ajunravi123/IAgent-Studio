@@ -196,19 +196,6 @@ def save_custom_tools(tools: List[Tool]):
     with open('custom_tools.json', 'w') as f:
         json.dump([tool.dict() for tool in tools], f, indent=2)
 
-# Serve the main HTML file
-@app.get("/")
-async def read_root():
-    return FileResponse("static/index.html")
-
-# Serve individual HTML pages
-@app.get("/{page}")
-async def read_page(page: str):
-    file_path = f"static/pages/{page}.html"
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-    raise HTTPException(status_code=404, detail="Page not found")
-
 # API endpoints for agents
 @app.get("/api/agents")
 async def get_agents():
@@ -390,4 +377,39 @@ async def mark_all_notifications_read():
     for notification in notifications:
         notification["read"] = True
     save_notifications(notifications)
-    return {"message": "All notifications marked as read"} 
+    return {"message": "All notifications marked as read"}
+
+# Endpoint to serve HTML page fragments for dynamic loading
+@app.get("/pages/{page_name}")
+async def read_page_fragment(page_name: str):
+    file_path = f"static/pages/{page_name}.html"
+    # Basic security check to prevent path traversal
+    if ".." in page_name or page_name.startswith("/"):
+         raise HTTPException(status_code=404, detail="Page not found")
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    # Optionally, try loading index if page_name is empty or 'home'
+    if page_name == "" or page_name == "home":
+         if os.path.exists("static/pages/home.html"):
+              return FileResponse("static/pages/home.html")
+    raise HTTPException(status_code=404, detail="Page fragment not found")
+
+# Catch-all route to serve the main index.html for any other path
+# This MUST be defined AFTER all API routes and static file mounts
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    # You could add checks here if certain paths should 404,
+    # but for a typical SPA, serving index.html is correct.
+    return FileResponse("static/index.html")
+
+# Note: The root path "/" is now handled by the catch-all route,
+# so the specific @app.get("/") route can be removed if desired,
+# or kept if you want specific logic just for the root.
+# If kept, ensure it also returns FileResponse("static/index.html").
+# For simplicity, relying on the catch-all is fine.
+# Remove this block if you rely on the catch-all:
+# @app.get("/")
+# async def read_root():
+#     return FileResponse("static/index.html")
+
+# ... (rest of the file, if any) ... 
