@@ -64,9 +64,9 @@ function loadPage(pagePath) {
                 setTimeout(() => {
                     // Page specific JS initializations
                     if (basePage === 'agents') {
-                        loadAgents();
+                    loadAgents();
                     } else if (basePage === 'create-agent') {
-                        loadTools();
+                    loadTools();
                         // Check if we're editing an agent
                         const isEditing = pagePath.includes('?edit=true');
                         const buttonText = document.getElementById('buttonText');
@@ -709,7 +709,7 @@ function viewTool(toolId) {
     // Only try to close the menu if it exists
     const toolMenu = document.getElementById('toolActionsMenu');
     if (toolMenu) {
-        closeToolMenu();
+    closeToolMenu();
     }
     
     fetch(`/api/tools/${toolId}`)
@@ -766,12 +766,12 @@ function loadExternalTools() {
                             <div class="tool-info tool-tab-title">
                                 <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
                                     ${firstLetter}
-                                </div>
+                        </div>
                                 <h3>${tool.name}</h3>
-                            </div>
-                            <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
+                    </div>
+                        <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
                         </div>
                         <p class="tool-description">${tool.description || 'No description available'}</p>
                         <div class="tool-tags">
@@ -823,20 +823,20 @@ function loadTools() {
                     return `
                         <div class="tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}">
                             <div class="tool-content">
-                                <div class="tool-header">
+                    <div class="tool-header">
                                     <div class="tool-header-left">
                                         <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
                                             ${firstLetter}
-                                        </div>
-                                        <h3 class="tool-name">${tool.name}</h3>
-                                    </div>
-                                </div>
-                                <div class="tool-description">${tool.description || 'No description available'}</div>
-                                <div class="tool-tags">
-                                    ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                                </div>
-                                <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
                             </div>
+                                        <h3 class="tool-name">${tool.name}</h3>
+                        </div>
+                    </div>
+                                <div class="tool-description">${tool.description || 'No description available'}</div>
+                    <div class="tool-tags">
+                                    ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                                <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
+                </div>
                             <div class="checkbox" onclick="toggleTool('${tool.id}', event)">
                                 <i class="fas fa-check"></i>
                             </div>
@@ -902,6 +902,34 @@ async function addTool(toolId) {
 }
 
 function saveAgent() {
+    // --- Field Validation --- 
+    const requiredFields = {
+        'agentName': 'Agent Name',
+        'agentDescription': 'Description',
+        'agentRole': 'Role',
+        'agentBackstory': 'Backstory',
+        'agentInstructions': 'Instructions',
+        'llmProvider': 'LLM Provider',
+        'llmModel': 'LLM Model',
+        'apiKey': 'API Key'
+    };
+
+    for (const id in requiredFields) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.error(`Validation Error: Element with ID '${id}' not found.`);
+            alert(`An error occurred. Could not find field: ${requiredFields[id]}`);
+            return; // Stop if a field element is unexpectedly missing
+        }
+        // Check if the trimmed value is empty
+        if (element.value.trim() === '') {
+            alert(`${requiredFields[id]} is required.`);
+            element.focus(); 
+            return; // Stop the save process
+        }
+    }
+    // --- End Validation ---
+
     const agentData = {
         name: document.getElementById('agentName').value,
         description: document.getElementById('agentDescription').value,
@@ -936,7 +964,7 @@ function saveAgent() {
     .then(() => {
         selectedAgentId = null;
         selectedTools.clear();
-        loadPage('agents');
+        loadPage('agents'); // Changed from loadPage('/agents') to match argument style
     })
     .catch(error => {
         console.error('Error saving agent:', error);
