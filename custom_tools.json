@@ -18,5 +18,15 @@
       "Custom"
     ],
     "is_added": false
+  },
+  {
+    "id": "58b1d787-5741-4e0e-b841-60819d5e22f1",
+    "name": "test (Copy)",
+    "description": "ddd",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "dd"
+    ],
+    "is_added": false
   }
 ]
