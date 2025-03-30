@@ -113,32 +113,122 @@
                     </div>
                 </div>
                 <div class="chat-input-container">
-                    <textarea class="chat-input" placeholder="Type your message here" rows="1"></textarea>
+                    <textarea id="userInput" class="chat-input" placeholder="Type your message here" rows="1"></textarea>
                     <div class="chat-input-actions">
                         <button class="chat-input-action" title="Upload file">
                             <i class="fas fa-paperclip"></i>
                         </button>
-                        <button class="chat-input-action send" title="Send message">
+                        <button class="chat-input-action send" data-action="send-message" title="Send message">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <!-- <div class="chat-suggestions">
-                        <button class="chat-suggestion">
-                            <i class="fas fa-question-circle"></i>
-                            What are your main features?
-                        </button>
-                        <button class="chat-suggestion">
-                            <i class="fas fa-info-circle"></i>
-                            How do I get started?
-                        </button>
-                        <button class="chat-suggestion">
-                            <i class="fas fa-book"></i>
-                            What knowledge are you trained on?
-                        </button>
-                    </div> -->
                 </div>
                 <div class="keyboard-shortcut">Press <span>Enter ↵</span> to send</div>
             </div>
         </div>
     </div>
-</div> 
+</div>
+
+<script>
+    // Function to handle sending messages
+    function handleSendMessage() {
+        console.log('Send button clicked!');
+        const chatInput = document.getElementById('userInput');
+        const chatContainer = document.getElementById('chatContainer');
+        
+        if (!chatInput || !chatContainer) {
+            console.error('Required chat elements not found!');
+            return;
+        }
+
+        const userInput = chatInput.value.trim();
+        if (!userInput) {
+            console.log('Empty input, not sending.');
+            return;
+        }
+
+        // Get agent ID from URL hash (format: #launch-agent?id=...)
+        const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+        const agentId = hashParams.get('id');
+
+        if (!agentId) {
+            console.error('No agent ID found in URL');
+            appendMessage('Error: Could not identify the agent. Please go back and select an agent.', 'agent');
+            return;
+        }
+
+        console.log('Agent ID:', agentId);
+
+        // Add user message to chat
+        appendMessage(userInput, 'user');
+        
+        // Clear input
+        chatInput.value = '';
+
+        // Send to backend
+        fetch('/api/agent/infer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                agentId: agentId,
+                userInput: userInput
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response received:', data);
+            appendMessage(data.response, 'agent');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            appendMessage('Sorry, there was an error processing your request.', 'agent');
+        });
+    }
+
+    // Helper function to append messages to the chat
+    function appendMessage(message, sender) {
+        const chatContainer = document.getElementById('chatContainer');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message';
+
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = `message-avatar ${sender}`;
+        const icon = document.createElement('i');
+        icon.className = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
+        avatarDiv.appendChild(icon);
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = `message-content ${sender}`;
+        contentDiv.textContent = message;
+
+        messageDiv.appendChild(avatarDiv);
+        messageDiv.appendChild(contentDiv);
+        chatContainer.appendChild(messageDiv);
+
+        // Scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Add event listener for Enter key
+    document.getElementById('userInput')?.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleSendMessage();
+        }
+    });
+
+    // Auto-resize textarea as user types
+    document.getElementById('userInput')?.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+
+    console.log('Chat script initialized');
+</script>

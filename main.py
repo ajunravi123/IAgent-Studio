@@ -412,4 +412,42 @@ async def serve_frontend(full_path: str):
 # async def read_root():
 #     return FileResponse("static/index.html")
 
+# Model for Agent Inference Request
+class AgentInferenceRequest(BaseModel):
+    agentId: str
+    userInput: str
+
+# Model for Agent Inference Response
+class AgentInferenceResponse(BaseModel):
+    response: str
+
+# API endpoint for agent inference (chat)
+@app.post("/api/agent/infer", response_model=AgentInferenceResponse)
+async def agent_inference(inference_request: AgentInferenceRequest):
+    agent_id = inference_request.agentId
+    user_input = inference_request.userInput
+
+    # Load agent details to verify ID and potentially use in logic
+    agents = load_agents()
+    agent_details = None
+    for agent in agents:
+        if agent["id"] == agent_id:
+            agent_details = agent
+            break
+
+    if not agent_details:
+        raise HTTPException(status_code=404, detail=f"Agent with ID {agent_id} not found")
+
+    # --- Placeholder for Actual Agent Logic ---
+    # TODO: Replace this section with your actual agent execution logic.
+    # This might involve:
+    # - Initializing your agent framework (e.g., Langchain, CrewAI) with agent_details
+    # - Running the inference/chat process with user_input
+    # - Handling tools, memory, LLM calls, etc.
+    print(f"Received inference request for agent {agent_id}: {user_input}") # Server-side log
+    agent_response_content = f"Agent '{agent_details.get('name', agent_id)}' received: {user_input}"
+    # --- End Placeholder ---
+
+    return AgentInferenceResponse(response=agent_response_content)
+
 # ... (rest of the file, if any) ... 

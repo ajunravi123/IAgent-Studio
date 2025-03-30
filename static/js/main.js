@@ -1375,6 +1375,133 @@ function searchAgentTools(query) {
     });
 }
 
+// Chat functionality for Launch Agent page
+function initializeChatFeatures() {
+    console.log('Initializing chat features...');
+
+    // Event delegation for the send message button
+    document.addEventListener('click', function(event) {
+        const sendButton = event.target.closest('[data-action="send-message"]');
+        if (sendButton) {
+            handleSendMessage();
+        }
+    });
+
+    // Event listener for Enter key in chat input
+    document.addEventListener('keydown', function(event) {
+        if (event.target.id === 'userInput' && event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleSendMessage();
+        }
+    });
+
+    // Auto-resize textarea as user types
+    document.addEventListener('input', function(event) {
+        if (event.target.id === 'userInput') {
+            const textarea = event.target;
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+    });
+}
+
+// Function to handle sending messages
+function handleSendMessage() {
+    console.log('Send button clicked!');
+    const chatInput = document.getElementById('userInput');
+    const chatContainer = document.getElementById('chatContainer');
+    
+    if (!chatInput || !chatContainer) {
+        console.error('Required chat elements not found!');
+        return;
+    }
+
+    const userInput = chatInput.value.trim();
+    if (!userInput) {
+        console.log('Empty input, not sending.');
+        return;
+    }
+
+    if (!selectedAgentId) {
+        console.error('No agent ID found');
+        appendMessage('Error: Could not identify the agent. Please go back and select an agent.', 'agent');
+        return;
+    }
+
+    console.log('Agent ID:', selectedAgentId);
+
+    // Add user message to chat
+    appendMessage(userInput, 'user');
+    
+    // Clear input
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+
+    // Send to backend
+    fetch('/api/agent/infer', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            agentId: selectedAgentId,
+            userInput: userInput
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response received:', data);
+        appendMessage(data.response, 'agent');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        appendMessage('Sorry, there was an error processing your request.', 'agent');
+    });
+}
+
+// Helper function to append messages to the chat
+function appendMessage(message, sender) {
+    const chatContainer = document.getElementById('chatContainer');
+    if (!chatContainer) return;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = `message-avatar ${sender}`;
+    const icon = document.createElement('i');
+    icon.className = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
+    avatarDiv.appendChild(icon);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = `message-content ${sender}`;
+    contentDiv.textContent = message;
+
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    chatContainer.appendChild(messageDiv);
+
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Initialize chat features when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeChatFeatures();
+});
+
+// Also initialize when the hash changes (for single-page app navigation)
+window.addEventListener('hashchange', function() {
+    if (window.location.hash.startsWith('#launch-agent')) {
+        initializeChatFeatures();
+    }
+});
+
 // Initialize all components
 function init() {
     // Initialize notifications
