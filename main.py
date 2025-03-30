@@ -476,7 +476,6 @@ async def agent_infer(request: InferenceRequest):
         
 
         #task block----
-        LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
         API_KEYS = {
             "gemini": os.getenv("GEMINI_API_KEY"),
             "openai": os.getenv("OPENAI_API_KEY"),
@@ -486,17 +485,22 @@ async def agent_infer(request: InferenceRequest):
         llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
 
         # Define your agent
-        llm_agent = CrewAgent(role="Polite Rewriter", goal="Transform sentences into polite, courteous versions while preserving meaning.", backstory="A linguistic expert trained in etiquette and diplomacy, dedicated to making communication kinder and more respectful.",llm=llm_client)
+        llm_agent = CrewAgent(
+            role=agent["role"], 
+            goal=agent["goal"], 
+            backstory=agent["backstory"],
+            llm=llm_client
+        )
 
         # Create an instance
         executor = TaskExecutor(agent=llm_agent, llm_client=llm_client)
 
         # Execute a task
         result = executor.execute_task(
-            description="Rewrite the following sentence in a polite manner: {{text}}",
-            expected_output="A politely rephrased version of the original sentence.",
-            task_name="polite_rewrite",
-            text=request.userInput
+            description=agent["instructions"],
+            expected_output=agent["expectedOutput"],
+            task_name=agent["name"],
+            input=request.userInput
         )
         print(result)
 
