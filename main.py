@@ -36,6 +36,8 @@ class Agent(BaseModel):
     llmModel: str
     apiKey: str
     role: str
+    goal: str = ""
+    expectedOutput: str = ""
     backstory: str = ""
     instructions: str
     verbose: bool = False
@@ -49,6 +51,8 @@ class AgentCreate(BaseModel):
     llmModel: str
     apiKey: str
     role: str
+    goal: str = ""
+    expectedOutput: str = ""
     backstory: str = ""
     instructions: str
     verbose: bool = False

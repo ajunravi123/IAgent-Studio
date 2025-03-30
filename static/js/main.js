@@ -239,6 +239,8 @@ function launchAgent(agentId) {
                 document.getElementById('llmModel').value = agent.llmModel;
                 document.getElementById('apiKey').value = agent.apiKey;
                 document.getElementById('agentRole').value = agent.role;
+                document.getElementById('agentGoal').value = agent.goal || '';
+                document.getElementById('expectedOutput').value = agent.expectedOutput || '';
                 document.getElementById('agentBackstory').value = agent.backstory || '';
                 document.getElementById('agentInstructions').value = agent.instructions;
                 
@@ -999,6 +1001,8 @@ function saveAgent() {
         'agentName': 'Agent Name',
         'agentDescription': 'Description',
         'agentRole': 'Role',
+        'agentGoal': 'Goal',
+        'expectedOutput': 'Expected Output',
         'agentBackstory': 'Backstory',
         'agentInstructions': 'Instructions',
         'llmProvider': 'LLM Provider',
@@ -1029,6 +1033,8 @@ function saveAgent() {
         llmModel: document.getElementById('llmModel').value,
         apiKey: document.getElementById('apiKey').value,
         role: document.getElementById('agentRole').value,
+        goal: document.getElementById('agentGoal').value,
+        expectedOutput: document.getElementById('expectedOutput').value,
         backstory: document.getElementById('agentBackstory').value,
         instructions: document.getElementById('agentInstructions').value,
         verbose: document.getElementById('managerAgent').checked,
@@ -1089,6 +1095,8 @@ function editAgent(agentId) {
                 document.getElementById('llmModel').value = agent.llmModel;
                 document.getElementById('apiKey').value = agent.apiKey;
                 document.getElementById('agentRole').value = agent.role;
+                document.getElementById('agentGoal').value = agent.goal || '';
+                document.getElementById('expectedOutput').value = agent.expectedOutput || '';
                 document.getElementById('agentBackstory').value = agent.backstory || '';
                 document.getElementById('agentInstructions').value = agent.instructions;
                 document.getElementById('managerAgent').checked = agent.verbose;
@@ -1916,7 +1924,6 @@ style.innerHTML = `
     opacity: 0.9;
     margin: 0;
     text-align: center;
-    max-width: 80%;
 }
 `;
 document.head.appendChild(style);

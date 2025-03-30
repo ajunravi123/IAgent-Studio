@@ -1,1 +1,1 @@
-[]
+[{"id": "201dd9e9-4386-4394-b81a-0b44da49c545", "name": "dfdfd", "description": "fdfdf", "llmProvider": "openai", "llmModel": "gpt-4o-mini", "apiKey": "fdfdfddd", "role": "fdfd", "goal": "dfdf", "expectedOutput": "fdfd", "backstory": "fdfd", "instructions": "fdfd", "verbose": false, "features": {"knowledgeBase": false, "dataQuery": false}, "tools": []}]
