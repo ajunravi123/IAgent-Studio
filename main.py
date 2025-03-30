@@ -493,7 +493,7 @@ async def agent_infer(request: InferenceRequest):
         )
 
         # Create an instance
-        executor = TaskExecutor(agent=llm_agent, llm_client=llm_client)
+        executor = TaskExecutor(agent=llm_agent)
 
         # Execute a task
         result = executor.execute_task(

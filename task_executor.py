@@ -1,16 +1,14 @@
-from crewai import Crew, Process, Agent, Task
+from crewai import Crew, Process, Task
 
 import os
-from crewai import LLM
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class TaskExecutor:
-    def __init__(self, agent, llm_client):
+    def __init__(self, agent):
         """Initialize the TaskExecutor with an agent and LLM client."""
         self.agent = agent  # The CrewAI Agent instance
-        self.llm_client = llm_client
         
         # Assign the llm_client to the agent if not already set
         if not hasattr(self.agent, 'llm') or self.agent.llm is None:
