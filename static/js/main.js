@@ -1474,6 +1474,8 @@ function handleSendMessage() {
     chatInput.value = '';
     chatInput.style.height = 'auto';
 
+    showLoading("Agent is processing the request...")
+
     // Send to backend
     fetch('/api/agent/infer', {
         method: 'POST',
@@ -1486,16 +1488,19 @@ function handleSendMessage() {
         })
     })
     .then(response => {
+        hideLoading();
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         return response.json();
     })
     .then(data => {
+        hideLoading();
         console.log('Response received:', data);
         appendMessage(data, 'agent');
     })
     .catch(error => {
+        hideLoading();
         console.error('Error:', error);
         appendMessage({
             type: 'error',
@@ -1815,3 +1820,103 @@ document.addEventListener('DOMContentLoaded', init);
 function openROIALLY() {
     window.open('http://ajunsmachine.theworkpc.com:8000/v1', '_blank');
 }
+
+
+
+
+
+
+
+
+function showLoading(text = "Please wait...") {
+    let overlay = document.createElement("div");
+    overlay.id = "loading-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.background = "rgba(0, 0, 0, 0.6)";
+    overlay.style.display = "flex";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.textAlign = "center";
+    overlay.style.zIndex = "10000";
+    document.body.appendChild(overlay);
+
+    let loader = document.createElement("div");
+    loader.id = "unique-bubble-animation";
+    loader.style.display = "flex";
+    loader.style.flexDirection = "column";
+    loader.style.justifyContent = "center";
+    loader.style.alignItems = "center";
+
+    loader.innerHTML = `
+        <div class='unique-bubble-container'>
+            <div class='unique-bubble'></div>
+            <div class='unique-bubble'></div>
+            <div class='unique-bubble'></div>
+            <div class='unique-bubble'></div>
+            <div class='unique-bubble'></div>
+        </div>
+        <p class='unique-text'>${text}</p>
+    `;
+    overlay.appendChild(loader);
+}
+
+function hideLoading() {
+    let overlay = document.getElementById("loading-overlay");
+    if (overlay) {
+        overlay.style.animation = "unique-fadeOut 0.5s ease-in-out";
+        setTimeout(() => overlay.remove(), 500);
+    }
+}
+
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes unique-fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.unique-bubble-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.unique-bubble {
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, cyan, blue);
+    border-radius: 50%;
+    box-shadow: 0 0 10px cyan;
+    animation: unique-floatUp 2s infinite ease-in-out;
+}
+
+.unique-bubble:nth-child(1) { animation-delay: 0s; }
+.unique-bubble:nth-child(2) { animation-delay: 0.2s; }
+.unique-bubble:nth-child(3) { animation-delay: 0.4s; }
+.unique-bubble:nth-child(4) { animation-delay: 0.6s; }
+.unique-bubble:nth-child(5) { animation-delay: 0.8s; }
+
+@keyframes unique-floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(-15px); opacity: 0.7; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.unique-text {
+    color: cyan;
+    font-size: 18px;
+    font-family: 'Arial', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.9;
+    margin: 0;
+    text-align: center;
+    max-width: 80%;
+}
+`;
+document.head.appendChild(style);
