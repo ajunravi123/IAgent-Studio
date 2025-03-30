@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -11,6 +11,8 @@ import shutil
 from pathlib import Path
 import os
 from task_executor import TaskExecutor
+from datetime import datetime
+from pydantic import BaseModel
 
 
 app = FastAPI()
@@ -86,7 +88,7 @@ class CustomTool(BaseModel):
     description: str
     icon: str
     tags: List[str]
-    schema: OpenAPISchema
+    schema: Dict[str, Any] #OpenAPISchema
     is_custom: bool = True
 
 # Tool Authentication Models
@@ -304,7 +306,7 @@ async def create_custom_tool(tool: CustomTool):
     schema_dir = "tool_schemas"
     os.makedirs(schema_dir, exist_ok=True)
     with open(f"{schema_dir}/{new_tool.id}.json", 'w') as f:
-        json.dump(tool.schema.dict(), f, indent=2)
+        json.dump(tool.schema, f, indent=2)
     
     # Save tool
     custom_tools.append(new_tool)
@@ -362,7 +364,7 @@ async def update_tool(tool_id: str, updated_tool: CustomTool):
             # Update schema
             schema_dir = "tool_schemas"
             with open(f"{schema_dir}/{tool_id}.json", 'w') as f:
-                json.dump(updated_tool.schema.dict(), f, indent=2)
+                json.dump(updated_tool.schema, f, indent=2)
             
             custom_tools[i] = updated
             save_custom_tools(custom_tools)
@@ -625,3 +627,28 @@ async def serve_frontend(full_path: str):
     # You could add checks here if certain paths should 404,
     # but for a typical SPA, serving index.html is correct.
     return FileResponse("static/index.html")
+
+
+
+
+
+class TimeRequest(BaseModel):
+    hour: int | None = None
+
+@app.post("/greet", summary="Get a greeting message")
+async def get_greeting(request: TimeRequest):
+    hour = request.hour if request.hour is not None else datetime.now().hour
+
+    if not (0 <= hour <= 23):
+        raise HTTPException(status_code=400, detail="Hour must be between 0 and 23.")
+
+    if 5 <= hour < 12:
+        greeting = "Good morning!"
+    elif 12 <= hour < 18:
+        greeting = "Good afternoon!"
+    elif 18 <= hour < 22:
+        greeting = "Good evening!"
+    else:
+        greeting = "Good night!"
+
+    return {"greeting": greeting}

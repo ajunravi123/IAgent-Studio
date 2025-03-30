@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "id": "01601600-134f-4293-bbca-ce0128996e98",
+    "name": "get greet",
+    "description": "fetch greet",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "Custom"
+    ],
+    "is_added": false
+  },
+  {
+    "id": "885135ef-d2fd-4745-94db-5e04635c77f7",
+    "name": "sample tool",
+    "description": "gfgf",
+    "icon": "/static/images/default-tool-icon.svg",
+    "tags": [
+      "fgf"
+    ],
+    "is_added": false
+  }
+]

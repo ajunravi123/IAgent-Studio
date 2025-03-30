@@ -1,7 +1,8 @@
 from crewai import Crew, Process, Task, Agent as CrewAgent
 from crewai import LLM
+from langchain.tools import Tool
 import os
-import requests  # Use requests for API calls instead of OpenAPITool
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,23 +25,35 @@ class TaskExecutor:
         # Initialize LLM
         llm = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
 
-        # Initialize tools if provided
+        # Initialize tools properly
         self.tools = []
         if tools_config:
             for tool_config in tools_config:
-                headers = tool_config.get('auth', {}).get('headers', {})
-                params = tool_config.get('auth', {}).get('params', {})
-                self.tools.append({
-                    "schema": tool_config['schema'],
-                    "headers": headers,
-                    "params": params
-                })
+                tool_schema = tool_config["schema"]
+                tool_headers = tool_config.get("auth", {}).get("headers", {})
+                tool_params = tool_config.get("auth", {}).get("params", {})
+
+                def api_caller(url=tool_schema["paths"], headers=tool_headers, params=tool_params):
+                    """Dynamically calls an API based on schema configuration."""
+                    try:
+                        response = requests.post(url, headers=headers, params=params)
+                        return response.json()
+                    except Exception as e:
+                        return {"error": str(e)}
+
+                self.tools.append(
+                    Tool(
+                        name=f"API Tool for {tool_schema['info']['title']}",
+                        func=api_caller,
+                        description=f"Calls API: {tool_schema['info']['title']}. Input: {{input}}"
+                    )
+                )
 
         # Create the CrewAgent
         self.agent = CrewAgent(
-            role=agent_config['role'],
-            goal=agent_config['goal'],
-            backstory=agent_config['backstory'],
+            role=agent_config["role"],
+            goal=agent_config["goal"],
+            backstory=agent_config["backstory"],
             llm=llm,
             tools=self.tools if self.tools else []
         )
@@ -55,11 +68,13 @@ class TaskExecutor:
                     for key, value in kwargs.items():
                         placeholder = "{{" + key + "}}"
                         description = description.replace(placeholder, str(value))
+                        expected_output = expected_output.replace(placeholder, str(value))  # ✅ Modify expected output too!
                 return {"description": description, "expected_output": expected_output}
             except Exception as e:
                 print(f"Error processing task '{task_name}': {e}. Using provided description.")
                 return {"description": description, "expected_output": expected_output}
         return {"description": description, "expected_output": expected_output}
+
 
     def execute_task(self, description, expected_output, task_name=None, **kwargs):
         """
