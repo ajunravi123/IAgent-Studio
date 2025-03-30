@@ -7,9 +7,11 @@ import json
 import os
 import uuid
 from datetime import datetime
+import shutil
 from pathlib import Path
-from task_executor import TaskExecutor
 import os
+from task_executor import TaskExecutor
+
 
 app = FastAPI()
 
@@ -86,6 +88,17 @@ class CustomTool(BaseModel):
     tags: List[str]
     schema: OpenAPISchema
     is_custom: bool = True
+
+# Tool Authentication Models
+class ToolAuth(BaseModel):
+    type: str  # "api_key", "oauth", "basic", etc.
+    headers: Dict[str, str] = {}
+    params: Dict[str, str] = {}
+
+class ToolConfig(BaseModel):
+    id: str
+    schema: Dict[str, Any]
+    auth: Optional[ToolAuth] = None
 
 # Notification Models
 class Notification(BaseModel):
@@ -308,6 +321,18 @@ async def get_tool_schema(tool_id: str):
     with open(schema_path, 'r') as f:
         return json.load(f)
 
+@app.put("/api/tools/{tool_id}/auth")
+async def update_tool_auth(tool_id: str, auth: ToolAuth):
+    """Update authentication for a tool"""
+    auth_dir = "tool_auth"
+    os.makedirs(auth_dir, exist_ok=True)
+    
+    auth_path = f"{auth_dir}/{tool_id}.json"
+    with open(auth_path, 'w') as f:
+        json.dump(auth.dict(), f, indent=2)
+    
+    return {"message": "Tool authentication updated"}
+
 @app.get("/api/tools/{tool_id}")
 async def get_tool(tool_id: str):
     tools = load_tools()
@@ -355,6 +380,11 @@ async def delete_tool(tool_id: str):
     schema_path = f"tool_schemas/{tool_id}.json"
     if os.path.exists(schema_path):
         os.remove(schema_path)
+    
+    # Delete auth file if exists
+    auth_path = f"tool_auth/{tool_id}.json"
+    if os.path.exists(auth_path):
+        os.remove(auth_path)
     
     # Remove tool from agents
     agents = load_agents()
@@ -404,24 +434,6 @@ async def read_page_fragment(page_name: str):
          if os.path.exists("static/pages/home.html"):
               return FileResponse("static/pages/home.html")
     raise HTTPException(status_code=404, detail="Page fragment not found")
-
-# Catch-all route to serve the main index.html for any other path
-# This MUST be defined AFTER all API routes and static file mounts
-@app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
-    # You could add checks here if certain paths should 404,
-    # but for a typical SPA, serving index.html is correct.
-    return FileResponse("static/index.html")
-
-# Note: The root path "/" is now handled by the catch-all route,
-# so the specific @app.get("/") route can be removed if desired,
-# or kept if you want specific logic just for the root.
-# If kept, ensure it also returns FileResponse("static/index.html").
-# For simplicity, relying on the catch-all is fine.
-# Remove this block if you rely on the catch-all:
-# @app.get("/")
-# async def read_root():
-#     return FileResponse("static/index.html")
 
 # Response models for different message types
 class TableData(BaseModel):
@@ -478,24 +490,40 @@ async def agent_infer(request: InferenceRequest):
             "groq": os.getenv("GROQ_API_KEY"),
         }
 
-        # Import TaskExecutor without importing CrewAI directly
+        # Load tool configurations for this agent
+        tools_config = []
+        for tool_id in agent.get("tools", []):
+            # Load schema
+            schema_path = f"tool_schemas/{tool_id}.json"
+            auth_path = f"tool_auth/{tool_id}.json"
+            
+            if os.path.exists(schema_path):
+                tool_config = {"id": tool_id}
+                
+                # Load schema
+                with open(schema_path, 'r') as f:
+                    tool_config["schema"] = json.load(f)
+                
+                # Load auth if exists
+                if os.path.exists(auth_path):
+                    with open(auth_path, 'r') as f:
+                        tool_config["auth"] = json.load(f)
+                
+                tools_config.append(tool_config)
+
+        # Import TaskExecutor
         
-        
-        # Create the CrewAgent within the task_executor module
-        provider = agent["llmProvider"].lower()
-        model = agent["llmModel"]
-        api_key = API_KEYS.get(provider, agent["apiKey"])
-        
-        # Pass the agent configuration to TaskExecutor
+        # Pass the agent configuration and tool schemas to TaskExecutor
         executor = TaskExecutor(
             agent_config={
                 "role": agent["role"],
                 "goal": agent["goal"],
                 "backstory": agent["backstory"],
-                "llm_provider": provider,
-                "llm_model": model,
-                "api_key": api_key
-            }
+                "llm_provider": agent["llmProvider"].lower(),
+                "llm_model": agent["llmModel"],
+                "api_key": API_KEYS.get(agent["llmProvider"].lower(), agent["apiKey"])
+            },
+            tools_config=tools_config
         )
 
         # Execute a task
@@ -590,4 +618,10 @@ async def upload_file(file: UploadFile = File(...), agentId: str = None):
             )
         )
 
-# ... (rest of the file, if any) ... 
+# Catch-all route to serve the main index.html for any other path
+# This MUST be defined AFTER all API routes and static file mounts
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    # You could add checks here if certain paths should 404,
+    # but for a typical SPA, serving index.html is correct.
+    return FileResponse("static/index.html")
