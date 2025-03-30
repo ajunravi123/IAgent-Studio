@@ -7,12 +7,9 @@ import json
 import os
 import uuid
 from datetime import datetime
-import shutil
 from pathlib import Path
 from task_executor import TaskExecutor
-from crewai import Agent as CrewAgent
 import os
-from crewai import LLM
 
 app = FastAPI()
 
@@ -473,27 +470,33 @@ async def agent_infer(request: InferenceRequest):
                     details=f"No agent found with ID: {request.agentId}"
                 )
             )
-        
 
-        #task block----
+        # Get API keys from environment variables
         API_KEYS = {
             "gemini": os.getenv("GEMINI_API_KEY"),
             "openai": os.getenv("OPENAI_API_KEY"),
             "groq": os.getenv("GROQ_API_KEY"),
         }
 
-        llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
-
-        # Define your agent
-        llm_agent = CrewAgent(
-            role=agent["role"], 
-            goal=agent["goal"], 
-            backstory=agent["backstory"],
-            llm=llm_client
+        # Import TaskExecutor without importing CrewAI directly
+        
+        
+        # Create the CrewAgent within the task_executor module
+        provider = agent["llmProvider"].lower()
+        model = agent["llmModel"]
+        api_key = API_KEYS.get(provider, agent["apiKey"])
+        
+        # Pass the agent configuration to TaskExecutor
+        executor = TaskExecutor(
+            agent_config={
+                "role": agent["role"],
+                "goal": agent["goal"],
+                "backstory": agent["backstory"],
+                "llm_provider": provider,
+                "llm_model": model,
+                "api_key": api_key
+            }
         )
-
-        # Create an instance
-        executor = TaskExecutor(agent=llm_agent)
 
         # Execute a task
         result = executor.execute_task(
@@ -504,26 +507,9 @@ async def agent_infer(request: InferenceRequest):
         )
         print(result)
 
-        response = MessageResponse(type="text", content=TextData(text = result))
+        response = MessageResponse(type="text", content=TextData(text=result))
         return response
-
-
-        # return MessageResponse(**result)
-
-        #task block ends-----
-
-
-
-
-
         
-        # # Create an instance of AgentTaskHandler with the agent's configuration
-        # task_handler = AgentTaskHandler(agent)
-        
-        # # Process the user input and get response
-        # response = task_handler.process_input(request.userInput)
-        
-
     except Exception as e:
         return MessageResponse(
             type="error",

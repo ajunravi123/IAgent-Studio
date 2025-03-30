@@ -230,7 +230,7 @@ function launchAgent(agentId) {
         .then(agent => {
             setTimeout(() => {
                 // Update page title
-                document.querySelector('.page-header h1').textContent = `Test ${agent.name}`;
+                document.querySelector('.page-header h1').textContent = ` ${agent.name} ⛳ Playground`;
                 
                 // Fill form fields
                 document.getElementById('agentName').value = agent.name;

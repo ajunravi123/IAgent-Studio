@@ -1,18 +1,42 @@
-from crewai import Crew, Process, Task
-
+from crewai import Crew, Process, Task, Agent as CrewAgent
+from crewai import LLM
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class TaskExecutor:
-    def __init__(self, agent):
-        """Initialize the TaskExecutor with an agent and LLM client."""
-        self.agent = agent  # The CrewAI Agent instance
-        
-        # Assign the llm_client to the agent if not already set
-        if not hasattr(self.agent, 'llm') or self.agent.llm is None:
-            self.agent.llm = self.llm_client
+    def __init__(self, agent_config):
+        """
+        Initialize the TaskExecutor with agent configuration.
+        Args:
+            agent_config (dict): Configuration for creating a CrewAgent
+                Expected keys: role, goal, backstory, llm_provider, llm_model, api_key
+        """
+        # Initialize LLM based on provider
+        # llm = LLM(
+        #     model=f"{agent_config['llm_provider']}/{agent_config['llm_model']}",
+        #     api_key=agent_config['api_key']
+        # )
+
+
+        API_KEYS = {
+            "gemini": os.getenv("GEMINI_API_KEY"),
+            "openai": os.getenv("OPENAI_API_KEY"),
+            "groq": os.getenv("GROQ_API_KEY"),
+        }
+
+        # Import CrewAgent here only when needed
+
+        llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
+
+        # Create the CrewAgent
+        self.agent = CrewAgent(
+            role=agent_config['role'],
+            goal=agent_config['goal'],
+            backstory=agent_config['backstory'],
+            llm=llm_client
+        )
 
     def get_task_descriptions(self, description, expected_output, task_name=None, **kwargs):
         """
@@ -41,7 +65,7 @@ class TaskExecutor:
 
     def execute_task(self, description, expected_output, task_name=None, **kwargs):
         """
-        Execute a task using the CrewAI framework with the provided LLM client.
+        Execute a task using the CrewAI framework.
         Args:
             description (str): The task description with optional {{placeholders}}.
             expected_output (str): The expected output format or content.
@@ -77,33 +101,3 @@ class TaskExecutor:
         else:
             print(f"Raw LLM output: {raw_output}")
         return raw_output
-
-
-# Example usage
-# if __name__ == "__main__":
-#     from crewai import Agent
-#     # Assuming API_KEYS is defined or loaded elsewhere
-#     API_KEYS = {"gemini": os.getenv("GEMINI_API_KEY")}
-    
-#     # Initialize the LLM client
-#     llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
-
-#     # Define your agent with the llm_client
-#     llm_agent = Agent(
-#         role="Polite Rewriter",
-#         goal="Transform sentences into polite, courteous versions while preserving meaning.",
-#         backstory="A linguistic expert trained in etiquette and diplomacy, dedicated to making communication kinder and more respectful.",
-#         llm=llm_client  # Directly assign the llm_client here
-#     )
-
-#     # Create an instance of TaskExecutor
-#     task_executor = TaskExecutor(agent=llm_agent, llm_client=llm_client)
-
-#     # Example: Rewrite a sentence politely
-#     output = task_executor.execute_task(
-#         description="Rewrite the following sentence in a polite manner: {{text}}",
-#         expected_output="A politely rephrased version of the original sentence.",
-#         task_name="polite_rewrite",
-#         text="Get this done now!"
-#     )
-#     print(f"Result: {output}")
