@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -7,11 +7,17 @@ import json
 import os
 import uuid
 from datetime import datetime
+import shutil
+from pathlib import Path
 
 app = FastAPI()
 
 # Mount the static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Data model for Agent
 class AgentFeatures(BaseModel):
@@ -436,8 +442,8 @@ class ErrorData(BaseModel):
     details: Optional[str] = None
 
 class MessageResponse(BaseModel):
-    type: str  # One of: "text", "error", "table", "chart", "code", "list"
-    content: Union[TextData, ErrorData, TableData, ChartData, CodeData, ListData]
+    type: str  # One of: "text", "error", "table", "chart", "code", "list", "image", "file"
+    content: Union[TextData, ErrorData, TableData, ChartData, CodeData, ListData, Dict[str, Any]]
 
 class InferenceRequest(BaseModel):
     agentId: str
@@ -521,6 +527,77 @@ async def agent_infer(request: InferenceRequest):
             type="error",
             content=ErrorData(
                 message="Error processing request",
+                details=str(e)
+            )
+        )
+
+@app.post("/api/agent/upload")
+async def upload_file(file: UploadFile = File(...), agentId: str = None):
+    try:
+        if not agentId:
+            return MessageResponse(
+                type="error",
+                content=ErrorData(
+                    message="Agent ID is required",
+                    details="No agent ID provided"
+                )
+            )
+
+        # Validate file size (max 10MB)
+        file_size = 0
+        contents = await file.read()
+        file_size = len(contents)
+        if file_size > 10 * 1024 * 1024:  # 10MB
+            return MessageResponse(
+                type="error",
+                content=ErrorData(
+                    message="File too large",
+                    details="Maximum file size is 10MB"
+                )
+            )
+
+        # Generate unique filename
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = UPLOAD_DIR / unique_filename
+
+        # Save file
+        with open(file_path, "wb") as buffer:
+            buffer.write(contents)
+
+        # Get file info
+        file_info = {
+            "original_name": file.filename,
+            "saved_name": unique_filename,
+            "size": file_size,
+            "type": file.content_type,
+            "uploaded_at": datetime.now().isoformat()
+        }
+
+        # For images, return preview
+        if file.content_type.startswith('image/'):
+            return MessageResponse(
+                type="image",
+                content={
+                    "url": f"/static/uploads/{unique_filename}",
+                    "info": file_info
+                }
+            )
+        else:
+            # For other files, return file info
+            return MessageResponse(
+                type="file",
+                content={
+                    "info": file_info,
+                    "preview": None  # You could add text preview for text files here
+                }
+            )
+
+    except Exception as e:
+        return MessageResponse(
+            type="error",
+            content=ErrorData(
+                message="File upload failed",
                 details=str(e)
             )
         )

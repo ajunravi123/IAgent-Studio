@@ -271,7 +271,7 @@ function loadAgentTools(toolIds) {
                                 ${firstLetter}
                             </div>
                             <div class="tool-info">
-                                <div class="tool-name">${tool.name}</div>
+                                <div class="tool-name ltool">${tool.name}</div>
                                 <div class="tool-description">${tool.description || 'No description available'}</div>
                                 <div class="tool-tags">
                                     ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
@@ -1385,7 +1385,33 @@ function initializeChatFeatures() {
         if (sendButton) {
             handleSendMessage();
         }
+
+        // Handle file upload button click
+        const uploadButton = event.target.closest('[data-action="upload-file"]');
+        if (uploadButton) {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+            }
+        }
+
+        // Handle remove file button click
+        const removeFileButton = event.target.closest('.remove-file');
+        if (removeFileButton) {
+            removeFilePreview();
+        }
     });
+
+    // Handle file selection
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                showFilePreview(file);
+            }
+        });
+    }
 
     // Event listener for Enter key in chat input
     document.addEventListener('keydown', function(event) {
@@ -1479,6 +1505,118 @@ function handleSendMessage() {
             }
         }, 'agent');
     });
+}
+
+// Function to handle file upload
+function handleFileUpload(file) {
+    console.log('File selected:', file.name);
+    
+    // Check file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'File too large',
+                details: 'Maximum file size is 10MB'
+            }
+        }, 'agent');
+        removeFilePreview();
+        return;
+    }
+
+    // Create FormData object
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('agentId', selectedAgentId);
+
+    // Show loading message
+    appendMessage({
+        type: 'text',
+        content: {
+            text: `Uploading file: ${file.name}...`
+        }
+    }, 'agent');
+
+    // Send file to backend
+    fetch('/api/agent/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Upload response:', data);
+        appendMessage(data, 'agent');
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'File upload failed',
+                details: error.message
+            }
+        }, 'agent');
+    })
+    .finally(() => {
+        removeFilePreview();
+    });
+}
+
+// Function to show file preview
+function showFilePreview(file) {
+    const previewContainer = document.getElementById('filePreview');
+    const imagePreview = document.getElementById('imagePreview');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = fileInfo.querySelector('.file-name');
+    const fileSize = fileInfo.querySelector('.file-size');
+
+    // Show preview container
+    previewContainer.style.display = 'block';
+
+    // Set file name
+    fileName.textContent = file.name;
+
+    // Set file size
+    const size = formatFileSize(file.size);
+    fileSize.textContent = size;
+
+    // Handle image preview
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        imagePreview.style.display = 'none';
+    }
+}
+
+// Function to remove file preview
+function removeFilePreview() {
+    const previewContainer = document.getElementById('filePreview');
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+
+    previewContainer.style.display = 'none';
+    imagePreview.src = '';
+    fileInput.value = '';
+}
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 // Helper function to append messages to the chat
