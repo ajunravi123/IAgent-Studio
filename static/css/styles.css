@@ -1112,9 +1112,11 @@ input:checked + .slider:before {
 }
 
 .tool-underline{
+    padding-top: 15px;
+    padding-bottom: 15px;
     background: #1d1d1d;
     margin-top: 25px !important;
-    border-radius: 116px;
+    border-radius: 9px;
 }
 
 .tag {
@@ -2227,7 +2229,7 @@ input:checked + .slider:before {
 }
 
 .launch-agent .page-header {
-    padding: 24px 32px;
+    padding: 0px 32px;
     background: #1A1A1A;
     border-bottom: 1px solid #333;
 }
