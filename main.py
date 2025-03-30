@@ -9,6 +9,10 @@ import uuid
 from datetime import datetime
 import shutil
 from pathlib import Path
+from task_executor import TaskExecutor
+from crewai import Agent as CrewAgent
+import os
+from crewai import LLM
 
 app = FastAPI()
 
@@ -465,62 +469,52 @@ async def agent_infer(request: InferenceRequest):
                     details=f"No agent found with ID: {request.agentId}"
                 )
             )
-
-        # Here you would typically:
-        # 1. Process the user input
-        # 2. Use the agent's configuration (LLM, tools, etc.)
-        # 3. Generate a response
         
-        # For now, let's return a sample response with different types
-        # In a real implementation, this would be determined by the agent's processing
-        if "table" in request.userInput.lower():
-            return MessageResponse(
-                type="table",
-                content=TableData(
-                    headers=["Name", "Age", "City"],
-                    rows=[
-                        ["John", "25", "New York"],
-                        ["Jane", "30", "London"]
-                    ]
-                )
-            )
-        elif "chart" in request.userInput.lower():
-            return MessageResponse(
-                type="chart",
-                content=ChartData(
-                    type="bar",
-                    data={
-                        "labels": ["Red", "Blue", "Yellow"],
-                        "datasets": [{
-                            "label": "Sample Data",
-                            "data": [12, 19, 3]
-                        }]
-                    }
-                )
-            )
-        elif "list" in request.userInput.lower():
-            return MessageResponse(
-                type="list",
-                content=ListData(
-                    items=["Item 1", "Item 2", "Item 3"]
-                )
-            )
-        elif "code" in request.userInput.lower():
-            return MessageResponse(
-                type="code",
-                content=CodeData(
-                    language="python",
-                    code="def hello_world():\n    print('Hello, World!')"
-                )
-            )
-        else:
-            # Default to text response
-            return MessageResponse(
-                type="text",
-                content=TextData(
-                    text=f"Hello! I'm {agent['name']}. How can I help you today?"
-                )
-            )
+
+        #task block----
+        LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
+        API_KEYS = {
+            "gemini": os.getenv("GEMINI_API_KEY"),
+            "openai": os.getenv("OPENAI_API_KEY"),
+            "groq": os.getenv("GROQ_API_KEY"),
+        }
+
+        llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
+
+        # Define your agent
+        llm_agent = CrewAgent(role="Polite Rewriter", goal="Transform sentences into polite, courteous versions while preserving meaning.", backstory="A linguistic expert trained in etiquette and diplomacy, dedicated to making communication kinder and more respectful.",llm=llm_client)
+
+        # Create an instance
+        executor = TaskExecutor(agent=llm_agent, llm_client=llm_client)
+
+        # Execute a task
+        result = executor.execute_task(
+            description="Rewrite the following sentence in a polite manner: {{text}}",
+            expected_output="A politely rephrased version of the original sentence.",
+            task_name="polite_rewrite",
+            text=request.userInput
+        )
+        print(result)
+
+        response = MessageResponse(type="text", content=TextData(text = result))
+        return response
+
+
+        # return MessageResponse(**result)
+
+        #task block ends-----
+
+
+
+
+
+        
+        # # Create an instance of AgentTaskHandler with the agent's configuration
+        # task_handler = AgentTaskHandler(agent)
+        
+        # # Process the user input and get response
+        # response = task_handler.process_input(request.userInput)
+        
 
     except Exception as e:
         return MessageResponse(
