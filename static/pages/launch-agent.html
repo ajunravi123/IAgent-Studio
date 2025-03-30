@@ -20,6 +20,15 @@
     <div class="launch-agent-window">
         <!-- Left side: Agent Configuration -->
         <div class="agent-config-section">
+            <div class="form-actions">
+                <button class="btn-edit" onclick="toggleEditMode()" id="editButton">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn-save" onclick="saveAgentChanges()" id="saveButton" style="display: none;">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+
             <div class="form-group">
                 <label>
                     Name
@@ -35,7 +44,6 @@
                 </label>
                 <input type="text" id="agentDescription" class="form-input" readonly>
             </div>
-
 
             <div class="form-group">
                 <label>
@@ -94,7 +102,6 @@
                 </label>
                 <input type="text" id="llmProvider" class="form-input" readonly>
             </div>
-
 
             <div class="form-group">
                 <label>

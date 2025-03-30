@@ -1829,14 +1829,8 @@ function openROIALLY() {
     window.open('http://ajunsmachine.theworkpc.com:8000/v1', '_blank');
 }
 
-
-
-
-
-
-
-
-function showLoading(text = "Please wait...") {
+// Utility Functions
+function showLoading(message = 'Loading...') {
     let overlay = document.createElement("div");
     overlay.id = "loading-overlay";
     overlay.style.position = "fixed";
@@ -1867,7 +1861,7 @@ function showLoading(text = "Please wait...") {
             <div class='unique-bubble'></div>
             <div class='unique-bubble'></div>
         </div>
-        <p class='unique-text'>${text}</p>
+        <p class='unique-text'>${message}</p>
     `;
     overlay.appendChild(loader);
 }
@@ -1878,6 +1872,87 @@ function hideLoading() {
         overlay.style.animation = "unique-fadeOut 0.5s ease-in-out";
         setTimeout(() => overlay.remove(), 500);
     }
+}
+
+function toggleEditMode() {
+    const editButton = document.getElementById('editButton');
+    const saveButton = document.getElementById('saveButton');
+    const fields = document.querySelectorAll('.form-input, .form-textarea');
+    
+    if (editButton.classList.contains('active')) {
+        // Switching to view mode
+        editButton.classList.remove('active');
+        editButton.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        saveButton.style.display = 'none';
+        fields.forEach(field => {
+            field.readOnly = true;
+            field.classList.remove('editing');
+        });
+    } else {
+        // Switching to edit mode
+        editButton.classList.add('active');
+        editButton.innerHTML = '<i class="fas fa-times"></i> Cancel';
+        saveButton.style.display = 'inline-flex';
+        fields.forEach(field => {
+            if (field.id !== 'apiKey' && field.id !== 'llmProvider' && field.id !== 'llmModel') {
+                field.readOnly = false;
+                field.classList.add('editing');
+            }
+        });
+    }
+}
+
+function saveAgentChanges() {
+    const agentData = {
+        name: document.getElementById('agentName').value,
+        description: document.getElementById('agentDescription').value,
+        role: document.getElementById('agentRole').value,
+        goal: document.getElementById('agentGoal').value,
+        expectedOutput: document.getElementById('expectedOutput').value,
+        backstory: document.getElementById('agentBackstory').value,
+        instructions: document.getElementById('agentInstructions').value,
+        llmProvider: document.getElementById('llmProvider').value,
+        llmModel: document.getElementById('llmModel').value,
+        apiKey: document.getElementById('apiKey').value,
+        features: {
+            knowledgeBase: document.getElementById('knowledgeBase')?.checked || false,
+            dataQuery: document.getElementById('dataQuery')?.checked || false
+        }
+    };
+
+    showLoading("Saving changes...");
+
+    fetch(`/api/agents/${selectedAgentId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(agentData)
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Failed to save changes');
+        return response.json();
+    })
+    .then(() => {
+        hideLoading();
+        // Switch back to view mode
+        toggleEditMode();
+        // Show success message
+        const toast = document.createElement('div');
+        toast.className = 'toast success';
+        toast.innerHTML = '<i class="fas fa-check-circle"></i> Changes saved successfully';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error saving changes:', error);
+        const toast = document.createElement('div');
+        toast.className = 'toast error';
+        toast.innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to save changes';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    });
 }
 
 const style = document.createElement('style');

@@ -2774,3 +2774,92 @@ input:checked + .slider:before {
 .ltool {
     padding-right: 0px !important;
 }
+
+/* Edit mode styles */
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.btn-edit, .btn-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-edit {
+    background-color: #1A1A1A;
+    color: white;
+    border: 1px solid #333;
+}
+
+.btn-edit:hover {
+    background-color: #252525;
+}
+
+.btn-edit.active {
+    background-color: #333;
+    color: #ff4444;
+}
+
+.btn-save {
+    background-color: #2563EB;
+    color: white;
+    border: none;
+}
+
+.btn-save:hover {
+    background-color: #1d4ed8;
+}
+
+.form-input.editing, .form-textarea.editing {
+    background-color: #1A1A1A;
+    border-color: #2563EB;
+}
+
+.form-input.editing:focus, .form-textarea.editing:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: slideIn 0.3s ease-out;
+    z-index: 1000;
+}
+
+.toast.success {
+    background-color: #059669;
+}
+
+.toast.error {
+    background-color: #dc2626;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
