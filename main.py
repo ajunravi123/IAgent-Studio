@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Union, Any
 import json
 import os
 import uuid
@@ -412,42 +412,117 @@ async def serve_frontend(full_path: str):
 # async def read_root():
 #     return FileResponse("static/index.html")
 
-# Model for Agent Inference Request
-class AgentInferenceRequest(BaseModel):
+# Response models for different message types
+class TableData(BaseModel):
+    headers: List[str]
+    rows: List[List[str]]
+
+class ChartData(BaseModel):
+    type: str
+    data: Dict[str, Any]
+
+class CodeData(BaseModel):
+    language: str
+    code: str
+
+class ListData(BaseModel):
+    items: List[str]
+
+class TextData(BaseModel):
+    text: str
+
+class ErrorData(BaseModel):
+    message: str
+    details: Optional[str] = None
+
+class MessageResponse(BaseModel):
+    type: str  # One of: "text", "error", "table", "chart", "code", "list"
+    content: Union[TextData, ErrorData, TableData, ChartData, CodeData, ListData]
+
+class InferenceRequest(BaseModel):
     agentId: str
     userInput: str
 
-# Model for Agent Inference Response
-class AgentInferenceResponse(BaseModel):
-    response: str
-
 # API endpoint for agent inference (chat)
-@app.post("/api/agent/infer", response_model=AgentInferenceResponse)
-async def agent_inference(inference_request: AgentInferenceRequest):
-    agent_id = inference_request.agentId
-    user_input = inference_request.userInput
+@app.post("/api/agent/infer")
+async def agent_infer(request: InferenceRequest):
+    try:
+        # Get the agent from storage
+        agents = load_agents()
+        agent = next((a for a in agents if a["id"] == request.agentId), None)
+        
+        if not agent:
+            return MessageResponse(
+                type="error",
+                content=ErrorData(
+                    message="Agent not found",
+                    details=f"No agent found with ID: {request.agentId}"
+                )
+            )
 
-    # Load agent details to verify ID and potentially use in logic
-    agents = load_agents()
-    agent_details = None
-    for agent in agents:
-        if agent["id"] == agent_id:
-            agent_details = agent
-            break
+        # Here you would typically:
+        # 1. Process the user input
+        # 2. Use the agent's configuration (LLM, tools, etc.)
+        # 3. Generate a response
+        
+        # For now, let's return a sample response with different types
+        # In a real implementation, this would be determined by the agent's processing
+        if "table" in request.userInput.lower():
+            return MessageResponse(
+                type="table",
+                content=TableData(
+                    headers=["Name", "Age", "City"],
+                    rows=[
+                        ["John", "25", "New York"],
+                        ["Jane", "30", "London"]
+                    ]
+                )
+            )
+        elif "chart" in request.userInput.lower():
+            return MessageResponse(
+                type="chart",
+                content=ChartData(
+                    type="bar",
+                    data={
+                        "labels": ["Red", "Blue", "Yellow"],
+                        "datasets": [{
+                            "label": "Sample Data",
+                            "data": [12, 19, 3]
+                        }]
+                    }
+                )
+            )
+        elif "list" in request.userInput.lower():
+            return MessageResponse(
+                type="list",
+                content=ListData(
+                    items=["Item 1", "Item 2", "Item 3"]
+                )
+            )
+        elif "code" in request.userInput.lower():
+            return MessageResponse(
+                type="code",
+                content=CodeData(
+                    language="python",
+                    code="def hello_world():\n    print('Hello, World!')"
+                )
+            )
+        else:
+            # Default to text response
+            return MessageResponse(
+                type="text",
+                content=TextData(
+                    text=f"Hello! I'm {agent['name']}. How can I help you today?"
+                )
+            )
 
-    if not agent_details:
-        raise HTTPException(status_code=404, detail=f"Agent with ID {agent_id} not found")
-
-    # --- Placeholder for Actual Agent Logic ---
-    # TODO: Replace this section with your actual agent execution logic.
-    # This might involve:
-    # - Initializing your agent framework (e.g., Langchain, CrewAI) with agent_details
-    # - Running the inference/chat process with user_input
-    # - Handling tools, memory, LLM calls, etc.
-    print(f"Received inference request for agent {agent_id}: {user_input}") # Server-side log
-    agent_response_content = f"Agent '{agent_details.get('name', agent_id)}' received: {user_input}"
-    # --- End Placeholder ---
-
-    return AgentInferenceResponse(response=agent_response_content)
+    except Exception as e:
+        return MessageResponse(
+            type="error",
+            content=ErrorData(
+                message="Error processing request",
+                details=str(e)
+            )
+        )
 
 # ... (rest of the file, if any) ... 

@@ -1424,14 +1424,25 @@ function handleSendMessage() {
 
     if (!selectedAgentId) {
         console.error('No agent ID found');
-        appendMessage('Error: Could not identify the agent. Please go back and select an agent.', 'agent');
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'Could not identify the agent',
+                details: 'Please go back and select an agent.'
+            }
+        }, 'agent');
         return;
     }
 
     console.log('Agent ID:', selectedAgentId);
 
     // Add user message to chat
-    appendMessage(userInput, 'user');
+    appendMessage({
+        type: 'text',
+        content: {
+            text: userInput
+        }
+    }, 'user');
     
     // Clear input
     chatInput.value = '';
@@ -1456,16 +1467,22 @@ function handleSendMessage() {
     })
     .then(data => {
         console.log('Response received:', data);
-        appendMessage(data.response, 'agent');
+        appendMessage(data, 'agent');
     })
     .catch(error => {
         console.error('Error:', error);
-        appendMessage('Sorry, there was an error processing your request.', 'agent');
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'Error processing request',
+                details: error.message
+            }
+        }, 'agent');
     });
 }
 
 // Helper function to append messages to the chat
-function appendMessage(message, sender) {
+function appendMessage(messageData, sender) {
     const chatContainer = document.getElementById('chatContainer');
     if (!chatContainer) return;
 
@@ -1480,7 +1497,52 @@ function appendMessage(message, sender) {
 
     const contentDiv = document.createElement('div');
     contentDiv.className = `message-content ${sender}`;
-    contentDiv.textContent = message;
+
+    // Handle different message types
+    switch (messageData.type) {
+        case 'text':
+            contentDiv.textContent = messageData.content.text;
+            break;
+        case 'error':
+            contentDiv.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div class="error-content">
+                        <div class="error-title">${messageData.content.message}</div>
+                        ${messageData.content.details ? `<div class="error-details">${messageData.content.details}</div>` : ''}
+                    </div>
+                </div>
+            `;
+            break;
+        case 'table':
+            contentDiv.innerHTML = createTableHTML(messageData.content);
+            break;
+        case 'chart':
+            contentDiv.innerHTML = createChartHTML(messageData.content);
+            break;
+        case 'code':
+            contentDiv.innerHTML = `
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-language">${messageData.content.language}</span>
+                        <button class="copy-code" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <pre><code class="language-${messageData.content.language}">${messageData.content.code}</code></pre>
+                </div>
+            `;
+            break;
+        case 'list':
+            contentDiv.innerHTML = `
+                <ul class="message-list">
+                    ${messageData.content.items.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+            `;
+            break;
+        default:
+            contentDiv.textContent = JSON.stringify(messageData.content);
+    }
 
     messageDiv.appendChild(avatarDiv);
     messageDiv.appendChild(contentDiv);
@@ -1488,6 +1550,67 @@ function appendMessage(message, sender) {
 
     // Scroll to bottom
     chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Helper function to create table HTML
+function createTableHTML(tableData) {
+    if (!tableData || !tableData.headers || !tableData.rows) return '';
+    
+    return `
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        ${tableData.headers.map(header => `<th>${header}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableData.rows.map(row => `
+                        <tr>
+                            ${row.map(cell => `<td>${cell}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+// Helper function to create chart HTML
+function createChartHTML(chartData) {
+    if (!chartData || !chartData.type || !chartData.data) return '';
+    
+    // Create a unique ID for the chart
+    const chartId = 'chart-' + Math.random().toString(36).substr(2, 9);
+    
+    return `
+        <div class="chart-container">
+            <canvas id="${chartId}"></canvas>
+        </div>
+        <script>
+            // Initialize chart using the provided data
+            const ctx = document.getElementById('${chartId}').getContext('2d');
+            new Chart(ctx, ${JSON.stringify(chartData)});
+        </script>
+    `;
+}
+
+// Helper function to copy code
+function copyCode(button) {
+    const codeBlock = button.closest('.code-block').querySelector('code');
+    const textArea = document.createElement('textarea');
+    textArea.value = codeBlock.textContent;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    
+    // Show feedback
+    const icon = button.querySelector('i');
+    icon.className = 'fas fa-check';
+    setTimeout(() => {
+        icon.className = 'fas fa-copy';
+    }, 2000);
 }
 
 // Initialize chat features when the page loads
