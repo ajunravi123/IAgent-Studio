@@ -2213,6 +2213,7 @@ function showAgentAPIPopup() {
         
         const sampleCurl = `curl -X POST "http://localhost:8000/api/agent/infer" \\
     -H "Content-Type: application/json" \\
+    -H "X-API-Key: your_api_key_here" \\
     -d '{
         "agentId": "${selectedAgentId}",
         "userInput": "What is the weather like today?"
@@ -2576,6 +2577,7 @@ function showAgentAPIPopup() {
         const codeBlock = modal.querySelector('code');
         const sampleCurl = `curl -X POST "http://localhost:8000/api/agent/infer" \\
     -H "Content-Type: application/json" \\
+    -H "X-API-Key: your_api_key_here" \\
     -d '{
         "agentId": "${selectedAgentId}",
         "userInput": "What is the weather like today?"
