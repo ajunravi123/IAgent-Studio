@@ -649,7 +649,10 @@ function closeToolMenu() {
 }
 
 function editTool(toolId) {
-    closeToolMenu();
+    if (document.getElementById('toolActionsMenu')) {
+        closeToolMenu();
+    }
+    
     fetch(`/api/tools/${toolId}`)
         .then(response => response.json())
         .then(tool => {
@@ -811,100 +814,13 @@ function viewTool(toolId) {
                 .then(response => response.json())
                 .then(schema => {
                     // Create a new window with the tool details
-                    const toolWindow = window.open('', '_blank');
-                    toolWindow.document.write(`
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <title>${tool.name}</title>
-                            <style>
-                                body {
-                                    font-family: Arial, sans-serif;
-                                    margin: 0;
-                                    padding: 20px;
-                                    background: #1a1a1a;
-                                    color: #ffffff;
-                                }
-                                .tool-view {
-                                    max-width: 1200px;
-                                    margin: 0 auto;
-                                }
-                                .tool-view-header {
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 20px;
-                                    margin-bottom: 20px;
-                                }
-                                .tool-logo {
-                                    width: 60px;
-                                    height: 60px;
-                                    border-radius: 12px;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    font-size: 24px;
-                                    font-weight: bold;
-                                    color: white;
-                                }
-                                .tool-info h3 {
-                                    margin: 0;
-                                    font-size: 24px;
-                                }
-                                .tool-info p {
-                                    margin: 5px 0;
-                                    color: #888;
-                                }
-                                .tool-tags {
-                                    margin: 10px 0;
-                                }
-                                .tag {
-                                    display: inline-block;
-                                    padding: 4px 8px;
-                                    margin: 0 5px 5px 0;
-                                    border-radius: 4px;
-                                    background: #333;
-                                    color: #fff;
-                                    font-size: 12px;
-                                }
-                                .tool-schema {
-                                    background: #2a2a2a;
-                                    padding: 20px;
-                                    border-radius: 8px;
-                                    margin-top: 20px;
-                                }
-                                pre {
-                                    margin: 0;
-                                    white-space: pre-wrap;
-                                    word-wrap: break-word;
-                                }
-                                code {
-                                    color: #e6e6e6;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="tool-view">
-                                <div class="tool-view-header">
-                                    <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
-                                        ${tool.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div class="tool-info">
-                                        <h3>${tool.name}</h3>
-                                        <p>${tool.description}</p>
-                                    </div>
-                                </div>
-                                <div class="tool-tags">
-                                    ${tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                                </div>
-                                <div class="tool-schema">
-                                    <h4>OpenAPI Schema</h4>
-                                    <pre><code>${JSON.stringify(schema, null, 2)}</code></pre>
-                                </div>
-                            </div>
-                        </body>
-                        </html>
-                    `);
-                    toolWindow.document.close();
+                    const toolWindow = window.open('/tools', '_blank');
+                    toolWindow.onload = function() {
+                        // Wait for the page to load, then edit the tool
+                        setTimeout(() => {
+                            toolWindow.editTool(toolId);
+                        }, 100);
+                    };
                 });
         });
 }

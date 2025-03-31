@@ -1,8 +1,8 @@
 [
   {
     "id": "01601600-134f-4293-bbca-ce0128996e98",
-    "name": "Get greeting",
-    "description": "fetch greet",
+    "name": "Tell Greet",
+    "description": "It will derive the matched greet based on time.",
     "icon": "/static/images/default-tool-icon.svg",
     "tags": [
       "A Greet fetching Tool"
@@ -11,11 +11,11 @@
   },
   {
     "id": "885135ef-d2fd-4745-94db-5e04635c77f7",
-    "name": "Capitalize Sentances",
-    "description": "The sentence capitalization Tool",
+    "name": "Fill Emoji",
+    "description": "Add Emojis to te sentences.",
     "icon": "/static/images/default-tool-icon.svg",
     "tags": [
-      "A simple text process tool"
+      "An emoji tagger"
     ],
     "is_added": false
   }

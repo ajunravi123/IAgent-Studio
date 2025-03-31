@@ -1,15 +1,15 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Sample API",
+    "title": "Emoji API",
     "version": "1.0.0",
-    "description": "A sample API that processes text."
+    "description": "An emoji setting API to the text."
   },
   "paths": {
     "http://localhost:8002/process": {
       "post": {
-        "summary": "Process text",
-        "operationId": "process_text",
+        "summary": "Add emoji to the text",
+        "operationId": "emoji_text",
         "requestBody": {
           "content": {
             "application/json": {
