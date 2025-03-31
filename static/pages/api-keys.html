@@ -1,0 +1,259 @@
+<div class="page api-keys">
+    <div class="page-header">
+        <h1>API Keys</h1>
+        <p class="subtitle">Manage and copy your API keys for different services</p>
+    </div>
+
+    <div class="api-keys-grid">
+        <div class="api-key-card">
+            <div class="api-key-header">
+                <div class="api-key-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="api-key-info">
+                    <h3>Agent API Key</h3>
+                    <p>Use this key to authenticate your API requests</p>
+                </div>
+            </div>
+            <div class="api-key-content">
+                <div class="api-key-field">
+                    <input type="password" value="IMPCTUNIAJUNRAVIFGENERATEDSSAMPLEAPITOKENEQ" id="agentApiKey" readonly />
+                    <button class="btn-copy" onclick="copyApiKey('agentApiKey', this)">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-toggle" onclick="toggleApiKeyVisibility('agentApiKey', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="api-key-meta">
+                    <span class="created-date">Created: March 31, 2025</span>
+                    <span class="expires-date">Never expires</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-key-card">
+            <div class="api-key-header">
+                <div class="api-key-icon model">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                <div class="api-key-info">
+                    <h3>Model API Key</h3>
+                    <p>Access key for model inference and training</p>
+                </div>
+            </div>
+            <div class="api-key-content">
+                <div class="api-key-field">
+                    <input type="password" value="IMPCTMODELAPITOKENDDWWQAXXSDDEEU" id="modelApiKey" readonly />
+                    <button class="btn-copy" onclick="copyApiKey('modelApiKey', this)">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-toggle" onclick="toggleApiKeyVisibility('modelApiKey', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="api-key-meta">
+                    <span class="created-date">Created: March 31, 2025</span>
+                    <span class="expires-date">Never expires</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Scope all styles to the api-keys page */
+.page.api-keys {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page.api-keys .page-header {
+    margin-bottom: 32px;
+}
+
+.page.api-keys .page-header h1 {
+    color: #fff;
+    font-size: 28px;
+    margin: 0;
+    font-weight: 600;
+}
+
+.page.api-keys .subtitle {
+    color: #a0aec0;
+    margin-top: 8px;
+    font-size: 16px;
+}
+
+.page.api-keys .api-keys-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
+.page.api-keys .api-key-card {
+    background: linear-gradient(145deg, #1a1f35, #2a2f45);
+    border: 1px solid rgba(99, 179, 237, 0.1);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.page.api-keys .api-key-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+
+.page.api-keys .api-key-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.page.api-keys .api-key-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.page.api-keys .api-key-icon.model {
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+}
+
+.page.api-keys .api-key-info h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #fff;
+    font-weight: 600;
+}
+
+.page.api-keys .api-key-info p {
+    margin: 4px 0 0 0;
+    font-size: 14px;
+    color: #a0aec0;
+}
+
+.page.api-keys .api-key-field {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.page.api-keys .api-key-field input {
+    flex: 1;
+    background: rgba(26, 31, 53, 0.6);
+    border: 1px solid rgba(99, 179, 237, 0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #63b3ed;
+    font-family: 'Monaco', monospace;
+    font-size: 14px;
+}
+
+.page.api-keys .api-key-field button {
+    background: rgba(99, 179, 237, 0.1);
+    border: 1px solid rgba(99, 179, 237, 0.2);
+    color: #63b3ed;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.page.api-keys .api-key-field button:hover {
+    background: rgba(99, 179, 237, 0.2);
+    transform: translateY(-1px);
+}
+
+.page.api-keys .api-key-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #718096;
+}
+
+.page.api-keys .created-date,
+.page.api-keys .expires-date {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.page.api-keys .created-date::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #63b3ed;
+    border-radius: 50%;
+}
+
+.page.api-keys .expires-date::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #48bb78;
+    border-radius: 50%;
+}
+
+@keyframes apiKeysCopySuccess {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+.page.api-keys .copy-success {
+    color: #48bb78 !important;
+    animation: apiKeysCopySuccess 0.3s ease;
+}
+</style>
+
+<script>
+function copyApiKey(inputId, button) {
+    const input = document.getElementById(inputId);
+    const textArea = document.createElement('textarea');
+    textArea.value = input.value;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+
+    // Show success feedback
+    const icon = button.querySelector('i');
+    icon.className = 'fas fa-check';
+    button.classList.add('copy-success');
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+        icon.className = 'fas fa-copy';
+        button.classList.remove('copy-success');
+    }, 2000);
+}
+
+function toggleApiKeyVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+</script> 

@@ -1,7 +1,7 @@
 [
   {
     "id": "01601600-134f-4293-bbca-ce0128996e98",
-    "name": "Tell Greet",
+    "name": "Greet Teller",
     "description": "It will derive the matched greet based on time.",
     "tags": [
       "A Greet fetching Tool"
@@ -19,10 +19,20 @@
   },
   {
     "id": "1c5a9fb4-7b88-416c-89be-9b865b872b34",
-    "name": "fdfdf 123",
-    "description": "fdfdf",
+    "name": "To-do planner",
+    "description": "A tool for planning the to-do list",
     "tags": [
-      "fdfdfdfd"
+      "Productivity"
+    ],
+    "is_added": false
+  },
+  {
+    "id": "83505e9b-fb50-42a0-9b70-235f0f1ca3c2",
+    "name": "Image Analyzer",
+    "description": "A tool for analyzing the image input.",
+    "tags": [
+      "CNN",
+      "LVM"
     ],
     "is_added": false
   }

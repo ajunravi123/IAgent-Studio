@@ -2621,3 +2621,51 @@ document.addEventListener('click', function(event) {
         showAgentAPIPopup();
     }
 });
+
+// Add API Keys page to the routes
+const routes = {
+    '/': 'pages/home.html',
+    '/agents': 'pages/agents.html',
+    '/tools': 'pages/tools.html',
+    '/models': 'pages/models.html',
+    '/marketplace': 'pages/marketplace.html',
+    '/reports': 'pages/reports.html',
+    '/statistics': 'pages/statistics.html',
+    '/settings': 'pages/settings.html',
+    '/api-keys': 'pages/api-keys.html'  // Add this line
+};
+
+// API Key Management Functions
+function copyApiKey(inputId, button) {
+    const input = document.getElementById(inputId);
+    const textArea = document.createElement('textarea');
+    textArea.value = input.value;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+
+    // Show success feedback
+    const icon = button.querySelector('i');
+    icon.className = 'fas fa-check';
+    button.classList.add('copy-success');
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+        icon.className = 'fas fa-copy';
+        button.classList.remove('copy-success');
+    }, 2000);
+}
+
+function toggleApiKeyVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
