@@ -133,7 +133,12 @@ class TaskExecutor:
                     Tool(
                         name=tool_name,
                         func=api_caller_with_config,
-                        description=f"Calls API: {tool_schema['info']['title']}. {tool_schema['info']['description']} Input: {{input}}",
+                        description=f"""Calls API: {tool_schema['info']['title']}. {tool_schema['info']['description']}
+                        
+                        Input: {{input}}
+                        
+                        Important: Use the complete input text as provided. Do not extract or modify the input text before passing it to the API.
+                        The input text should be used in its entirety to generate the appropriate payload.""",
                         result_as_answer=True
                     )
                 )
@@ -205,8 +210,12 @@ class TaskExecutor:
                 1. Satisfies all schema requirements and constraints
                 2. Extracts relevant information from the user input
                 3. Handles any missing or invalid data appropriately
-                4. For time-related inputs, convert to 24-hour format (0-23)
-                5. For invalid inputs, use sensible defaults (e.g., current time for invalid time)
+                4. For time-related inputs:
+                   - Extract time information from natural language (e.g., "evening 6 o'clock" → 18)
+                   - Convert to 24-hour format (0-23)
+                   - Handle various time formats (morning, afternoon, evening, night)
+                   - Use current time as fallback for invalid inputs
+                5. For invalid inputs, use sensible defaults
                 
                 Return only the JSON payload as a string.
                 If no valid payload can be determined, return an empty JSON object '{{}}'.
@@ -244,7 +253,11 @@ class TaskExecutor:
                 if kwargs:
                     for key, value in kwargs.items():
                         placeholder = "{{" + key + "}}"
-                        description = description.replace(placeholder, str(value))
+                        # For input text, preserve the full text
+                        if key == "input":
+                            description = description.replace(placeholder, f"'{value}'")
+                        else:
+                            description = description.replace(placeholder, str(value))
                         expected_output = expected_output.replace(placeholder, str(value))
                 return {"description": description, "expected_output": expected_output}
             except Exception as e:
