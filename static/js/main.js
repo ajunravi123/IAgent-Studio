@@ -257,19 +257,61 @@ function launchAgent(agentId) {
         .then(agent => {
             setTimeout(() => {
                 // Update page title
-                document.querySelector('.page-header h1').textContent = ` ${agent.name} ⛳ Playground`;
+                const header = document.querySelector('.page-header h1');
+                if (header) {
+                    header.textContent = ` ${agent.name} ⛳ Playground`;
+                }
                 
-                // Fill form fields
-                document.getElementById('agentName').value = agent.name;
-                document.getElementById('agentDescription').value = agent.description;
-                document.getElementById('llmProvider').value = agent.llmProvider;
-                document.getElementById('llmModel').value = agent.llmModel;
-                document.getElementById('apiKey').value = agent.apiKey;
-                document.getElementById('agentRole').value = agent.role;
-                document.getElementById('agentGoal').value = agent.goal || '';
-                document.getElementById('expectedOutput').value = agent.expectedOutput || '';
-                document.getElementById('agentBackstory').value = agent.backstory || '';
-                document.getElementById('agentInstructions').value = agent.instructions;
+                // Fill form fields - Check if element exists before setting value
+                const agentNameInput = document.getElementById('agentName');
+                if (agentNameInput) {
+                    agentNameInput.value = agent.name;
+                }
+                
+                const agentDescriptionInput = document.getElementById('agentDescription');
+                if (agentDescriptionInput) {
+                    agentDescriptionInput.value = agent.description;
+                }
+
+                const llmProviderSelect = document.getElementById('llmProvider');
+                if (llmProviderSelect) {
+                    llmProviderSelect.value = agent.llmProvider;
+                }
+
+                const llmModelSelect = document.getElementById('llmModel');
+                if (llmModelSelect) {
+                    llmModelSelect.value = agent.llmModel;
+                }
+
+                const apiKeyInput = document.getElementById('apiKey');
+                if (apiKeyInput) {
+                    apiKeyInput.value = agent.apiKey;
+                }
+
+                const agentRoleInput = document.getElementById('agentRole');
+                if (agentRoleInput) {
+                    agentRoleInput.value = agent.role;
+                }
+
+                const agentGoalInput = document.getElementById('agentGoal');
+                if (agentGoalInput) {
+                    agentGoalInput.value = agent.goal || '';
+                }
+
+                const expectedOutputInput = document.getElementById('expectedOutput');
+                if (expectedOutputInput) {
+                    expectedOutputInput.value = agent.expectedOutput || '';
+                }
+                
+                const agentBackstoryInput = document.getElementById('agentBackstory');
+                if (agentBackstoryInput) {
+                    agentBackstoryInput.value = agent.backstory || '';
+                }
+                
+                const agentInstructionsInput = document.getElementById('agentInstructions');
+                if (agentInstructionsInput) {
+                    agentInstructionsInput.value = agent.instructions;
+                }
                 
                 // Initialize LLM provider change handler
                 handleLLMProviderChange();
@@ -279,7 +321,7 @@ function launchAgent(agentId) {
                 
                 // Load agent tools
                 loadAgentTools(agent.tools);
-            }, 100);
+            }, 100); // Keeping the timeout for now, but the checks add safety
         });
 }
 
@@ -1251,8 +1293,16 @@ function editAgent(agentId) {
             // Fill form with agent data
             setTimeout(() => {
                 // Update page title and button texts
-                document.querySelector('.page-header h1').textContent = agent.name;
-                document.querySelector('.build-section .btn-primary').textContent = 'Save';
+                const pageHeader = document.querySelector('.page-header h1');
+                if (pageHeader) {
+                    pageHeader.textContent = agent.name;
+                }
+                
+                const buildButton = document.querySelector('.build-section .btn-primary');
+                if (buildButton) {
+                    buildButton.textContent = 'Save';
+                }
+                
                 // Update the main form button text
                 const buttonText = document.getElementById('buttonText');
                 if (buttonText) {
