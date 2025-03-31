@@ -270,7 +270,7 @@ function loadAgentTools(toolIds) {
                 const firstLetter = tool.name.charAt(0).toUpperCase();
                 
                 return `
-                    <div class="tool-card" data-tool="${tool.id}">
+                    <div class="tool-card" data-tool="${tool.id}" onclick="viewTool('${tool.id}')" style="cursor: pointer;">
                         <div class="tool-content">
                             <div class="tool-icon-wrapper ${colorClass}">
                                 ${firstLetter}
@@ -803,12 +803,6 @@ function deleteTool(toolId) {
 }
 
 function viewTool(toolId) {
-    // Only try to close the menu if it exists
-    const toolMenu = document.getElementById('toolActionsMenu');
-    if (toolMenu) {
-    closeToolMenu();
-    }
-    
     fetch(`/api/tools/${toolId}`)
         .then(response => response.json())
         .then(tool => {
@@ -816,29 +810,101 @@ function viewTool(toolId) {
             fetch(`/api/tools/${toolId}/schema`)
                 .then(response => response.json())
                 .then(schema => {
-                    const modal = document.getElementById('viewToolModal');
-                    const modalContent = modal.querySelector('.modal-body');
-                    modalContent.innerHTML = `
-                        <div class="tool-view">
-                            <div class="tool-view-header">
-                                <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
-                                    ${tool.name.charAt(0).toUpperCase()}
+                    // Create a new window with the tool details
+                    const toolWindow = window.open('', '_blank');
+                    toolWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>${tool.name}</title>
+                            <style>
+                                body {
+                                    font-family: Arial, sans-serif;
+                                    margin: 0;
+                                    padding: 20px;
+                                    background: #1a1a1a;
+                                    color: #ffffff;
+                                }
+                                .tool-view {
+                                    max-width: 1200px;
+                                    margin: 0 auto;
+                                }
+                                .tool-view-header {
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 20px;
+                                    margin-bottom: 20px;
+                                }
+                                .tool-logo {
+                                    width: 60px;
+                                    height: 60px;
+                                    border-radius: 12px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 24px;
+                                    font-weight: bold;
+                                    color: white;
+                                }
+                                .tool-info h3 {
+                                    margin: 0;
+                                    font-size: 24px;
+                                }
+                                .tool-info p {
+                                    margin: 5px 0;
+                                    color: #888;
+                                }
+                                .tool-tags {
+                                    margin: 10px 0;
+                                }
+                                .tag {
+                                    display: inline-block;
+                                    padding: 4px 8px;
+                                    margin: 0 5px 5px 0;
+                                    border-radius: 4px;
+                                    background: #333;
+                                    color: #fff;
+                                    font-size: 12px;
+                                }
+                                .tool-schema {
+                                    background: #2a2a2a;
+                                    padding: 20px;
+                                    border-radius: 8px;
+                                    margin-top: 20px;
+                                }
+                                pre {
+                                    margin: 0;
+                                    white-space: pre-wrap;
+                                    word-wrap: break-word;
+                                }
+                                code {
+                                    color: #e6e6e6;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="tool-view">
+                                <div class="tool-view-header">
+                                    <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
+                                        ${tool.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="tool-info">
+                                        <h3>${tool.name}</h3>
+                                        <p>${tool.description}</p>
+                                    </div>
                                 </div>
-                                <div class="tool-info">
-                                    <h3>${tool.name}</h3>
-                                    <p>${tool.description}</p>
+                                <div class="tool-tags">
+                                    ${tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                </div>
+                                <div class="tool-schema">
+                                    <h4>OpenAPI Schema</h4>
+                                    <pre><code>${JSON.stringify(schema, null, 2)}</code></pre>
                                 </div>
                             </div>
-                            <div class="tool-tags">
-                                ${tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                            </div>
-                            <div class="tool-schema">
-                                <h4>OpenAPI Schema</h4>
-                                <pre><code>${JSON.stringify(schema, null, 2)}</code></pre>
-                            </div>
-                        </div>
-                    `;
-                    modal.classList.add('show');
+                        </body>
+                        </html>
+                    `);
+                    toolWindow.document.close();
                 });
         });
 }
