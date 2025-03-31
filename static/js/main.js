@@ -182,18 +182,43 @@ function loadAgents() {
                         </div>
                         <div class="agent-card-content">
                             <div class="agent-stats">
-                                <div class="stat">
+                                <div class="stat-left">
                                     <span class="stat-label">Model</span>
                                     <span class="stat-value">${agent.llmModel}</span>
                                 </div>
-                                <div class="stat">
-                                    <span class="stat-label">Provider</span>
-                                    <span class="stat-value">${agent.llmProvider}</span>
+                                <div class="stat-right">
+                                    <span class="stat-label">Tools</span>
+                                    <span class="stat-value">${agent.tools ? agent.tools.length : 0}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 `).join('');
+
+                // Add CSS for the new layout
+                const style = document.createElement('style');
+                style.textContent = `
+                    .agent-stats {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        width: 100%;
+                    }
+                    .stat-left, .stat-right {
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    .stat-label {
+                        color: var(--text-secondary);
+                        font-size: 12px;
+                    }
+                    .stat-value {
+                        color: var(--text-primary);
+                        font-size: 14px;
+                        font-weight: 500;
+                    }
+                `;
+                document.head.appendChild(style);
             }
         });
 }

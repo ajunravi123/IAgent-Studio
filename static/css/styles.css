@@ -913,7 +913,10 @@ input:checked + .slider:before {
 
 .stat-value {
     font-size: 14px;
-    color: white;
+    /* color: white; */
+    color: #979797 !important;
+    padding-top: 11px;
+    text-align: center;
 }
 
 /* Actions menu */
