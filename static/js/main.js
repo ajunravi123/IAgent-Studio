@@ -399,7 +399,7 @@ function showAddCustomTool() {
     // Clear form fields
     document.getElementById('toolName').value = '';
     document.getElementById('toolDescription').value = '';
-    document.getElementById('toolIcon').value = '';
+    // document.getElementById('toolIcon').value = '';
     document.getElementById('toolTags').value = '';
     
     // Set default OpenAPI schema template
@@ -471,7 +471,7 @@ function closeAddCustomTool() {
     // Clear form
     document.getElementById('toolName').value = '';
     document.getElementById('toolDescription').value = '';
-    document.getElementById('toolIcon').value = '';
+    // document.getElementById('toolIcon').value = '';
     document.getElementById('toolTags').value = '';
     document.getElementById('toolSchema').value = '';
 }
@@ -503,7 +503,7 @@ function validateOpenAPISchema(schema) {
 async function saveCustomTool() {
     const name = document.getElementById('toolName').value.trim();
     const description = document.getElementById('toolDescription').value.trim();
-    const icon = document.getElementById('toolIcon').value.trim();
+    // const icon = document.getElementById('toolIcon').value.trim();
     const tags = document.getElementById('toolTags').value.split(',').map(tag => tag.trim()).filter(tag => tag);
     const schema = document.getElementById('toolSchema').value.trim();
     
@@ -559,7 +559,7 @@ async function saveCustomTool() {
     const toolData = {
         name,
         description,
-        icon: icon || `/static/images/default-tool-icon.svg`,
+        // icon: icon || `/static/images/default-tool-icon.svg`,
         tags: tags.length > 0 ? tags : ['Custom'],
         schema: JSON.parse(schema),
         is_custom: true
@@ -649,6 +649,9 @@ function closeToolMenu() {
 }
 
 function editTool(toolId) {
+    // Close the view modal if it's open
+    closeViewTool();
+    
     if (document.getElementById('toolActionsMenu')) {
         closeToolMenu();
     }
@@ -664,7 +667,6 @@ function editTool(toolId) {
             // Fill form with tool data
             document.getElementById('toolName').value = tool.name;
             document.getElementById('toolDescription').value = tool.description;
-            document.getElementById('toolIcon').value = tool.icon || '';
             document.getElementById('toolTags').value = tool.tags.join(', ');
             
             // Get and set schema
@@ -806,28 +808,182 @@ function deleteTool(toolId) {
 }
 
 function viewTool(toolId) {
-    fetch(`/api/tools/${toolId}`)
-        .then(response => response.json())
-        .then(tool => {
-            // Get and set schema
-            fetch(`/api/tools/${toolId}/schema`)
-                .then(response => response.json())
-                .then(schema => {
-                    // Create a new window with the tool details
-                    const toolWindow = window.open('/tools', '_blank');
-                    toolWindow.onload = function() {
-                        // Wait for the page to load, then edit the tool
-                        setTimeout(() => {
-                            toolWindow.editTool(toolId);
-                        }, 100);
-                    };
-                });
-        });
+    // Check if we're on the tools page
+    const isToolsPage = window.location.pathname === '/tools';
+    
+    if (isToolsPage) {
+        // If we're on the tools page, show view-only popup
+        fetch(`/api/tools/${toolId}`)
+            .then(response => response.json())
+            .then(tool => {
+                // Get and set schema
+                fetch(`/api/tools/${toolId}/schema`)
+                    .then(response => response.json())
+                    .then(schema => {
+                        const modal = document.getElementById('viewToolModal');
+                        if (!modal) {
+                            // Create modal if it doesn't exist
+                            createViewToolModal();
+                        }
+                        
+                        // Update modal content
+                        const viewModal = document.getElementById('viewToolModal');
+                        viewModal.innerHTML = `
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <div class="tool-header-content">
+                                        <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
+                                            ${tool.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <h2>${tool.name}</h2>
+                                    </div>
+                                    <button class="btn-close" onclick="closeViewTool()">×</button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="tool-info-section">
+                                        <h3>Description</h3>
+                                        <p>${tool.description || 'No description available'}</p>
+                                    </div>
+                                    <div class="tool-tags-section">
+                                        <h3>Tags</h3>
+                                        <div class="tags-container">
+                                            ${tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                    <div class="tool-schema-section">
+                                        <h3>OpenAPI Schema</h3>
+                                        <pre><code class="language-json">${JSON.stringify(schema, null, 2)}</code></pre>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn-secondary" onclick="closeViewTool()">Close</button>
+                                    <button class="btn-primary" onclick="editTool('${toolId}')">Edit</button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Show the modal
+                        viewModal.classList.add('show');
+                    });
+            });
+    } else {
+        // If we're on any other page (like agent test), open in new window
+        fetch(`/api/tools/${toolId}`)
+            .then(response => response.json())
+            .then(tool => {
+                // Get and set schema
+                fetch(`/api/tools/${toolId}/schema`)
+                    .then(response => response.json())
+                    .then(schema => {
+                        // Create a new window with the tool details
+                        const toolWindow = window.open('/tools', '_blank');
+                        toolWindow.onload = function() {
+                            // Wait for the page to load, then edit the tool
+                            setTimeout(() => {
+                                toolWindow.editTool(toolId);
+                            }, 100);
+                        };
+                    });
+            });
+    }
+}
+
+function createViewToolModal() {
+    const modal = document.createElement('div');
+    modal.id = 'viewToolModal';
+    modal.className = 'modal';
+    document.body.appendChild(modal);
+    
+    // Add styles if not already present
+    if (!document.getElementById('viewToolModalStyles')) {
+        const style = document.createElement('style');
+        style.id = 'viewToolModalStyles';
+        style.textContent = `
+            #viewToolModal.show {
+                display: block;
+                background: rgba(0, 0, 0, 0.5);
+            }
+            #viewToolModal .modal-content {
+                background: var(--background);
+                border-radius: 8px;
+                max-width: 800px;
+                margin: 50px auto;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            #viewToolModal .modal-header {
+                padding: 20px;
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            #viewToolModal .tool-header-content {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+            #viewToolModal .tool-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+            }
+            #viewToolModal .btn-close {
+                background: none;
+                border: none;
+                color: var(--text-color);
+                cursor: pointer;
+                font-size: 24px;
+                line-height: 1;
+                padding: 0;
+                opacity: 0.5;
+                transition: opacity 0.2s;
+            }
+            #viewToolModal .btn-close:hover {
+                opacity: 1;
+            }
+            #viewToolModal .modal-body {
+                padding: 20px;
+            }
+            #viewToolModal .tool-info-section,
+            #viewToolModal .tool-tags-section,
+            #viewToolModal .tool-schema-section {
+                margin-bottom: 20px;
+            }
+            #viewToolModal .tags-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 10px;
+            }
+            #viewToolModal pre {
+                background: var(--code-background);
+                padding: 15px;
+                border-radius: 6px;
+                overflow-x: auto;
+            }
+            #viewToolModal .modal-footer {
+                padding: 20px;
+                border-top: 1px solid var(--border-color);
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 function closeViewTool() {
     const modal = document.getElementById('viewToolModal');
-    modal.classList.remove('show');
+    if (modal) {
+        modal.classList.remove('show');
+    }
 }
 
 function loadExternalTools() {

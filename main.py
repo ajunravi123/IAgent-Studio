@@ -64,7 +64,7 @@ class Tool(BaseModel):
     id: str
     name: str
     description: str
-    icon: str
+    # icon: str
     tags: List[str]
     is_added: bool = False
 
@@ -86,7 +86,7 @@ class OpenAPISchema(BaseModel):
 class CustomTool(BaseModel):
     name: str
     description: str
-    icon: str
+    # icon: str
     tags: List[str]
     schema: Dict[str, Any] #OpenAPISchema
     is_custom: bool = True
@@ -152,56 +152,56 @@ def load_tools() -> List[Tool]:
                 id="github",
                 name="GitHub",
                 description="Connect your GitHub repositories to automate code analysis, PR reviews, and issue management.",
-                icon="/static/images/github-icon.svg",
+                # icon="/static/images/github-icon.svg",
                 tags=["Code", "Version Control", "Automation"]
             ),
             Tool(
                 id="slack",
                 name="Slack",
                 description="Integrate with Slack to receive notifications and interact with your workspace through chat commands.",
-                icon="/static/images/slack-icon.svg",
+                # icon="/static/images/slack-icon.svg",
                 tags=["Communication", "Notifications", "Chat"]
             ),
             Tool(
                 id="discord",
                 name="Discord",
                 description="Connect your Discord server to manage community interactions and automate moderation tasks.",
-                icon="/static/images/discord-icon.svg",
+                # icon="/static/images/discord-icon.svg",
                 tags=["Community", "Chat", "Gaming"]
             ),
             Tool(
                 id="clickup",
                 name="ClickUp",
                 description="Integrate with ClickUp to manage tasks, track progress, and automate project workflows.",
-                icon="/static/images/clickup-icon.svg",
+                # icon="/static/images/clickup-icon.svg",
                 tags=["Project Management", "Tasks", "Productivity"]
             ),
             Tool(
                 id="spotify",
                 name="Spotify",
                 description="Control Spotify playback and manage playlists through automated commands.",
-                icon="/static/images/spotify-icon.svg",
+                # icon="/static/images/spotify-icon.svg",
                 tags=["Music", "Entertainment", "Media"]
             ),
             Tool(
                 id="twitter",
                 name="Twitter",
                 description="Automate tweet scheduling, monitoring, and engagement with your Twitter audience.",
-                icon="/static/images/twitter-icon.svg",
+                # icon="/static/images/twitter-icon.svg",
                 tags=["Social Media", "Marketing", "Automation"]
             ),
             Tool(
                 id="notion",
                 name="Notion",
                 description="Connect with Notion to manage documents, databases, and knowledge bases automatically.",
-                icon="/static/images/notion-icon.svg",
+                # icon="/static/images/notion-icon.svg",
                 tags=["Knowledge Base", "Documentation", "Organization"]
             ),
             Tool(
                 id="outlook",
                 name="Outlook",
                 description="Integrate with Outlook to manage emails, calendar events, and contacts programmatically.",
-                icon="/static/images/outlook-icon.svg",
+                # icon="/static/images/outlook-icon.svg",
                 tags=["Email", "Calendar", "Communication"]
             )
         ]
@@ -296,7 +296,7 @@ async def create_custom_tool(tool: CustomTool):
         id=str(uuid.uuid4()),
         name=tool.name,
         description=tool.description,
-        icon=tool.icon,
+        # icon=tool.icon,
         tags=tool.tags,
         is_custom=True,
         is_added=False
@@ -356,7 +356,7 @@ async def update_tool(tool_id: str, updated_tool: CustomTool):
                 id=tool_id,
                 name=updated_tool.name,
                 description=updated_tool.description,
-                icon=updated_tool.icon,
+                # icon=updated_tool.icon,
                 tags=updated_tool.tags,
                 is_custom=True
             )

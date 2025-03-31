@@ -3,7 +3,6 @@
     "id": "01601600-134f-4293-bbca-ce0128996e98",
     "name": "Tell Greet",
     "description": "It will derive the matched greet based on time.",
-    "icon": "/static/images/default-tool-icon.svg",
     "tags": [
       "A Greet fetching Tool"
     ],
@@ -13,9 +12,17 @@
     "id": "885135ef-d2fd-4745-94db-5e04635c77f7",
     "name": "Fill Emoji",
     "description": "Add Emojis to te sentences.",
-    "icon": "/static/images/default-tool-icon.svg",
     "tags": [
       "An emoji tagger"
+    ],
+    "is_added": false
+  },
+  {
+    "id": "1c5a9fb4-7b88-416c-89be-9b865b872b34",
+    "name": "fdfdf 123",
+    "description": "fdfdf",
+    "tags": [
+      "fdfdfdfd"
     ],
     "is_added": false
   }
