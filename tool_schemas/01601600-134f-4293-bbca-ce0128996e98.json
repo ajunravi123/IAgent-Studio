@@ -6,7 +6,7 @@
     "description": "An API that returns a greeting message based on the time of day."
   },
   "paths": {
-    "http://localhost:8002/greet": {
+    "http://localhost:8003/greet": {
       "post": {
         "summary": "Get a greeting message",
         "operationId": "get_greeting",

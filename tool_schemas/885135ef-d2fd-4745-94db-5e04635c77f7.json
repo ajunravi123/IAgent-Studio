@@ -6,7 +6,7 @@
     "description": "An emoji setting API to the text."
   },
   "paths": {
-    "http://localhost:8002/process": {
+    "http://localhost:8003/process": {
       "post": {
         "summary": "Add emoji to the text",
         "operationId": "emoji_text",

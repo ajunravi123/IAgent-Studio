@@ -2211,7 +2211,7 @@ function showAgentAPIPopup() {
         modal.id = 'agentAPIModal';
         modal.className = 'modal';
         
-        const sampleCurl = `curl -X POST "http://localhost:8000/api/agent/infer" \\
+        const sampleCurl = `curl -X POST "<HOST>/api/agent/infer" \\
     -H "Content-Type: application/json" \\
     -H "X-API-Key: your_api_key_here" \\
     -d '{
@@ -2575,7 +2575,7 @@ function showAgentAPIPopup() {
     } else {
         // If modal exists, just update the code with current agent ID
         const codeBlock = modal.querySelector('code');
-        const sampleCurl = `curl -X POST "http://localhost:8000/api/agent/infer" \\
+        const sampleCurl = `curl -X POST "<HOST>/api/agent/infer" \\
     -H "Content-Type: application/json" \\
     -H "X-API-Key: your_api_key_here" \\
     -d '{

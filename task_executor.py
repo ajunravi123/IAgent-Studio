@@ -80,7 +80,7 @@ class TaskExecutor:
                                 endpoint_url = path
                             else:
                                 # If it's just a path, construct the full URL
-                                base_url = tool_schema.get('servers', [{}])[0].get('url', 'http://localhost:8000')
+                                base_url = tool_schema.get('servers', [{}])[0].get('url', 'http://localhost:8003')
                                 endpoint_url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
 
                             # Analyze schema first

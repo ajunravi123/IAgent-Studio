@@ -66,7 +66,7 @@ IAgent Studio is a web application for creating, managing, and deploying AI agen
     The `--reload` flag enables auto-reloading when code changes, useful for development.
 
 5.  **Access the application:**
-    Open your web browser and navigate to `http://localhost:8000` (or the address provided by uvicorn).
+    Open your web browser and navigate to `http://localhost:8002` (or the address provided by uvicorn).
 
 ## How to Contribute
 
