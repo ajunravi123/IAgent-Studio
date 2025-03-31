@@ -6,13 +6,12 @@ from typing import Dict, Optional, List, Union, Any
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
 import os
 from task_executor import TaskExecutor
 from datetime import datetime
-from pydantic import BaseModel
 
 
 app = FastAPI()
@@ -634,18 +633,17 @@ async def serve_frontend(full_path: str):
 
 
 
-# Pydantic model for TimeRequest (used by /greet)
+
 class TimeRequest(BaseModel):
-    hour: int | None = None
+    hour: Optional[int] = None  # Python 3.8 compatible annotation
 
-# Pydantic model for TextRequest (used by /process)
-class TextRequest(BaseModel):
-    text: str
-
-# Greeting endpoint
 @app.post("/greet", summary="Get a greeting message")
 async def get_greeting(request: TimeRequest):
-    hour = request.hour if request.hour is not None else datetime.now().hour
+    # Get the current UTC time and convert to IST (UTC+5:30)
+    now_utc = datetime.utcnow()
+    now_bengaluru = now_utc + timedelta(hours=5, minutes=30)
+
+    hour = request.hour if request.hour is not None else now_bengaluru.hour
 
     if not (0 <= hour <= 23):
         raise HTTPException(status_code=400, detail="Hour must be between 0 and 23.")
@@ -661,15 +659,33 @@ async def get_greeting(request: TimeRequest):
 
     return {"greeting": greeting}
 
+
+# Pydantic model for TextRequest (used by /process)
+class TextRequest(BaseModel):
+    text: str
+
 # Process text endpoint
+EMOJI_MAP = {
+    "morning": "☀️",
+    "afternoon": "🌤️",
+    "evening": "🌙",
+    "night": "🌜",
+    "hello": "👋",
+    "hi": "😊",
+    "hey": "🙌",
+}
+
 @app.post("/process", summary="Process text")
 async def process_text(request: TextRequest):
     text = request.text.strip()
-    
+
     if not text:
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
+
+    # Find a relevant emoji based on keywords in the text
+    emoji = next((emoji for keyword, emoji in EMOJI_MAP.items() if keyword in text.lower()), "✨")
     
-    # Simple processing: return the text in uppercase with a processed marker
-    processed_text = f"PROCESSED: {text.upper()}"
-    
+    # Append emoji to the processed text
+    processed_text = f"{text} {emoji}"
+
     return {"result": processed_text}
