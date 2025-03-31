@@ -244,6 +244,9 @@ function launchAgent(agentId) {
                 document.getElementById('agentBackstory').value = agent.backstory || '';
                 document.getElementById('agentInstructions').value = agent.instructions;
                 
+                // Initialize selectedTools with agent's tools
+                selectedTools = new Set(agent.tools || []);
+                
                 // Load agent tools
                 loadAgentTools(agent.tools);
             }, 100);
@@ -1914,6 +1917,7 @@ function saveAgentChanges() {
         llmProvider: document.getElementById('llmProvider').value,
         llmModel: document.getElementById('llmModel').value,
         apiKey: document.getElementById('apiKey').value,
+        tools: Array.from(selectedTools),
         features: {
             knowledgeBase: document.getElementById('knowledgeBase')?.checked || false,
             dataQuery: document.getElementById('dataQuery')?.checked || false
