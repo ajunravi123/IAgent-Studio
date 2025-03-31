@@ -1,21 +1,21 @@
 [
   {
     "id": "01601600-134f-4293-bbca-ce0128996e98",
-    "name": "get greet",
+    "name": "Get greeting",
     "description": "fetch greet",
     "icon": "/static/images/default-tool-icon.svg",
     "tags": [
-      "Custom"
+      "A Greet fetching Tool"
     ],
     "is_added": false
   },
   {
     "id": "885135ef-d2fd-4745-94db-5e04635c77f7",
-    "name": "sample tool",
-    "description": "gfgf",
+    "name": "Capitalize Sentances",
+    "description": "The sentence capitalization Tool",
     "icon": "/static/images/default-tool-icon.svg",
     "tags": [
-      "fgf"
+      "A simple text process tool"
     ],
     "is_added": false
   }

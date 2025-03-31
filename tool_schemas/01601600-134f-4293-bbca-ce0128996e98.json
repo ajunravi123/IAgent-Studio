@@ -5,19 +5,12 @@
     "version": "1.0.0",
     "description": "An API that returns a greeting message based on the time of day."
   },
-  "servers": [
-    {
-      "url": "http://localhost:8000"
-    }
-  ],
   "paths": {
-    "/greet": {
+    "http://localhost:8002/greet": {
       "post": {
         "summary": "Get a greeting message",
         "operationId": "get_greeting",
         "requestBody": {
-          "description": "Provide the hour (optional, defaults to server time).",
-          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -26,8 +19,7 @@
                   "hour": {
                     "type": "integer",
                     "minimum": 0,
-                    "maximum": 23,
-                    "example": 10
+                    "maximum": 23
                   }
                 }
               }
@@ -43,8 +35,7 @@
                   "type": "object",
                   "properties": {
                     "greeting": {
-                      "type": "string",
-                      "example": "Good morning!"
+                      "type": "string"
                     }
                   }
                 }
@@ -52,20 +43,7 @@
             }
           },
           "400": {
-            "description": "Invalid hour parameter",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "detail": {
-                      "type": "string",
-                      "example": "Hour must be between 0 and 23."
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Invalid hour parameter"
           }
         }
       }

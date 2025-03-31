@@ -632,9 +632,17 @@ async def serve_frontend(full_path: str):
 
 
 
+
+
+# Pydantic model for TimeRequest (used by /greet)
 class TimeRequest(BaseModel):
     hour: int | None = None
 
+# Pydantic model for TextRequest (used by /process)
+class TextRequest(BaseModel):
+    text: str
+
+# Greeting endpoint
 @app.post("/greet", summary="Get a greeting message")
 async def get_greeting(request: TimeRequest):
     hour = request.hour if request.hour is not None else datetime.now().hour
@@ -652,3 +660,16 @@ async def get_greeting(request: TimeRequest):
         greeting = "Good night!"
 
     return {"greeting": greeting}
+
+# Process text endpoint
+@app.post("/process", summary="Process text")
+async def process_text(request: TextRequest):
+    text = request.text.strip()
+    
+    if not text:
+        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+    
+    # Simple processing: return the text in uppercase with a processed marker
+    processed_text = f"PROCESSED: {text.upper()}"
+    
+    return {"result": processed_text}
