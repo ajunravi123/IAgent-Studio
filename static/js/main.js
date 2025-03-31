@@ -84,6 +84,8 @@ function loadPage(pagePath) {
                         if (searchInput) {
                             searchInput.addEventListener('input', (e) => searchAgentTools(e.target.value));
                         }
+                        // Initialize LLM provider change handler
+                        handleLLMProviderChange();
                         // Verify form elements are present
                         const formElements = [
                             'agentName',
@@ -268,6 +270,9 @@ function launchAgent(agentId) {
                 document.getElementById('expectedOutput').value = agent.expectedOutput || '';
                 document.getElementById('agentBackstory').value = agent.backstory || '';
                 document.getElementById('agentInstructions').value = agent.instructions;
+                
+                // Initialize LLM provider change handler
+                handleLLMProviderChange();
                 
                 // Initialize selectedTools with agent's tools
                 selectedTools = new Set(agent.tools || []);
@@ -2169,3 +2174,30 @@ style.innerHTML = `
 }
 `;
 document.head.appendChild(style);
+
+// Add this function to handle LLM provider changes
+function handleLLMProviderChange() {
+    const llmProvider = document.getElementById('llmProvider');
+    const apiKeyInput = document.getElementById('apiKey');
+    
+    if (!llmProvider || !apiKeyInput) return;
+    
+    llmProvider.addEventListener('change', function() {
+        if (this.value === 'impact') {
+            apiKeyInput.value = '*******************************************';
+            apiKeyInput.readOnly = true;
+            apiKeyInput.style.backgroundColor = 'var(--input-disabled-bg)';
+        } else {
+            apiKeyInput.value = '';
+            apiKeyInput.readOnly = false;
+            apiKeyInput.style.backgroundColor = 'var(--input-bg)';
+        }
+    });
+    
+    // Trigger the change event on initial load
+    if (llmProvider.value === 'impact') {
+        apiKeyInput.value = '*******************************************';
+        apiKeyInput.readOnly = true;
+        apiKeyInput.style.backgroundColor = 'var(--input-disabled-bg)';
+    }
+}
