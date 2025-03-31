@@ -2669,3 +2669,8 @@ function toggleApiKeyVisibility(inputId, button) {
         icon.className = 'fas fa-eye';
     }
 }
+
+// Initialize the loader when the application starts
+document.addEventListener('DOMContentLoaded', () => {
+    new StudioLoader();
+});

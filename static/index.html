@@ -8,6 +8,15 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .app-container {
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+        .app-container.visible {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -89,25 +98,7 @@
                 </div>
             </header>
             <main id="app">
-                <div class="tool-configuration">
-                    <div class="tool-configuration-header">
-                        <h2>Tool Configuration</h2>
-                        <i class="fas fa-info-circle info-icon" title="Configure and manage your tools"></i>
-                    </div>
-                    
-                    <div class="tool-search-bar">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" class="search-input" placeholder="Search tools..." />
-                        <button class="create-tool-btn">
-                            <i class="fas fa-plus"></i>
-                            Create Tool
-                        </button>
-                    </div>
-                    
-                    <div class="tools-grid">
-                        
-                    </div>
-                </div>
+                
             </main>
             <footer class="app-footer">
                 <div class="footer-content">
@@ -121,6 +112,15 @@
             </footer>
         </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/static/js/loader.js"></script>
     <script src="/static/js/main.js"></script>
+    <script>
+        // Show the main content after 2 seconds
+        setTimeout(() => {
+            document.querySelector('.app-container').classList.add('visible');
+        }, 2000);
+    </script>
 </body>
 </html> 
