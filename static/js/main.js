@@ -2259,12 +2259,12 @@ function showAgentAPIPopup() {
         modal.id = 'agentAPIModal';
         modal.className = 'modal';
         
-        const sampleCurl = `curl -X POST "<HOST>/api/agent/infer" \\
+        const sampleCurl = `curl -X POST "${window.location.origin}/api/agent/infer" \\
     -H "Content-Type: application/json" \\
     -H "X-API-Key: your_api_key_here" \\
     -d '{
         "agentId": "${selectedAgentId}",
-        "userInput": "What is the weather like today?"
+        "userInput": "Specify the input here"
     }'`;
         
         modal.innerHTML = `
