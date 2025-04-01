@@ -527,6 +527,9 @@ async def agent_infer(request: InferenceRequest):
             tools_config=tools_config
         )
 
+        if request.userInput:
+            agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
+
         # Execute a task
         result = executor.execute_task(
             description=agent["instructions"],
@@ -547,6 +550,28 @@ async def agent_infer(request: InferenceRequest):
                 details=str(e)
             )
         )
+
+
+def check_in_sentence(sentence="", input_to_check="{{input}}"):
+    """
+    Check if input_to_check exists in the given sentence and modify sentence if not found.
+    
+    Parameters:
+    sentence (str): The sentence to search in
+    input_to_check (str): The word/phrase to look for
+    
+    Returns:
+    str: Original sentence if input found, modified sentence if not found
+    """
+    # Convert both to lowercase for case-insensitive comparison
+    sentence_lower = sentence.lower()
+    input_lower = input_to_check.lower()
+    
+    # Check if input exists in sentence
+    if input_lower in sentence_lower:
+        return sentence
+    else:
+        return sentence + "\n\n\ninput: " + input_to_check
 
 @app.post("/api/agent/upload")
 async def upload_file(file: UploadFile = File(...), agentId: str = None):
