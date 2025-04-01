@@ -14,30 +14,52 @@ class StudioLoader {
             left: 0;
             width: 100%;
             height: 100%;
-            background: #0f172a;
+            background: #0f172a; /* Dark blue background */
             display: flex;
+            flex-direction: column; /* Stack items vertically */
             justify-content: center;
             align-items: center;
             z-index: 9999;
             transition: opacity 0.5s ease-out;
         `;
+
+        // Create Logo Element
+        this.logoImage = document.createElement('img');
+        this.logoImage.src = 'static/images/ialogo.png'; // Path to your logo
+        this.logoImage.alt = 'IAgent Studio Logo';
+        this.logoImage.style.cssText = `
+            width: 100px; /* Adjust size as needed */
+            height: auto;
+            margin-bottom: 20px; /* Space between logo and text/animation */
+            position: relative; /* Ensure it's above the canvas */
+            z-index: 10000; /* Above canvas */
+        `;
         
         this.loaderText = document.createElement('div');
         this.loaderText.style.cssText = `
-            position: absolute;
-            bottom: 50%;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #63b3ed;
+            /* Removed absolute positioning */
+            color: #63b3ed; /* Light blue text */
             font-size: 1.2rem;
             font-weight: 500;
             text-align: center;
             font-family: 'Inter', sans-serif;
+            margin-top: 10px; /* Space below the canvas */
+            position: relative; /* Ensure it's above the canvas */
+            z-index: 10000; /* Above canvas */
         `;
         this.loaderText.textContent = 'Loading IAgent Studio...';
         
-        this.loaderContainer.appendChild(this.renderer.domElement);
-        this.loaderContainer.appendChild(this.loaderText);
+        // Append elements
+        this.loaderContainer.appendChild(this.logoImage); // Add logo first
+        this.loaderContainer.appendChild(this.renderer.domElement); // Then the canvas
+        // Position the canvas using styles instead of direct appending order affecting layout
+        this.renderer.domElement.style.position = 'absolute';
+        this.renderer.domElement.style.top = '0';
+        this.renderer.domElement.style.left = '0';
+        this.renderer.domElement.style.zIndex = '9998'; // Behind logo and text
+
+        this.loaderContainer.appendChild(this.loaderText); // Add text last (visually below canvas due to flex-direction? No, text needs z-index)
+
         document.body.appendChild(this.loaderContainer);
         
         this.init();
