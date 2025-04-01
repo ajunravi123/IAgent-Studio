@@ -3,36 +3,36 @@
         {
             "id": "1",
             "type": "info",
-            "message": "New agent 'Customer Support Bot' has been created",
-            "timestamp": "2024-02-20T10:30:00Z",
+            "message": "A new AI agent 'Customer Support Assistant' has been successfully deployed.",
+            "timestamp": "2025-03-30T10:30:00Z",
             "read": true
         },
         {
             "id": "2",
             "type": "success",
-            "message": "Model training completed successfully for 'Data Analysis Agent'",
-            "timestamp": "2024-02-20T09:15:00Z",
+            "message": "Agent execution is completed for 'Data Insights Agent'. Ready for deployment.",
+            "timestamp": "2025-03-30T09:15:00Z",
             "read": true
         },
         {
             "id": "3",
             "type": "warning",
-            "message": "Knowledge base 'Sales Data' is reaching storage limit",
-            "timestamp": "2024-02-19T15:45:00Z",
+            "message": "Storage limit nearing for 'Sales Data Repository'. Consider upgrading.",
+            "timestamp": "2025-03-29T15:45:00Z",
             "read": true
         },
         {
             "id": "4",
             "type": "error",
-            "message": "Failed to connect to external API endpoint",
-            "timestamp": "2024-02-19T11:20:00Z",
+            "message": "Connection to external API within Tool 'Fetch financials' failed. Please check your network settings.",
+            "timestamp": "2025-03-29T11:20:00Z",
             "read": true
         },
         {
             "id": "5",
             "type": "info",
-            "message": "System maintenance scheduled for tomorrow at 02:00 UTC",
-            "timestamp": "2024-02-18T08:00:00Z",
+            "message": "Scheduled system maintenance tomorrow at 02:00 UTC. Expect downtime.",
+            "timestamp": "2025-03-28T08:00:00Z",
             "read": true
         }
     ]
