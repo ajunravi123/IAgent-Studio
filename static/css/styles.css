@@ -47,14 +47,12 @@ body {
 .org-avatar {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #2563EB, #1D4ED8);
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
     font-size: 18px;
-    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.2);
 }
 
 .sidebar nav {
