@@ -2684,37 +2684,29 @@ const routes = {
 };
 
 // API Key Management Functions
-function copyApiKey(inputId, button) {
-    const input = document.getElementById(inputId);
-    const textArea = document.createElement('textarea');
-    textArea.value = input.value;
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
-
-    // Show success feedback
-    const icon = button.querySelector('i');
-    icon.className = 'fas fa-check';
-    button.classList.add('copy-success');
-
-    // Reset after 2 seconds
-    setTimeout(() => {
-        icon.className = 'fas fa-copy';
-        button.classList.remove('copy-success');
-    }, 2000);
+function copyApiKey(id, button) {
+    const input = document.getElementById(id);
+    if (input) {
+        input.select();
+        document.execCommand('copy');
+        button.className = 'copied'; // Example of setting a class
+    } else {
+        console.error(`Element with ID ${id} not found.`);
+    }
 }
 
-function toggleApiKeyVisibility(inputId, button) {
-    const input = document.getElementById(inputId);
-    const icon = button.querySelector('i');
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fas fa-eye-slash';
+function toggleApiKeyVisibility(id, button) {
+    const input = document.getElementById(id);
+    if (input) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            button.className = 'visible'; // Example of setting a class
+        } else {
+            input.type = 'password';
+            button.className = 'hidden'; // Example of setting a class
+        }
     } else {
-        input.type = 'password';
-        icon.className = 'fas fa-eye';
+        console.error(`Element with ID ${id} not found.`);
     }
 }
 
