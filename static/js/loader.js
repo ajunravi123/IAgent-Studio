@@ -127,4 +127,92 @@ class StudioLoader {
             window.removeEventListener('resize', this.onWindowResize);
         }, 500);
     }
+}
+
+class AgentProcessingLoader {
+    constructor(message) {
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setClearColor(0x000000, 0);
+
+        this.loaderContainer = document.createElement('div');
+        this.loaderContainer.id = 'agent-processing-loader';
+        this.loaderContainer.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+
+        this.loaderText = document.createElement('div');
+        this.loaderText.style.cssText = `
+            position: absolute;
+            bottom: 10%;
+            color: #00bfff; /* Neon blue text */
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+        `;
+        this.loaderText.textContent = message;
+
+        this.loaderContainer.appendChild(this.renderer.domElement);
+        this.loaderContainer.appendChild(this.loaderText);
+        document.body.appendChild(this.loaderContainer);
+
+        this.init();
+    }
+
+    init() {
+        // Create a network of nodes and connections
+        const nodeGeometry = new THREE.SphereGeometry(0.05, 32, 32);
+        const nodeMaterial = new THREE.MeshBasicMaterial({ color: 0x00bfff, emissive: 0x004080, emissiveIntensity: 0.5 });
+        const nodes = [];
+
+        for (let i = 0; i < 30; i++) {
+            const node = new THREE.Mesh(nodeGeometry, nodeMaterial);
+            node.position.set((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+            this.scene.add(node);
+            nodes.push(node);
+        }
+
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00bfff });
+        nodes.forEach((node, index) => {
+            for (let j = index + 1; j < nodes.length; j++) {
+                if (Math.random() > 0.7) { // Randomly connect nodes
+                    const geometry = new THREE.BufferGeometry().setFromPoints([node.position, nodes[j].position]);
+                    const line = new THREE.Line(geometry, lineMaterial);
+                    this.scene.add(line);
+                }
+            }
+        });
+
+        this.camera.position.z = 8;
+
+        this.animate();
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+
+        this.scene.rotation.x += 0.001;
+        this.scene.rotation.y += 0.001;
+
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    remove() {
+        this.loaderContainer.style.opacity = '0';
+        setTimeout(() => {
+            this.loaderContainer.remove();
+        }, 500);
+    }
 } 

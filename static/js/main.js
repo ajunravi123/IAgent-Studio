@@ -2078,47 +2078,18 @@ function openROIALLY() {
 }
 
 // Utility Functions
+let agentLoaderInstance = null;
+
 function showLoading(message = 'Loading...') {
-    let overlay = document.createElement("div");
-    overlay.id = "loading-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.background = "rgba(0, 0, 0, 0.6)";
-    overlay.style.display = "flex";
-    overlay.style.justifyContent = "center";
-    overlay.style.alignItems = "center";
-    overlay.style.textAlign = "center";
-    overlay.style.zIndex = "10000";
-    document.body.appendChild(overlay);
-
-    let loader = document.createElement("div");
-    loader.id = "unique-bubble-animation";
-    loader.style.display = "flex";
-    loader.style.flexDirection = "column";
-    loader.style.justifyContent = "center";
-    loader.style.alignItems = "center";
-
-    loader.innerHTML = `
-        <div class='unique-bubble-container'>
-            <div class='unique-bubble'></div>
-            <div class='unique-bubble'></div>
-            <div class='unique-bubble'></div>
-            <div class='unique-bubble'></div>
-            <div class='unique-bubble'></div>
-        </div>
-        <p class='unique-text'>${message}</p>
-    `;
-    overlay.appendChild(loader);
+    if (!agentLoaderInstance) {
+        agentLoaderInstance = new AgentProcessingLoader(message);
+    }
 }
 
 function hideLoading() {
-    let overlay = document.getElementById("loading-overlay");
-    if (overlay) {
-        overlay.style.animation = "unique-fadeOut 0.5s ease-in-out";
-        setTimeout(() => overlay.remove(), 500);
+    if (agentLoaderInstance) {
+        agentLoaderInstance.remove();
+        agentLoaderInstance = null;
     }
 }
 
