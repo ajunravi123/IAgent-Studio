@@ -1288,46 +1288,73 @@ function editAgent(agentId) {
     fetch(`/api/agents/${agentId}`)
         .then(response => response.json())
         .then(agent => {
-            // Add edit parameter to URL when loading create-agent page
+            // Load the create-agent page with edit parameter
             loadPage('create-agent?edit=true');
-            // Fill form with agent data
-            setTimeout(() => {
-                // Update page title and button texts
-                const pageHeader = document.querySelector('.page-header h1');
-                if (pageHeader) {
-                    pageHeader.textContent = agent.name;
-                }
-                
-                const buildButton = document.querySelector('.build-section .btn-primary');
-                if (buildButton) {
-                    buildButton.textContent = 'Save';
-                }
-                
-                // Update the main form button text
-                const buttonText = document.getElementById('buttonText');
-                if (buttonText) {
-                    buttonText.textContent = 'Save';
-                }
-                
-                // Fill form fields
-                document.getElementById('agentName').value = agent.name;
-                document.getElementById('agentDescription').value = agent.description;
-                document.getElementById('llmProvider').value = agent.llmProvider;
-                document.getElementById('llmModel').value = agent.llmModel;
-                document.getElementById('apiKey').value = agent.apiKey;
-                document.getElementById('agentRole').value = agent.role;
-                document.getElementById('agentGoal').value = agent.goal || '';
-                document.getElementById('expectedOutput').value = agent.expectedOutput || '';
-                document.getElementById('agentBackstory').value = agent.backstory || '';
-                document.getElementById('agentInstructions').value = agent.instructions;
-                document.getElementById('managerAgent').checked = agent.verbose;
-                document.getElementById('knowledgeBase').checked = agent.features.knowledgeBase;
-                document.getElementById('dataQuery').checked = agent.features.dataQuery;
-                
-                // Set selected tools
-                selectedTools = new Set(agent.tools || []);
-                loadTools();
-            }, 100);
+
+            // Show loading indicator
+            showLoading("Please wait..");
+
+            // Function to update UI with retry mechanism
+            function updateUI(retries = 5, delay = 200) {
+                setTimeout(() => {
+                    const pageHeader = document.querySelector('.page-header h1');
+                    const buildButton = document.querySelector('.build-section .btn-primary');
+                    const buttonText = document.getElementById('buttonText');
+
+                    // Check if all required elements are present
+                    if (buildButton && pageHeader && buttonText) {
+                        // Hide loader once elements are found
+                        hideLoading();
+
+                        // Update UI elements
+                        pageHeader.textContent = agent.name;
+                        buildButton.textContent = 'Save';
+                        buttonText.textContent = 'Save';
+
+                        // Fill form fields
+                        document.getElementById('agentName').value = agent.name;
+                        document.getElementById('agentDescription').value = agent.description;
+                        document.getElementById('llmProvider').value = agent.llmProvider;
+                        document.getElementById('llmModel').value = agent.llmModel;
+                        document.getElementById('apiKey').value = agent.apiKey;
+                        document.getElementById('agentRole').value = agent.role;
+                        document.getElementById('agentGoal').value = agent.goal || '';
+                        document.getElementById('expectedOutput').value = agent.expectedOutput || '';
+                        document.getElementById('agentBackstory').value = agent.backstory || '';
+                        document.getElementById('agentInstructions').value = agent.instructions;
+                        document.getElementById('managerAgent').checked = agent.verbose;
+                        document.getElementById('knowledgeBase').checked = agent.features.knowledgeBase;
+                        document.getElementById('dataQuery').checked = agent.features.dataQuery;
+
+                        // Set selected tools and load them
+                        selectedTools = new Set(agent.tools || []);
+                        loadTools();
+                    } else if (retries > 0) {
+                        // Retry with increased delay if elements aren't found
+                        updateUI(retries - 1, delay * 2);
+                    } else {
+                        // Hide loader and show error if retries are exhausted
+                        hideLoading();
+                        console.error('Failed to find required DOM elements after retries');
+                        const app = document.getElementById('app');
+                        if (app) {
+                            app.innerHTML = '<p>Failed to load agent editor. Please try again.</p>';
+                        }
+                    }
+                }, delay);
+            }
+
+            // Start the update process
+            updateUI();
+        })
+        .catch(error => {
+            // Hide loader and handle fetch errors
+            hideLoading();
+            console.error('Error in editAgent:', error);
+            const app = document.getElementById('app');
+            if (app) {
+                app.innerHTML = '<p>Failed to load agent data. Please try again.</p>';
+            }
         });
 }
 
