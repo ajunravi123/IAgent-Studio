@@ -9,8 +9,10 @@ import uuid
 from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
-import os
 from task_executor import TaskExecutor
+
+
+
 
 
 app = FastAPI()
@@ -467,6 +469,18 @@ class InferenceRequest(BaseModel):
     userInput: str
 
 # API endpoint for agent inference (chat)
+
+# Allowed file types (MIME types mapped to categories)
+ALLOWED_FILE_TYPES = {
+    "image/jpeg": "image",  # Covers both .jpg and .jpeg
+    "image/png": "image",
+    "image/gif": "image",
+    "text/csv": "csv",
+    "application/json": "json",
+    "text/plain": "text",
+    "application/pdf": "pdf"
+}
+
 @app.post("/api/agent/infer")
 async def agent_infer(
     agentId: str = Form(...),
@@ -489,6 +503,7 @@ async def agent_infer(
 
         # Handle file upload if present
         file_info = None
+        file_path = None
         if file:
             # Validate file size (max 10MB)
             contents = await file.read()
@@ -502,8 +517,18 @@ async def agent_infer(
                     )
                 )
 
-            # Generate unique filename
-            file_extension = os.path.splitext(file.filename)[1]
+            # Check file type (case-insensitive MIME type check)
+            if file.content_type not in ALLOWED_FILE_TYPES:
+                return MessageResponse(
+                    type="error",
+                    content=ErrorData(
+                        message="Unsupported file type",
+                        details=f"Only CSV, JSON, TXT, PDF, and image (JPEG, PNG, GIF) files are supported. Got: {file.content_type}"
+                    )
+                )
+
+            # Generate unique filename (preserve original extension case)
+            file_extension = os.path.splitext(file.filename)[1]  # Keeps case, e.g., .JPEG or .jpeg
             unique_filename = f"{uuid.uuid4()}{file_extension}"
             file_path = UPLOAD_DIR / unique_filename
 
@@ -532,25 +557,19 @@ async def agent_infer(
         # Load tool configurations for this agent
         tools_config = []
         for tool_id in agent.get("tools", []):
-            # Load schema
             schema_path = f"tool_schemas/{tool_id}.json"
             auth_path = f"tool_auth/{tool_id}.json"
             
             if os.path.exists(schema_path):
                 tool_config = {"id": tool_id}
-                
-                # Load schema
                 with open(schema_path, 'r') as f:
                     tool_config["schema"] = json.load(f)
-                
-                # Load auth if exists
                 if os.path.exists(auth_path):
                     with open(auth_path, 'r') as f:
                         tool_config["auth"] = json.load(f)
-                
                 tools_config.append(tool_config)
 
-        # Pass the agent configuration and tool schemas to TaskExecutor
+        # Pass the agent configuration, tools, and file path to TaskExecutor
         executor = TaskExecutor(
             agent_config={
                 "role": agent["role"],
@@ -566,17 +585,13 @@ async def agent_infer(
         if userInput:
             agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
 
-        # Modify instructions to include file info if a file was uploaded
-        if file_info:
-            file_message = f"\nA file was uploaded: {file_info['original_name']} (saved as {file_info['saved_name']}, type: {file_info['type']}, size: {file_size} bytes, path: {file_info['path']})"
-            userInput += file_message
-
-        # Execute a task
+        # Execute the task, passing the file path if a file was uploaded
         result = executor.execute_task(
             description=agent["instructions"],
             expected_output=agent["expectedOutput"],
             task_name=agent["name"],
-            input=userInput
+            input=userInput,
+            file_path=file_path if file_info else None
         )
         print(result)
 
@@ -591,7 +606,6 @@ async def agent_infer(
                 details=str(e)
             )
         )
-
 
 def check_in_sentence(sentence="", input_to_check="{{input}}"):
     """

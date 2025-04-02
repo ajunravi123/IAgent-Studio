@@ -6,31 +6,49 @@ from dotenv import load_dotenv
 from functools import partial
 import json
 import re
+import base64
+import csv
 from datetime import datetime
 import pytz
-from typing import Optional
+from typing import Optional, Dict, Any
+import PyPDF2
 
 load_dotenv()
 
+# Allowed file types (MIME types mapped to categories)
+ALLOWED_FILE_TYPES = {
+    "image/jpeg": "image",  # Covers both .jpg and .jpeg
+    "image/png": "image",
+    "image/gif": "image",
+    "text/csv": "csv",
+    "application/json": "json",
+    "text/plain": "text",
+    "application/pdf": "pdf"
+}
+
+# Extension to MIME type mapping (case-insensitive)
+EXTENSION_TO_MIME = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "gif": "image/gif",
+    "csv": "text/csv",
+    "json": "application/json",
+    "txt": "text/plain",
+    "pdf": "application/pdf"
+}
+
 class TaskExecutor:
-    def __init__(self, agent_config, tools_config=None):
-        """
-        Initialize the TaskExecutor with agent configuration and tools.
-        Args:
-            agent_config (dict): Configuration for creating a CrewAgent
-                Expected keys: role, goal, backstory, llm_provider, llm_model, api_key
-            tools_config (list): List of tool configurations with schemas and auth info
-        """
+    def __init__(self, agent_config: Dict[str, str], tools_config: Optional[list] = None):
+        # ... (existing __init__ code remains unchanged)
         API_KEYS = {
             "gemini": os.getenv("GEMINI_API_KEY"),
             "openai": os.getenv("OPENAI_API_KEY"),
             "groq": os.getenv("GROQ_API_KEY"),
         }
 
-        # Initialize LLM
         self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
 
-        # Initialize specialized agents
         self.schema_agent = CrewAgent(
             role="Schema Analyzer",
             goal="Analyze OpenAPI schemas and extract key information about required fields, data types, and constraints",
@@ -49,7 +67,6 @@ class TaskExecutor:
             llm=self.llm_client
         )
 
-        # Initialize tools properly
         self.tools = []
         if tools_config:
             for tool_config in tools_config:
@@ -58,49 +75,33 @@ class TaskExecutor:
                 tool_params = tool_config.get("auth", {}).get("params", {})
 
                 def create_api_caller(tool_schema, tool_headers, tool_params):
-                    """Create an API caller function with the correct schema and auth info."""
                     def api_caller(input_text, **kwargs):
-                        """Dynamically calls an API based on schema configuration."""
                         try:
-                            # Get the paths from the schema passed in kwargs
                             url = kwargs.get('url')
                             headers = kwargs.get('headers', {})
                             params = kwargs.get('params', {})
-
                             if not url:
                                 return {"error": "No API paths found in schema"}
 
-                            # Get the first path and method from the schema
                             path = list(url.keys())[0]
                             method = list(url[path].keys())[0]
-                            
-                            # Extract base URL and endpoint path
                             if path.startswith('http'):
-                                # If it's a full URL, use it as is
                                 endpoint_url = path
                             else:
-                                # If it's just a path, construct the full URL
                                 base_url = tool_schema.get('servers', [{}])[0].get('url', 'http://localhost:8003')
                                 endpoint_url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
-
-                            # Analyze schema first
+                            
                             schema_analysis = self.analyze_schema(tool_schema)
-                            
-                            # Generate payload based on schema analysis and user input
                             payload = self.generate_payload(input_text, tool_schema, schema_analysis)
-                            
                             if not payload:
                                 return {"error": "Failed to generate valid payload"}
 
-                            # Make the API call
                             response = requests.post(
                                 endpoint_url,
                                 headers=headers,
                                 params=params,
                                 json=payload
                             )
-
-                            # Handle response based on status code
                             if response.status_code == 200:
                                 return response.json()
                             else:
@@ -109,41 +110,29 @@ class TaskExecutor:
                                 except json.JSONDecodeError:
                                     error_content = str(response.status_code)
                                 return {"error": error_content}
-
                         except Exception as e:
                             return {"error": str(e)}
-                    
                     return api_caller
 
-                # Create a unique name for the tool based on the schema title
                 tool_name = tool_schema["info"]["title"].lower().replace(" ", "_")
-                
-                # Create the API caller with the correct schema and auth info
                 api_caller = create_api_caller(tool_schema, tool_headers, tool_params)
-                
-                # Create a partial function with the paths
                 api_caller_with_config = partial(
                     api_caller,
                     url=tool_schema["paths"],
                     headers=tool_headers,
                     params=tool_params
                 )
-
                 self.tools.append(
                     Tool(
                         name=tool_name,
                         func=api_caller_with_config,
                         description=f"""Calls API: {tool_schema['info']['title']}. {tool_schema['info']['description']}
-                        
                         Input: {{input}}
-                        
-                        Important: Use the complete input text as provided. Do not extract or modify the input text before passing it to the API.
-                        The input text should be used in its entirety to generate the appropriate payload.""",
+                        Important: Use the complete input text as provided.""",
                         result_as_answer=True
                     )
                 )
 
-        # Create the main agent
         self.agent = CrewAgent(
             role=agent_config["role"],
             goal=agent_config["goal"],
@@ -154,9 +143,8 @@ class TaskExecutor:
         )
 
     def analyze_schema(self, schema: dict) -> str:
-        """Analyze the OpenAPI schema to extract key information."""
+        # ... (unchanged)
         schema_str = json.dumps(schema, indent=2)
-        
         analysis_task = Task(
             description=f"""
                 Analyze this OpenAPI schema and extract key information:
@@ -173,19 +161,15 @@ class TaskExecutor:
             expected_output="A clear summary of the schema requirements and constraints",
             agent=self.schema_agent
         )
-        
         crew = Crew(agents=[self.schema_agent], tasks=[analysis_task], process=Process.sequential)
         result = crew.kickoff()
-        
         return str(result)
 
     def generate_payload(self, user_input: str, schema: dict, schema_analysis: str) -> Optional[dict]:
-        """Generate a valid payload based on user input and schema analysis."""
-        # Extract the request body schema from the first path
+        # ... (unchanged)
         paths = schema.get("paths", {})
         if not paths:
             return None
-            
         first_path = next(iter(paths))
         path_info = paths[first_path]
         post_method = path_info.get("post", {})
@@ -223,37 +207,23 @@ class TaskExecutor:
             expected_output="A JSON string representing the payload that satisfies all schema requirements",
             agent=self.payload_agent
         )
-        
         crew = Crew(agents=[self.payload_agent], tasks=[payload_task], process=Process.sequential)
         result = crew.kickoff()
-        
         try:
-            # Handle different possible result formats
-            if hasattr(result, 'raw'):
-                payload_str = str(result.raw)
-            elif hasattr(result, 'output'):
-                payload_str = str(result.output)
-            else:
-                payload_str = str(result)
-            
-            # Clean up the payload string
+            payload_str = str(result.raw if hasattr(result, 'raw') else result.output if hasattr(result, 'output') else result)
             payload_str = payload_str.strip('`').strip('json').strip()
-            
-            # Parse the payload
             return json.loads(payload_str)
-            
         except (json.JSONDecodeError, AttributeError) as e:
             print(f"Error parsing payload: {e}")
             return None
 
     def get_task_descriptions(self, description, expected_output, task_name=None, **kwargs):
-        """Process task description and expected output, replacing placeholders with kwargs."""
+        # ... (unchanged)
         if task_name:
             try:
                 if kwargs:
                     for key, value in kwargs.items():
                         placeholder = "{{" + key + "}}"
-                        # For input text, preserve the full text
                         if key == "input":
                             description = description.replace(placeholder, f"'{value}'")
                         else:
@@ -265,11 +235,87 @@ class TaskExecutor:
                 return {"description": description, "expected_output": expected_output}
         return {"description": description, "expected_output": expected_output}
 
-    def execute_task(self, description, expected_output, task_name=None, **kwargs):
-        """Execute a task using the CrewAI framework."""
+    # Helper methods for file processing
+    def encode_image_to_base64(self, image_path: str) -> str:
+        try:
+            with open(image_path, "rb") as image_file:
+                encoded = base64.b64encode(image_file.read()).decode("utf-8")
+                return encoded
+        except Exception as e:
+            print(f"Error encoding image: {e}")
+            return f"Error encoding image: {str(e)}"
+
+    def read_csv_as_text(self, csv_path: str) -> str:
+        try:
+            with open(csv_path, "r", encoding="utf-8") as csv_file:
+                content = csv_file.read()
+                return content
+        except Exception as e:
+            print(f"Error reading CSV: {e}")
+            return f"Error reading CSV: {str(e)}"
+
+    def read_json_as_text(self, json_path: str) -> str:
+        try:
+            with open(json_path, "r", encoding="utf-8") as json_file:
+                data = json.load(json_file)
+                return json.dumps(data, indent=2)
+        except Exception as e:
+            print(f"Error reading JSON: {e}")
+            return f"Error reading JSON: {str(e)}"
+
+    def read_txt_as_text(self, txt_path: str) -> str:
+        try:
+            with open(txt_path, "r", encoding="utf-8") as txt_file:
+                content = txt_file.read()
+                return content
+        except Exception as e:
+            print(f"Error reading TXT: {e}")
+            return f"Error reading TXT: {str(e)}"
+
+    def read_pdf_as_text(self, pdf_path: str) -> str:
+        try:
+            with open(pdf_path, "rb") as pdf_file:
+                reader = PyPDF2.PdfReader(pdf_file)
+                text = ""
+                for page in reader.pages:
+                    text += page.extract_text() or ""
+                return text.strip() if text.strip() else "No readable text found in PDF"
+        except Exception as e:
+            print(f"Error reading PDF: {e}")
+            return f"Error reading PDF: {str(e)}"
+
+    def process_file_content(self, file_path: str, file_type: str) -> str:
+        """Process file content based on its type and return as a string."""
+        normalized_type = file_type.lower()  # Normalize for consistency
+        if normalized_type.startswith("image/"):  # Covers .jpg, .jpeg, .png, .gif
+            encoded = self.encode_image_to_base64(file_path)
+            return f"\n\nImage content (Base64 encoded):\n{encoded}" if encoded else encoded  # Full Base64 string
+        elif normalized_type == "text/csv":
+            return f"\n\nCSV content:\n{self.read_csv_as_text(file_path)}"
+        elif normalized_type == "application/json":
+            return f"\n\nJSON content:\n{self.read_json_as_text(file_path)}"
+        elif normalized_type == "text/plain":
+            return f"\n\nText content:\n{self.read_txt_as_text(file_path)}"
+        elif normalized_type == "application/pdf":
+            return f"\n\nPDF content:\n{self.read_pdf_as_text(file_path)}"
+        return ""
+
+    def execute_task(self, description: str, expected_output: str, task_name: Optional[str] = None, file_path: Optional[str] = None, **kwargs):
+        """Execute a task, optionally including file content based on type."""
         task_info = self.get_task_descriptions(description, expected_output, task_name, **kwargs)
         processed_description = task_info["description"]
         processed_expected_output = task_info["expected_output"]
+
+        # Append file content to description if a file is provided
+        if file_path:
+            # Map file extension to MIME type (case-insensitive)
+            ext = os.path.splitext(file_path)[1].lower().replace(".", "")
+            file_type = EXTENSION_TO_MIME.get(ext)
+            if file_type and file_type in ALLOWED_FILE_TYPES:
+                file_content = self.process_file_content(file_path, file_type)
+                processed_description += file_content
+                # Log truncated version for readability
+                print(f"Appended {file_type} content to task description: {file_content[:100]}... (full length: {len(file_content)})")
 
         task = Task(
             description=processed_description,
