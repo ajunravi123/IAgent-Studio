@@ -2869,3 +2869,45 @@ input:checked + .slider:before {
         opacity: 1;
     }
 }
+
+
+
+
+
+
+#preview_box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 320px;
+    padding: 10px 15px;
+    border: 2px solid #2f2f2f;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #000000, #050531);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+    font-size: 14px;
+    display: none;
+}
+#my_file {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    color: #ffffff;
+}
+#clear_selected_file {
+    cursor: pointer;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 12px;
+    transition: color 0.2s ease-in-out;
+}
+#clear_selected_file:hover {
+    color: #ff0000;
+}
+
+#clear_selected_file {
+    cursor: pointer;
+    font-family: 'FontAwesome';
+}

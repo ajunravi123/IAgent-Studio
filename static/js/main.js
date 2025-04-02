@@ -1746,6 +1746,9 @@ function handleSendMessage() {
         console.log('File attached:', file.name);
     }
 
+    clearFileSelection();
+
+
     // Send to backend
     fetch('/api/agent/infer', {
         method: 'POST',
@@ -2729,3 +2732,42 @@ function toggleApiKeyVisibility(id, button) {
 document.addEventListener('DOMContentLoaded', () => {
     new StudioLoader();
 });
+
+
+
+
+
+
+
+document.addEventListener("change", function(event) {
+    if (event.target && event.target.id === "fileInput") {
+        handleFileChange(event);
+    }
+});
+
+document.addEventListener("click", function(event) {
+    if (event.target && event.target.id === "preview_box") {
+        document.getElementById("fileInput").click();
+    }
+    
+    if (event.target && event.target.getAttribute("title") === "clear_selected_file") {
+        event.stopPropagation(); // Prevent opening file input
+        clearFileSelection();
+    }
+});
+
+function handleFileChange(event) {
+    const file = event.target.files[0];
+    if (file) {
+        document.getElementById("my_file").textContent = file.name;
+        document.getElementById("preview_box").style.display = "flex";
+        document.querySelector("[title='clear_selected_file']").style.display = "inline";
+    }
+}
+
+function clearFileSelection() {
+    const fileInput = document.getElementById("fileInput");
+    fileInput.value = ""; // Reset file input
+    document.getElementById("preview_box").style.display = "none";
+    document.querySelector("[title='clear_selected_file']").style.display = "none";
+}
