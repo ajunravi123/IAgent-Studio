@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -11,7 +11,6 @@ import shutil
 from pathlib import Path
 import os
 from task_executor import TaskExecutor
-from datetime import datetime
 
 
 app = FastAPI()
@@ -469,20 +468,59 @@ class InferenceRequest(BaseModel):
 
 # API endpoint for agent inference (chat)
 @app.post("/api/agent/infer")
-async def agent_infer(request: InferenceRequest):
+async def agent_infer(
+    agentId: str = Form(...),
+    userInput: str = Form(...),
+    file: Optional[UploadFile] = File(None)
+):
     try:
         # Get the agent from storage
         agents = load_agents()
-        agent = next((a for a in agents if a["id"] == request.agentId), None)
+        agent = next((a for a in agents if a["id"] == agentId), None)
         
         if not agent:
             return MessageResponse(
                 type="error",
                 content=ErrorData(
                     message="Agent not found",
-                    details=f"No agent found with ID: {request.agentId}"
+                    details=f"No agent found with ID: {agentId}"
                 )
             )
+
+        # Handle file upload if present
+        file_info = None
+        if file:
+            # Validate file size (max 10MB)
+            contents = await file.read()
+            file_size = len(contents)
+            if file_size > 10 * 1024 * 1024:  # 10MB
+                return MessageResponse(
+                    type="error",
+                    content=ErrorData(
+                        message="File too large",
+                        details="Maximum file size is 10MB"
+                    )
+                )
+
+            # Generate unique filename
+            file_extension = os.path.splitext(file.filename)[1]
+            unique_filename = f"{uuid.uuid4()}{file_extension}"
+            file_path = UPLOAD_DIR / unique_filename
+
+            # Save file
+            with open(file_path, "wb") as buffer:
+                buffer.write(contents)
+
+            # Store file info
+            file_info = {
+                "original_name": file.filename,
+                "saved_name": unique_filename,
+                "size": file_size,
+                "type": file.content_type,
+                "path": str(file_path),
+                "uploaded_at": datetime.now().isoformat()
+            }
+            print(f"File saved: {file_path}")
 
         # Get API keys from environment variables
         API_KEYS = {
@@ -512,8 +550,6 @@ async def agent_infer(request: InferenceRequest):
                 
                 tools_config.append(tool_config)
 
-        # Import TaskExecutor
-        
         # Pass the agent configuration and tool schemas to TaskExecutor
         executor = TaskExecutor(
             agent_config={
@@ -527,15 +563,20 @@ async def agent_infer(request: InferenceRequest):
             tools_config=tools_config
         )
 
-        if request.userInput:
+        if userInput:
             agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
+
+        # Modify instructions to include file info if a file was uploaded
+        if file_info:
+            file_message = f"\nA file was uploaded: {file_info['original_name']} (saved as {file_info['saved_name']}, type: {file_info['type']}, size: {file_size} bytes, path: {file_info['path']})"
+            userInput += file_message
 
         # Execute a task
         result = executor.execute_task(
             description=agent["instructions"],
             expected_output=agent["expectedOutput"],
             task_name=agent["name"],
-            input=request.userInput
+            input=userInput
         )
         print(result)
 

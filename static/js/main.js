@@ -1691,6 +1691,7 @@ function initializeChatFeatures() {
 function handleSendMessage() {
     console.log('Send button clicked!');
     const chatInput = document.getElementById('userInput');
+    const fileInput = document.getElementById('fileInput');
     const chatContainer = document.getElementById('chatContainer');
     
     if (!chatInput || !chatContainer) {
@@ -1730,18 +1731,26 @@ function handleSendMessage() {
     chatInput.value = '';
     chatInput.style.height = 'auto';
 
-    showLoading("Agent is processing the request...")
+    // Check if a file is selected
+    const file = fileInput && fileInput.files.length > 0 ? fileInput.files[0] : null;
+
+    // Show loading message
+    showLoading("Agent is processing the request...");
+
+    // Prepare FormData for the request
+    const formData = new FormData();
+    formData.append('agentId', selectedAgentId);
+    formData.append('userInput', userInput);
+    if (file) {
+        formData.append('file', file);
+        console.log('File attached:', file.name);
+    }
 
     // Send to backend
     fetch('/api/agent/infer', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            agentId: selectedAgentId,
-            userInput: userInput
-        })
+        body: formData // Use FormData instead of JSON.stringify
+        // Note: Do not set 'Content-Type' header manually; let the browser set it to multipart/form-data with the correct boundary
     })
     .then(response => {
         hideLoading();
@@ -1754,6 +1763,12 @@ function handleSendMessage() {
         hideLoading();
         console.log('Response received:', data);
         appendMessage(data, 'agent');
+        
+        // Clear file input after successful submission
+        if (file && fileInput) {
+            fileInput.value = '';
+            removeFilePreview();
+        }
     })
     .catch(error => {
         hideLoading();
