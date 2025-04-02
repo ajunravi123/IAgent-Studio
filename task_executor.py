@@ -12,8 +12,16 @@ from datetime import datetime
 import pytz
 from typing import Optional, Dict, Any
 import PyPDF2
+from transformers import BlipProcessor, BlipForConditionalGeneration
+from PIL import Image
+import easyocr
 
 load_dotenv()
+
+# Global initialization of BLIP and EasyOCR models (runs once when module is imported)
+BLIP_PROCESSOR = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+BLIP_MODEL = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+OCR_READER = easyocr.Reader(["en"])  # Initialize EasyOCR with English language support
 
 # Allowed file types (MIME types mapped to categories)
 ALLOWED_FILE_TYPES = {
@@ -39,8 +47,19 @@ EXTENSION_TO_MIME = {
 }
 
 class TaskExecutor:
-    def __init__(self, agent_config: Dict[str, str], tools_config: Optional[list] = None):
-        # ... (existing __init__ code remains unchanged)
+    def __init__(
+        self,
+        agent_config: Dict[str, str],
+        tools_config: Optional[list] = None,
+        blip_processor=BLIP_PROCESSOR,
+        blip_model=BLIP_MODEL,
+        ocr_reader=OCR_READER
+    ):
+        # Use pre-initialized models passed as arguments (defaults to global instances)
+        self.blip_processor = blip_processor
+        self.blip_model = blip_model
+        self.ocr_reader = ocr_reader
+
         API_KEYS = {
             "gemini": os.getenv("GEMINI_API_KEY"),
             "openai": os.getenv("OPENAI_API_KEY"),
@@ -143,7 +162,6 @@ class TaskExecutor:
         )
 
     def analyze_schema(self, schema: dict) -> str:
-        # ... (unchanged)
         schema_str = json.dumps(schema, indent=2)
         analysis_task = Task(
             description=f"""
@@ -166,7 +184,6 @@ class TaskExecutor:
         return str(result)
 
     def generate_payload(self, user_input: str, schema: dict, schema_analysis: str) -> Optional[dict]:
-        # ... (unchanged)
         paths = schema.get("paths", {})
         if not paths:
             return None
@@ -218,7 +235,6 @@ class TaskExecutor:
             return None
 
     def get_task_descriptions(self, description, expected_output, task_name=None, **kwargs):
-        # ... (unchanged)
         if task_name:
             try:
                 if kwargs:
@@ -235,7 +251,6 @@ class TaskExecutor:
                 return {"description": description, "expected_output": expected_output}
         return {"description": description, "expected_output": expected_output}
 
-    # Helper methods for file processing
     def encode_image_to_base64(self, image_path: str) -> str:
         try:
             with open(image_path, "rb") as image_file:
@@ -286,10 +301,33 @@ class TaskExecutor:
 
     def process_file_content(self, file_path: str, file_type: str) -> str:
         """Process file content based on its type and return as a string."""
-        normalized_type = file_type.lower()  # Normalize for consistency
-        if normalized_type.startswith("image/"):  # Covers .jpg, .jpeg, .png, .gif
-            encoded = self.encode_image_to_base64(file_path)
-            return f"\n\nImage content (Base64 encoded):\n{encoded}" if encoded else encoded  # Full Base64 string
+        normalized_type = file_type.lower()
+        if normalized_type.startswith("image/"):  # Handle images differently
+            try:
+                # Convert file_path to string if it's a Path object
+                file_path_str = str(file_path) if not isinstance(file_path, str) else file_path
+
+                # Verify file exists
+                if not os.path.exists(file_path_str):
+                    raise FileNotFoundError(f"Image file not found at: {file_path_str}")
+
+                # Load image
+                image = Image.open(file_path_str)
+                
+                # Generate detailed description using BLIP
+                inputs = self.blip_processor(image, return_tensors="pt")
+                out = self.blip_model.generate(**inputs, max_length=150)
+                detailed_description = self.blip_processor.decode(out[0], skip_special_tokens=True)
+                
+                # Extract text using EasyOCR
+                print(f"Processing OCR for file: {file_path_str}")
+                ocr_results = self.ocr_reader.readtext(file_path_str)
+                extracted_text = " ".join([result[1] for result in ocr_results]) if ocr_results else "No text detected"
+                
+                return f"\n\n\nExtracted Image Description: {detailed_description}\nExtracted Text: {extracted_text}"
+            except Exception as e:
+                print(f"Error processing image: {e}")
+                return f"Error processing image: {str(e)}"
         elif normalized_type == "text/csv":
             return f"\n\nCSV content:\n{self.read_csv_as_text(file_path)}"
         elif normalized_type == "application/json":
@@ -308,14 +346,13 @@ class TaskExecutor:
 
         # Append file content to description if a file is provided
         if file_path:
-            # Map file extension to MIME type (case-insensitive)
             ext = os.path.splitext(file_path)[1].lower().replace(".", "")
             file_type = EXTENSION_TO_MIME.get(ext)
             if file_type and file_type in ALLOWED_FILE_TYPES:
                 file_content = self.process_file_content(file_path, file_type)
                 processed_description += file_content
-                # Log truncated version for readability
-                print(f"Appended {file_type} content to task description: {file_content[:100]}... (full length: {len(file_content)})")
+                truncated_content = file_content[:100] + "..." if len(file_content) > 100 else file_content
+                print(f"Appended {file_type} content to task description: {truncated_content} (full length: {len(file_content)})")
 
         task = Task(
             description=processed_description,
