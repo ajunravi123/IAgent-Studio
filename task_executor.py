@@ -12,16 +12,26 @@ from datetime import datetime
 import pytz
 from typing import Optional, Dict, Any
 import PyPDF2
-# from transformers import BlipProcessor, BlipForConditionalGeneration
-# from PIL import Image
-# import easyocr
 
 load_dotenv()
 
-# Global initialization of BLIP and EasyOCR models (runs once when module is imported)
-# BLIP_PROCESSOR = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
-# BLIP_MODEL = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
-# OCR_READER = easyocr.Reader(["en"])  # Initialize EasyOCR with English language support
+
+ENABLE_GPU = False
+
+if ENABLE_GPU:
+    from transformers import BlipProcessor, BlipForConditionalGeneration
+    from PIL import Image
+    import easyocr
+
+
+    # Global initialization of BLIP and EasyOCR models (runs once when module is imported)
+    BLIP_PROCESSOR = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+    BLIP_MODEL = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+    OCR_READER = easyocr.Reader(["en"])  # Initialize EasyOCR with English language support
+else:
+    BLIP_PROCESSOR = None
+    BLIP_MODEL = None
+    OCR_READER = None
 
 # Allowed file types (MIME types mapped to categories)
 ALLOWED_FILE_TYPES = {
@@ -51,14 +61,15 @@ class TaskExecutor:
         self,
         agent_config: Dict[str, str],
         tools_config: Optional[list] = None,
-        # blip_processor=BLIP_PROCESSOR,
-        # blip_model=BLIP_MODEL,
-        # ocr_reader=OCR_READER
+        blip_processor=BLIP_PROCESSOR,
+        blip_model=BLIP_MODEL,
+        ocr_reader=OCR_READER
     ):
-        # Use pre-initialized models passed as arguments (defaults to global instances)
-        # self.blip_processor = blip_processor
-        # self.blip_model = blip_model
-        # self.ocr_reader = ocr_reader
+        if ENABLE_GPU:
+            # Use pre-initialized models passed as arguments (defaults to global instances)
+            self.blip_processor = blip_processor
+            self.blip_model = blip_model
+            self.ocr_reader = ocr_reader
 
         API_KEYS = {
             "gemini": os.getenv("GEMINI_API_KEY"),
@@ -312,22 +323,25 @@ class TaskExecutor:
                     raise FileNotFoundError(f"Image file not found at: {file_path_str}")
 
 
-                return ""
+                
             
-                # Load image
-                # image = Image.open(file_path_str)
-                
-                # # Generate detailed description using BLIP
-                # inputs = self.blip_processor(image, return_tensors="pt")
-                # out = self.blip_model.generate(**inputs, max_length=150)
-                # detailed_description = self.blip_processor.decode(out[0], skip_special_tokens=True)
-                
-                # # Extract text using EasyOCR
-                # print(f"Processing OCR for file: {file_path_str}")
-                # ocr_results = self.ocr_reader.readtext(file_path_str)
-                # extracted_text = " ".join([result[1] for result in ocr_results]) if ocr_results else "No text detected"
-                
-                # return f"\n\n\nExtracted Image Description: {detailed_description}\nExtracted Text: {extracted_text}"
+                if ENABLE_GPU:
+                    # Load image
+                    image = Image.open(file_path_str)
+                    
+                    # Generate detailed description using BLIP
+                    inputs = self.blip_processor(image, return_tensors="pt")
+                    out = self.blip_model.generate(**inputs, max_length=150)
+                    detailed_description = self.blip_processor.decode(out[0], skip_special_tokens=True)
+                    
+                    # Extract text using EasyOCR
+                    print(f"Processing OCR for file: {file_path_str}")
+                    ocr_results = self.ocr_reader.readtext(file_path_str)
+                    extracted_text = " ".join([result[1] for result in ocr_results]) if ocr_results else "No text detected"
+                    
+                    return f"\n\n\nExtracted Image Description: {detailed_description}\nExtracted Text: {extracted_text}"
+                else:
+                    return ""
             except Exception as e:
                 print(f"Error processing image: {e}")
                 return f"Error processing image: {str(e)}"
