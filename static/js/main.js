@@ -2800,3 +2800,68 @@ function clearFileSelection() {
     document.getElementById("preview_box").style.display = "none";
     document.querySelector("[title='clear_selected_file']").style.display = "none";
 }
+
+
+
+
+
+// Add theme toggle functionality
+const themeToggle = document.getElementById('themeToggle');
+if (themeToggle) {
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        
+        // Ensure light theme CSS is loaded
+        ensureLightThemeCSS();
+    }
+    
+    // Update the toggle button based on the current theme
+    updateToggleButton();
+    
+    themeToggle.addEventListener('click', function() {
+        const isLightTheme = document.body.classList.toggle('light-theme');
+        
+        // Save theme preference
+        localStorage.setItem('theme', isLightTheme ? 'light' : 'dark');
+        
+        // Ensure light theme CSS is loaded when switching to light theme
+        if (isLightTheme) {
+            ensureLightThemeCSS();
+        }
+        
+        // Update button appearance
+        updateToggleButton();
+    });
+}
+
+// Function to ensure light theme CSS is loaded
+function ensureLightThemeCSS() {
+    const lightThemeCSSPath = '/static/css/light-theme.css';
+    
+    // Check if the light theme CSS is already loaded
+    const existingLink = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .find(link => link.href.includes('light-theme.css'));
+        
+    if (!existingLink) {
+        // Load the light theme CSS if it's not already loaded
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = lightThemeCSSPath;
+        document.head.appendChild(link);
+        console.log('Loaded light theme CSS');
+    }
+}
+
+// Function to update toggle button appearance
+function updateToggleButton() {
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        if (document.body.classList.contains('light-theme')) {
+            themeToggle.innerHTML = '<i class="fas fa-sun light-icon"></i>';
+        } else {
+            themeToggle.innerHTML = '<i class="fas fa-moon dark-icon"></i>';
+        }
+    }
+}
