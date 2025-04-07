@@ -252,10 +252,14 @@ function launchAgent(agentId) {
     loadPage('launch-agent');
     
     // Fetch agent data and populate the form
+    showLoading();
     fetch(`/api/agents/${agentId}`)
         .then(response => response.json())
         .then(agent => {
             setTimeout(() => {
+
+                hideLoading();
+
                 // Update page title
                 const header = document.querySelector('.page-header h1');
                 if (header) {
@@ -410,9 +414,11 @@ function refreshAgent() {
 }
 
 function duplicateAgent(agentId) {
+    showLoading("Please wait..");
     fetch(`/api/agents/${agentId}`)
         .then(response => response.json())
         .then(agent => {
+            hideLoading();
             const duplicatedAgent = {
                 ...agent,
                 name: `${agent.name} (Copy)`,
@@ -727,10 +733,11 @@ function editTool(toolId) {
     if (document.getElementById('toolActionsMenu')) {
         closeToolMenu();
     }
-    
+    showLoading("Please wait..");
     fetch(`/api/tools/${toolId}`)
         .then(response => response.json())
         .then(tool => {
+            hideLoading();
             const modal = document.getElementById('addCustomToolModal');
             // Update modal title and button
             modal.querySelector('.modal-header h2').textContent = 'Edit Tool';
@@ -773,6 +780,8 @@ function updateTool(toolId) {
         schema: JSON.parse(schema),
         is_custom: true
     };
+
+    showLoading("Please wait..");
     
     fetch(`/api/tools/${toolId}`, {
         method: 'PUT',
@@ -780,6 +789,7 @@ function updateTool(toolId) {
         body: JSON.stringify(toolData)
     })
     .then(response => {
+        hideLoading();
         if (!response.ok) throw new Error('Failed to update tool');
         return response.json();
     })
@@ -788,6 +798,7 @@ function updateTool(toolId) {
         loadExternalTools(); // Refresh tools list
     })
     .catch(error => {
+        hideLoading();
         console.error('Error updating tool:', error);
         alert('Failed to update tool. Please try again.');
     });
@@ -797,9 +808,11 @@ function cloneTool(toolId) {
     closeToolMenu();
     let originalToolName = ''; // Store the original name for better error messages
 
+    showLoading("Please wait..");
     fetch(`/api/tools/${toolId}`)
         .then(response => response.json())
         .then(tool => {
+            hideLoading();
             originalToolName = tool.name;
             // Get the schema for the tool
             return fetch(`/api/tools/${toolId}/schema`)
@@ -841,6 +854,7 @@ function cloneTool(toolId) {
             loadExternalTools(); // Use loadExternalTools to refresh the main tools page
         })
         .catch(error => {
+            hideLoading();
             console.error('Error cloning tool:', error);
             // Display the specific error message from the Error object
             alert(error.message || 'An unexpected error occurred while cloning the tool.');
@@ -864,6 +878,7 @@ function deleteTool(toolId) {
             }
             
             if (confirm('Are you sure you want to delete this tool?')) {
+                showLoading("Please wait..");
                 fetch(`/api/tools/${toolId}`, {
                     method: 'DELETE'
                 })
@@ -872,6 +887,7 @@ function deleteTool(toolId) {
                     loadExternalTools(); // Refresh tools list
                 })
                 .catch(error => {
+                    hideLoading();
                     console.error('Error deleting tool:', error);
                     alert('Failed to delete tool. Please try again.');
                 });
@@ -885,6 +901,7 @@ function viewTool(toolId) {
     
     if (isToolsPage) {
         // If we're on the tools page, show view-only popup
+        showLoading("Please wait..");
         fetch(`/api/tools/${toolId}`)
             .then(response => response.json())
             .then(tool => {
@@ -892,6 +909,7 @@ function viewTool(toolId) {
                 fetch(`/api/tools/${toolId}/schema`)
                     .then(response => response.json())
                     .then(schema => {
+                        hideLoading();
                         const modal = document.getElementById('viewToolModal');
                         if (!modal) {
                             // Create modal if it doesn't exist
@@ -940,6 +958,7 @@ function viewTool(toolId) {
             });
     } else {
         // If we're on any other page (like agent test), open in new window
+        showLoading("Please wait..");
         fetch(`/api/tools/${toolId}`)
             .then(response => response.json())
             .then(tool => {
@@ -947,6 +966,7 @@ function viewTool(toolId) {
                 fetch(`/api/tools/${toolId}/schema`)
                     .then(response => response.json())
                     .then(schema => {
+                        hideLoading();
                         // Create a new window with the tool details
                         const toolWindow = window.open('/tools', '_blank');
                         toolWindow.onload = function() {
@@ -1285,9 +1305,11 @@ function saveAgent() {
 
 function editAgent(agentId) {
     selectedAgentId = agentId;
+    showLoading("Please wait..");
     fetch(`/api/agents/${agentId}`)
         .then(response => response.json())
         .then(agent => {
+            hideLoading();
             // Load the create-agent page with edit parameter
             loadPage('create-agent?edit=true');
 
@@ -1360,13 +1382,16 @@ function editAgent(agentId) {
 
 function deleteAgent(agentId) {
     if (confirm('Are you sure you want to delete this agent?')) {
+        showLoading("Please wait..");
         fetch(`/api/agents/${agentId}`, {
             method: 'DELETE'
         })
         .then(() => {
+            hideLoading();
             loadAgents();
         })
         .catch(error => {
+            hideLoading();
             console.error('Error deleting agent:', error);
         });
     }
@@ -1434,12 +1459,14 @@ const NotificationsAPI = {
 
     async markAsRead(notificationId) {
         try {
+            showLoading("Please wait..");
             const response = await fetch(`/api/notifications/${notificationId}/mark-read`, {
                 method: 'POST'
             });
             if (!response.ok) {
                 throw new Error('Failed to mark notification as read');
             }
+            hideLoading();
             const data = await response.json();
             return { success: true };
         } catch (error) {
@@ -1450,12 +1477,14 @@ const NotificationsAPI = {
 
     async markAllAsRead() {
         try {
+            showLoading("Please wait..");
             const response = await fetch('/api/notifications/mark-all-read', {
                 method: 'POST'
             });
             if (!response.ok) {
                 throw new Error('Failed to mark all notifications as read');
             }
+            hideLoading();
             const data = await response.json();
             return { success: true };
         } catch (error) {

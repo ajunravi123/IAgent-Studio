@@ -570,17 +570,19 @@ async def agent_infer(
                 tools_config.append(tool_config)
 
         # Pass the agent configuration, tools, and file path to TaskExecutor
-        executor = TaskExecutor(
-            agent_config={
+        agent_configs = [
+            {
                 "role": agent["role"],
                 "goal": agent["goal"],
                 "backstory": agent["backstory"],
                 "llm_provider": agent["llmProvider"].lower(),
                 "llm_model": agent["llmModel"],
-                "api_key": API_KEYS.get(agent["llmProvider"].lower(), agent["apiKey"])
-            },
-            tools_config=tools_config
-        )
+                "api_key": API_KEYS.get(agent["llmProvider"].lower(), agent["apiKey"]),
+                "tools": tools_config
+            }
+        ]
+
+        executor = TaskExecutor(agent_configs=agent_configs)
 
         if userInput:
             agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
@@ -606,6 +608,139 @@ async def agent_infer(
                 details=str(e)
             )
         )
+    
+
+
+
+@app.post("/api/multi_agent/infer")
+async def multi_agent_infer(
+    agentId: str = Form(...),
+    userInput: str = Form(...),
+    file: Optional[UploadFile] = File(None)
+):
+    try:
+        # Load all agents
+        agents = load_agents()
+        primary_agent = next((a for a in agents if a["id"] == agentId), None)
+        
+        if not primary_agent:
+            return MessageResponse(
+                type="error",
+                content=ErrorData(message="Agent not found", details=f"No agent found with ID: {agentId}")
+            )
+
+        # Handle file upload if present
+        file_info = None
+        file_path = None
+        if file:
+            contents = await file.read()
+            file_size = len(contents)
+            if file_size > 10 * 1024 * 1024:  # 10MB limit
+                return MessageResponse(
+                    type="error",
+                    content=ErrorData(message="File too large", details="Maximum file size is 10MB")
+                )
+
+            if file.content_type not in ALLOWED_FILE_TYPES:
+                return MessageResponse(
+                    type="error",
+                    content=ErrorData(
+                        message="Unsupported file type",
+                        details=f"Only CSV, JSON, TXT, PDF, and image (JPEG, PNG, GIF) files are supported. Got: {file.content_type}"
+                    )
+                )
+
+            file_extension = os.path.splitext(file.filename)[1]
+            unique_filename = f"{uuid.uuid4()}{file_extension}"
+            file_path = UPLOAD_DIR / unique_filename
+            with open(file_path, "wb") as buffer:
+                buffer.write(contents)
+            file_info = {
+                "original_name": file.filename,
+                "saved_name": unique_filename,
+                "size": file_size,
+                "type": file.content_type,
+                "path": str(file_path),
+                "uploaded_at": datetime.now().isoformat()
+            }
+            print(f"File saved: {file_path}")
+
+        # Get API keys
+        API_KEYS = {
+            "gemini": os.getenv("GEMINI_API_KEY"),
+            "openai": os.getenv("OPENAI_API_KEY"),
+            "groq": os.getenv("GROQ_API_KEY"),
+        }
+
+        # Load tool configurations for the primary agent
+        tools_config = []
+        for tool_id in primary_agent.get("tools", []):
+            schema_path = f"tool_schemas/{tool_id}.json"
+            auth_path = f"tool_auth/{tool_id}.json"
+            if os.path.exists(schema_path):
+                tool_config = {"id": tool_id}
+                with open(schema_path, 'r') as f:
+                    tool_config["schema"] = json.load(f)
+                if os.path.exists(auth_path):
+                    with open(auth_path, 'r') as f:
+                        tool_config["auth"] = json.load(f)
+                tools_config.append(tool_config)
+
+        # Prepare agent configurations for multi-agent orchestration
+        agent_configs = [
+            {
+                "id": primary_agent["id"],
+                "role": primary_agent["role"],
+                "goal": primary_agent["goal"],
+                "backstory": primary_agent["backstory"],
+                "llm_provider": primary_agent["llmProvider"].lower(),
+                "llm_model": primary_agent["llmModel"],
+                "api_key": API_KEYS.get(primary_agent["llmProvider"].lower(), primary_agent["apiKey"]),
+                "tools": tools_config
+            }
+        ]
+
+        # Optionally add more agents dynamically based on task complexity (example logic)
+        # For simplicity, you can hardcode additional agents or fetch from `agents` based on some criteria
+        if "complex_task" in userInput.lower():  # Example condition
+            analyst_agent = next((a for a in agents if a["role"] == "Analyst"), None)
+            if analyst_agent:
+                agent_configs.append({
+                    "id": analyst_agent["id"],
+                    "role": analyst_agent["role"],
+                    "goal": analyst_agent["goal"],
+                    "backstory": analyst_agent["backstory"],
+                    "llm_provider": analyst_agent["llmProvider"].lower(),
+                    "llm_model": analyst_agent["llmModel"],
+                    "api_key": API_KEYS.get(analyst_agent["llmProvider"].lower(), analyst_agent["apiKey"]),
+                    "tools": []  # Add tools if needed
+                })
+
+        # Initialize TaskExecutor with multiple agents
+        executor = TaskExecutor(agent_configs=agent_configs)
+
+        if userInput:
+            primary_agent["instructions"] = check_in_sentence(primary_agent["instructions"], "{{input}}")
+
+        # Execute the task with multi-agent orchestration
+        result = executor.execute_task(
+            description=primary_agent["instructions"],
+            expected_output=primary_agent["expectedOutput"],
+            task_name=primary_agent["name"],
+            input=userInput,
+            file_path=file_path if file_info else None
+        )
+        print(result)
+
+        return MessageResponse(type="text", content=TextData(text=result))
+        
+    except Exception as e:
+        return MessageResponse(
+            type="error",
+            content=ErrorData(message="Error processing request", details=str(e))
+        )
+    
+
 
 def check_in_sentence(sentence="", input_to_check="{{input}}"):
     """
