@@ -12,7 +12,7 @@ import base64
 
 load_dotenv()
 
-ENABLE_GPU = True
+ENABLE_GPU = False
 if ENABLE_GPU:
     from transformers import BlipProcessor, BlipForConditionalGeneration
     import easyocr
