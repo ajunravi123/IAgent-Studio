@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -129,6 +129,7 @@ def save_notifications(notifications: List[dict]):
 
 # File to store agents
 AGENTS_FILE = "agents.json"
+MULTIAGENTS_FILE = "data/multiagents.json"
 
 def load_agents():
     if os.path.exists(AGENTS_FILE):
@@ -139,6 +140,29 @@ def load_agents():
 def save_agents(agents):
     with open(AGENTS_FILE, 'w') as f:
         json.dump(agents, f)
+
+def load_multi_agents():
+    print(f"Attempting to load multi-agents from: {MULTIAGENTS_FILE}")
+    if os.path.exists(MULTIAGENTS_FILE):
+        print(f"File found: {MULTIAGENTS_FILE}")
+        try:
+            with open(MULTIAGENTS_FILE, 'r') as f:
+                data = json.load(f)
+                print(f"Successfully loaded and parsed JSON data: {data}")
+                return data
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON from {MULTIAGENTS_FILE}: {e}")
+            return [] # Return empty list on decode error
+        except Exception as e:
+            print(f"An unexpected error occurred while reading {MULTIAGENTS_FILE}: {e}")
+            return []
+    else:
+        print(f"File not found: {MULTIAGENTS_FILE}")
+        return []
+
+def save_multi_agents(multi_agents):
+    with open(MULTIAGENTS_FILE, 'w') as f:
+        json.dump(multi_agents, f, indent=4)
 
 def load_tools() -> List[Tool]:
     try:
@@ -834,12 +858,79 @@ async def upload_file(file: UploadFile = File(...), agentId: str = None):
             )
         )
 
+# API endpoints for multi-agents
+class MultiAgentCreate(BaseModel):
+    name: str
+    description: str
+    agent_ids: List[str]
+
+class MultiAgent(MultiAgentCreate):
+    id: str
+
+@app.get("/api/multi-agents")
+async def get_multi_agents():
+    return load_multi_agents()
+
+@app.post("/api/multi-agents")
+async def create_multi_agent(multi_agent: MultiAgentCreate):
+    multi_agents = load_multi_agents()
+    new_multi_agent = MultiAgent(
+        id=str(uuid.uuid4()),
+        **multi_agent.dict()
+    )
+    multi_agents.append(new_multi_agent.dict())
+    save_multi_agents(multi_agents)
+    return new_multi_agent
+
+@app.get("/api/multi-agents/{multi_agent_id}")
+async def get_multi_agent(multi_agent_id: str):
+    multi_agents = load_multi_agents()
+    for ma in multi_agents:
+        if ma["id"] == multi_agent_id:
+            return ma
+    raise HTTPException(status_code=404, detail="Multi-Agent not found")
+
+@app.put("/api/multi-agents/{multi_agent_id}")
+async def update_multi_agent(multi_agent_id: str, updated_multi_agent: MultiAgentCreate):
+    multi_agents = load_multi_agents()
+    for i, ma in enumerate(multi_agents):
+        if ma["id"] == multi_agent_id:
+            multi_agents[i] = {
+                "id": multi_agent_id,
+                **updated_multi_agent.dict()
+            }
+            save_multi_agents(multi_agents)
+            return multi_agents[i]
+    raise HTTPException(status_code=404, detail="Multi-Agent not found")
+
+@app.delete("/api/multi-agents/{multi_agent_id}")
+async def delete_multi_agent(multi_agent_id: str):
+    multi_agents = load_multi_agents()
+    multi_agents = [ma for ma in multi_agents if ma["id"] != multi_agent_id]
+    save_multi_agents(multi_agents)
+    return {"message": "Multi-Agent deleted"}
+
 # Catch-all route to serve the main index.html for any other path
 # This MUST be defined AFTER all API routes and static file mounts
 @app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
-    # You could add checks here if certain paths should 404,
-    # but for a typical SPA, serving index.html is correct.
+async def serve_frontend(request: Request):
+    full_path = request.path_params.get("full_path", "")
+    # Special handling for multi-agents page
+    if full_path == "multi-agents":
+        return FileResponse("static/index.html")
+
+    # Existing logic to serve index.html for SPA routes
+    # Assuming this logic is needed for other routes
+    # You might need to adjust this based on your exact SPA routing needs
+    potential_file_path = f"static/{full_path}"
+    if not os.path.exists(potential_file_path) or os.path.isdir(potential_file_path):
+        # If the path doesn't correspond to an existing file/directory in static,
+        # assume it's an SPA route and serve index.html
+        if full_path not in ["favicon.ico"]: # Add other static assets if needed
+             return FileResponse("static/index.html")
+
+    # Default: Let StaticFiles handle existing static assets
+    # Or explicitly return index.html if that's the desired fallback
     return FileResponse("static/index.html")
 
 
