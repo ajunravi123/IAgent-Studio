@@ -148,19 +148,27 @@ function createNewAgent() {
 }
 
 function goBack() {
-    // Clear any selected ID when navigating back
-    if (window.location.pathname === '/launch-agent') {
-        selectedAgentId = null;
-    } else if (window.location.pathname === '/launch-multi-agent') {
+    // Check if we were viewing a multi-agent launch page first
+    if (document.querySelector('.launch-multi-agent')) {
+        // We're on the multi-agent launch page
         sessionStorage.removeItem('selectedMultiAgentId');
         window.selectedMultiAgentId = null;
+        loadPage('multi-agents');
+        return;
     }
     
-    // Determine which page to load based on current location
-    if (window.location.pathname === '/launch-multi-agent') {
+    // Otherwise handle other back scenarios
+    if (window.location.pathname === '/launch-agent') {
+        selectedAgentId = null;
+        loadPage('agents');
+    } else if (window.selectedMultiAgentId || sessionStorage.getItem('selectedMultiAgentId')) {
+        // If we have a multi-agent ID in memory or session storage, we came from multi-agent launch
+        sessionStorage.removeItem('selectedMultiAgentId');
+        window.selectedMultiAgentId = null;
         loadPage('multi-agents');
     } else {
-    loadPage('agents');
+        // Default to agents page if we can't determine the source
+        loadPage('agents');
     }
 }
 
@@ -3520,8 +3528,7 @@ function launchMultiAgent(multiAgentId) {
     // Store the multi-agent ID in session storage for retrieval on the launch page
     sessionStorage.setItem('selectedMultiAgentId', multiAgentId);
     
-    // Navigate to the launch-multi-agent page
-    window.history.pushState({ path: '/launch-multi-agent' }, '', '/launch-multi-agent');
+    // Load the launch-multi-agent page without changing URL
     loadPage('launch-multi-agent');
 }
 
