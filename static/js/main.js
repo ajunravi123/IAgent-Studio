@@ -73,6 +73,10 @@ function loadPage(pagePath) {
                         }
                     } else if (basePage === 'multi-agents') {
                         initializeMultiAgentPage(); // Call the new initializer
+                    } else if (basePage === 'launch-multi-agent') {
+                        // Initialize the multi-agent launch interface
+                        console.log('Initializing Multi-Agent Launch Page...');
+                        initializeMultiAgentLaunchPage(); // Call the initializer from main.js
                     } else if (basePage === 'create-agent') {
                     loadTools();
                         // Check if we're editing an agent
@@ -144,7 +148,20 @@ function createNewAgent() {
 }
 
 function goBack() {
+    // Clear any selected ID when navigating back
+    if (window.location.pathname === '/launch-agent') {
+        selectedAgentId = null;
+    } else if (window.location.pathname === '/launch-multi-agent') {
+        sessionStorage.removeItem('selectedMultiAgentId');
+        window.selectedMultiAgentId = null;
+    }
+    
+    // Determine which page to load based on current location
+    if (window.location.pathname === '/launch-multi-agent') {
+        loadPage('multi-agents');
+    } else {
     loadPage('agents');
+    }
 }
 
 let selectedAgentId = null;
@@ -165,20 +182,20 @@ function loadAgents() {
             
             // Now fetch the agents and mark those that are used in multi-agents
             return fetch('/api/agents')
-                .then(response => response.json())
-                .then(agents => {
-                    const agentsContent = document.querySelector('.agents-content');
-                    if (agents.length === 0) {
-                        agentsContent.innerHTML = `
-                            <div class="empty-state">
-                                <img src="/static/images/ufo-illustration.svg" alt="No agents found" class="empty-illustration">
-                                <h2>No Agents found</h2>
-                                <button class="btn-primary" onclick="createNewAgent()">
-                                    + Create new
-                                </button>
-                            </div>
-                        `;
-                    } else {
+        .then(response => response.json())
+        .then(agents => {
+            const agentsContent = document.querySelector('.agents-content');
+            if (agents.length === 0) {
+                agentsContent.innerHTML = `
+                    <div class="empty-state">
+                        <img src="/static/images/ufo-illustration.svg" alt="No agents found" class="empty-illustration">
+                        <h2>No Agents found</h2>
+                        <button class="btn-primary" onclick="createNewAgent()">
+                            + Create new
+                        </button>
+                    </div>
+                `;
+            } else {
                         agentsContent.innerHTML = agents.map(agent => {
                             // Check if agent is used in a multi-agent
                             const isUsedInMultiAgent = usedInMultiAgents.has(agent.id);
@@ -190,62 +207,62 @@ function loadAgents() {
                                 </div>` : '';
                                 
                             return `
-                            <div class="agent-card">
-                                <div class="agent-card-header">
-                                    <div class="agent-info">
-                                        <div class="agent-icon">
-                                            <i class="fas fa-robot"></i>
-                                        </div>
-                                        <div class="agent-details">
-                                            <h3>${agent.name}</h3>
-                                            <p>${agent.description}</p>
-                                        </div>
-                                    </div>
-                                    <div class="agent-actions">
-                                        <button class="btn-more" onclick="showAgentMenu(event, '${agent.id}')">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                    </div>
+                    <div class="agent-card">
+                        <div class="agent-card-header">
+                            <div class="agent-info">
+                                <div class="agent-icon">
+                                    <i class="fas fa-robot"></i>
                                 </div>
-                                <div class="agent-card-content">
-                                    <div class="agent-stats">
-                                        <div class="stat-left">
-                                            <span class="stat-label">Model</span>
-                                            <span class="stat-value">${agent.llmModel}</span>
-                                        </div>
-                                        <div class="stat-right">
-                                            <span class="stat-label">Tools</span>
-                                            <span class="stat-value">${agent.tools ? agent.tools.length : 0}</span>
-                                        </div>
-                                    </div>
-                                    ${multiAgentBadge}
+                                <div class="agent-details">
+                                    <h3>${agent.name}</h3>
+                                    <p>${agent.description}</p>
                                 </div>
                             </div>
+                            <div class="agent-actions">
+                                <button class="btn-more" onclick="showAgentMenu(event, '${agent.id}')">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="agent-card-content">
+                            <div class="agent-stats">
+                                <div class="stat-left">
+                                    <span class="stat-label">Model</span>
+                                    <span class="stat-value">${agent.llmModel}</span>
+                                </div>
+                                <div class="stat-right">
+                                    <span class="stat-label">Tools</span>
+                                    <span class="stat-value">${agent.tools ? agent.tools.length : 0}</span>
+                                </div>
+                            </div>
+                                    ${multiAgentBadge}
+                        </div>
+                    </div>
                             `;
                         }).join('');
 
                         // Add CSS for the new layout and multi-agent badge
-                        const style = document.createElement('style');
-                        style.textContent = `
-                            .agent-stats {
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                                width: 100%;
-                            }
-                            .stat-left, .stat-right {
-                                display: flex;
-                                flex-direction: column;
-                            }
-                            .stat-label {
-                                color: var(--text-secondary);
-                                font-size: 12px;
-                            }
-                            .stat-value {
-                                color: var(--text-primary);
-                                font-size: 14px;
-                                font-weight: 500;
-                            }
+                const style = document.createElement('style');
+                style.textContent = `
+                    .agent-stats {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        width: 100%;
+                    }
+                    .stat-left, .stat-right {
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    .stat-label {
+                        color: var(--text-secondary);
+                        font-size: 12px;
+                    }
+                    .stat-value {
+                        color: var(--text-primary);
+                        font-size: 14px;
+                        font-weight: 500;
+                    }
                             .multi-agent-badge {
                                 margin-top: 12px;
                                 padding: 5px 10px;
@@ -268,9 +285,9 @@ function loadAgents() {
                             }
                             .multi-agent-badge i {
                                 font-size: 11px;
-                            }
-                        `;
-                        document.head.appendChild(style);
+                    }
+                `;
+                document.head.appendChild(style);
                     }
                 });
         })
@@ -1464,13 +1481,13 @@ function deleteAgent(agentId) {
                 
                 // If not used in any multi-agent, proceed with deletion
                 return fetch(`/api/agents/${agentId}`, {
-                    method: 'DELETE'
+            method: 'DELETE'
                 });
-            })
+        })
             .then(response => {
                 if (response && response.ok) {
-                    hideLoading();
-                    loadAgents();
+            hideLoading();
+            loadAgents();
                     
                     // Show success message
                     const toast = document.createElement('div');
@@ -1479,10 +1496,10 @@ function deleteAgent(agentId) {
                     document.body.appendChild(toast);
                     setTimeout(() => toast.remove(), 3000);
                 }
-            })
-            .catch(error => {
-                hideLoading();
-                console.error('Error deleting agent:', error);
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error deleting agent:', error);
                 
                 // Show error message
                 const toast = document.createElement('div');
@@ -1490,7 +1507,7 @@ function deleteAgent(agentId) {
                 toast.innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to delete agent';
                 document.body.appendChild(toast);
                 setTimeout(() => toast.remove(), 3000);
-            });
+        });
     }
 }
 
@@ -1956,6 +1973,12 @@ function renderMultiAgents(multiAgentsToRender, agentDetailMap) {
                         </div>
                     </div>
                     <div class="multi-agent-actions">
+                        <button class="btn-launch-multi-agent" onclick="launchMultiAgent('${multiAgentId}')">
+                            <i class="fas fa-play"></i> Launch
+                        </button>
+                        <button class="btn-clone-multi-agent" onclick="cloneMultiAgent('${multiAgentId}')">
+                            <i class="fas fa-copy"></i> Clone
+                        </button>
                         <button class="btn-edit-multi-agent" onclick="editMultiAgentAction('${multiAgentId}')">
                             <i class="fas fa-edit"></i> Edit
                         </button>
@@ -2070,10 +2093,13 @@ function renderMultiAgents(multiAgentsToRender, agentDetailMap) {
                 margin-top: 15px;
                 padding-top: 15px;
                 border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex-wrap: wrap;
             }
             
             .btn-edit-multi-agent,
-            .btn-delete-multi-agent {
+            .btn-delete-multi-agent,
+            .btn-clone-multi-agent,
+            .btn-launch-multi-agent {
                 border: none;
                 border-radius: 6px;
                 padding: 8px 12px;
@@ -2093,6 +2119,28 @@ function renderMultiAgents(multiAgentsToRender, agentDetailMap) {
             
             .btn-edit-multi-agent:hover {
                 background-color: rgba(66, 153, 225, 0.3);
+                transform: translateY(-2px);
+            }
+            
+            .btn-clone-multi-agent {
+                background-color: rgba(139, 92, 246, 0.2);
+                color: rgba(255, 255, 255, 0.9);
+                border: 1px solid rgba(139, 92, 246, 0.3);
+            }
+            
+            .btn-clone-multi-agent:hover {
+                background-color: rgba(139, 92, 246, 0.3);
+                transform: translateY(-2px);
+            }
+            
+            .btn-launch-multi-agent {
+                background-color: rgba(72, 187, 120, 0.2);
+                color: rgba(255, 255, 255, 0.9);
+                border: 1px solid rgba(72, 187, 120, 0.3);
+            }
+            
+            .btn-launch-multi-agent:hover {
+                background-color: rgba(72, 187, 120, 0.3);
                 transform: translateY(-2px);
             }
             
@@ -2373,6 +2421,11 @@ function showEditMultiAgentModal(multiAgent) {
     document.getElementById('multiAgentId').value = multiAgent.id;
     document.getElementById('multiAgentName').value = multiAgent.name;
     document.getElementById('multiAgentDescription').value = multiAgent.description;
+    // Populate new fields, using defaults if not present
+    document.getElementById('multiAgentRole').value = multiAgent.role || 'Coordinator'; 
+    document.getElementById('multiAgentGoal').value = multiAgent.goal || ''; 
+    document.getElementById('multiAgentBackstory').value = multiAgent.backstory || ''; 
+    
     // Populate agent list and check the ones that are part of this multi-agent
     populateAgentSelectionList(allAvailableAgents, multiAgent.agent_ids || []);
     modal.style.display = 'block';
@@ -2390,6 +2443,9 @@ async function handleMultiAgentFormSubmit(event) {
     const multiAgentId = form.querySelector('#multiAgentId').value;
     const name = form.querySelector('#multiAgentName').value.trim();
     const description = form.querySelector('#multiAgentDescription').value.trim();
+    const role = form.querySelector('#multiAgentRole').value.trim(); // Get role
+    const goal = form.querySelector('#multiAgentGoal').value.trim(); // Get goal
+    const backstory = form.querySelector('#multiAgentBackstory').value.trim(); // Get backstory
     const selectedAgentCheckboxes = form.querySelectorAll('input[name="selectedAgents"]:checked');
     const agent_ids = Array.from(selectedAgentCheckboxes).map(cb => cb.value);
 
@@ -2402,7 +2458,15 @@ async function handleMultiAgentFormSubmit(event) {
         return;
     }
 
-    const multiAgentData = { name, description, agent_ids };
+    // Include new fields in the data payload
+    const multiAgentData = { 
+        name,
+        description,
+        agent_ids,
+        role: role || "Coordinator", // Default if empty
+        goal: goal || "Efficiently manage and delegate tasks.", // Default if empty
+        backstory: backstory || "Orchestrator for connected agents." // Default if empty
+    };
 
     const url = multiAgentId ? `/api/multi-agents/${multiAgentId}` : '/api/multi-agents';
     const method = multiAgentId ? 'PUT' : 'POST';
@@ -3388,4 +3452,956 @@ function duplicateMultiAgent(multiAgentId) {
 
 function deleteMultiAgent(multiAgentId) {
     deleteMultiAgentAction(multiAgentId);
+}
+
+// Add cloneMultiAgent function to duplicate an existing multi-agent
+async function cloneMultiAgent(multiAgentId) {
+    try {
+        showLoading("Cloning multi-agent...");
+        
+        // Fetch the original multi-agent config
+        const response = await fetch(`/api/multi-agents/${multiAgentId}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const multiAgent = await response.json();
+        
+        // Create a copy with modified name
+        const clonedMultiAgent = {
+            ...multiAgent,
+            name: `${multiAgent.name} (Copy)`,
+            description: multiAgent.description,
+            agent_ids: multiAgent.agent_ids
+        };
+        
+        // Remove the ID to ensure a new one is generated
+        delete clonedMultiAgent.id;
+        
+        // Post the cloned multi-agent to the API
+        const createResponse = await fetch('/api/multi-agents', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(clonedMultiAgent)
+        });
+        
+        if (!createResponse.ok) {
+            const errorData = await createResponse.json();
+            throw new Error(errorData.detail || `Failed to create clone: ${createResponse.status}`);
+        }
+        
+        hideLoading();
+        
+        // Show success message
+        const toast = document.createElement('div');
+        toast.className = 'toast success';
+        toast.innerHTML = '<i class="fas fa-check-circle"></i> Multi-agent cloned successfully';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        
+        // Refresh the multi-agents list
+        loadMultiAgents();
+        
+    } catch (error) {
+        hideLoading();
+        console.error("Error cloning multi-agent:", error);
+        
+        // Show error message
+        const toast = document.createElement('div');
+        toast.className = 'toast error';
+        toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> Failed to clone multi-agent: ${error.message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+}
+
+// Add launchMultiAgent function to navigate to the multi-agent playground
+function launchMultiAgent(multiAgentId) {
+    // Store the multi-agent ID in session storage for retrieval on the launch page
+    sessionStorage.setItem('selectedMultiAgentId', multiAgentId);
+    
+    // Navigate to the launch-multi-agent page
+    window.history.pushState({ path: '/launch-multi-agent' }, '', '/launch-multi-agent');
+    loadPage('launch-multi-agent');
+}
+
+// --- Multi-Agent Launch Page Functions ---
+
+function initializeMultiAgentLaunchPage() {
+    console.log('Initializing Multi-Agent launch page...');
+    const multiAgentId = sessionStorage.getItem('selectedMultiAgentId');
+    console.log('Retrieved multiAgentId from sessionStorage:', multiAgentId);
+    if (!multiAgentId) {
+        console.error('Multi-agent ID not found in session storage.');
+        // appendMultiAgentMessage is specific to the page, handle error display differently or ensure it exists
+        // Maybe just log or show a generic error on the page
+        const agentListContainer = document.getElementById('connectedAgentsList');
+        if(agentListContainer) agentListContainer.innerHTML = '<div class="error-message">Error: No Multi-Agent ID found. Please go back.</div>';
+        return;
+    }
+    
+    loadMultiAgentDetails(multiAgentId);
+    setupMultiAgentLaunchPageEventListeners();
+}
+
+function setupMultiAgentLaunchPageEventListeners() {
+    console.log('Setting up event listeners for Multi-Agent Launch page...');
+    const userInput = document.getElementById('multiAgentUserInput');
+    const fileUploadBtn = document.querySelector('.launch-multi-agent [data-action="upload-file"]');
+    const sendBtn = document.querySelector('.launch-multi-agent [data-action="send-message"]');
+    const editBtn = document.getElementById('multiAgentEditButton');
+    const saveBtn = document.getElementById('multiAgentSaveButton');
+    const refreshBtn = document.querySelector('.launch-multi-agent .header-actions .btn-secondary');
+    const backBtn = document.querySelector('.launch-multi-agent .header-left .btn-back');
+
+    if (userInput && !userInput.dataset.listenerAttached) {
+        userInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                handleMultiAgentSendMessage();
+            }
+        });
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+        userInput.dataset.listenerAttached = 'true';
+    }
+
+    if (fileUploadBtn && !fileUploadBtn.dataset.listenerAttached) {
+        fileUploadBtn.addEventListener('click', function() {
+            const fileInput = document.getElementById('multiAgentFileInput');
+            if (fileInput) fileInput.click();
+        });
+        fileUploadBtn.dataset.listenerAttached = 'true';
+    }
+
+    if (sendBtn && !sendBtn.dataset.listenerAttached) {
+        sendBtn.addEventListener('click', handleMultiAgentSendMessage);
+        sendBtn.dataset.listenerAttached = 'true';
+    }
+
+    if (editBtn && !editBtn.dataset.listenerAttached) {
+        editBtn.addEventListener('click', toggleMultiAgentEditMode);
+        editBtn.dataset.listenerAttached = 'true';
+    }
+    
+    if (saveBtn && !saveBtn.dataset.listenerAttached) {
+        saveBtn.addEventListener('click', saveMultiAgentChanges);
+        saveBtn.dataset.listenerAttached = 'true';
+    }
+    
+    if (refreshBtn && !refreshBtn.dataset.listenerAttached) {
+        refreshBtn.addEventListener('click', refreshMultiAgent);
+        refreshBtn.dataset.listenerAttached = 'true';
+    }
+    
+    if (backBtn && !backBtn.dataset.listenerAttached) {
+        backBtn.addEventListener('click', goBack);
+        backBtn.dataset.listenerAttached = 'true';
+    }
+    
+    console.log('Multi-Agent Launch page event listeners setup complete.');
+}
+
+// Load multi-agent details
+function loadMultiAgentDetails(multiAgentId) {
+    console.log(`Fetching details for multi-agent: ${multiAgentId}`);
+    fetch(`/api/multi-agents/${multiAgentId}`)
+        .then(response => {
+            console.log(`Response status for /api/multi-agents/${multiAgentId}:`, response.status);
+            if (!response.ok) throw new Error('Failed to load multi-agent details');
+            return response.json();
+        })
+        .then(multiAgent => {
+            console.log('Multi-agent details fetched:', multiAgent);
+            const nameInput = document.getElementById('multiAgentName');
+            const descTextarea = document.getElementById('multiAgentDescription');
+            const roleInput = document.getElementById('multiAgentRoleDisplay'); // Get display element
+            const goalTextarea = document.getElementById('multiAgentGoalDisplay'); // Get display element
+            const backstoryTextarea = document.getElementById('multiAgentBackstoryDisplay'); // Get display element
+            
+            if (nameInput) nameInput.value = multiAgent.name;
+            if (descTextarea) descTextarea.value = multiAgent.description;
+            // Populate the new display fields
+            if (roleInput) roleInput.value = multiAgent.role || 'Coordinator';
+            if (goalTextarea) goalTextarea.value = multiAgent.goal || 'Not specified';
+            if (backstoryTextarea) backstoryTextarea.value = multiAgent.backstory || 'Not specified';
+            
+            // Store the ID for later use
+            window.selectedMultiAgentId = multiAgentId;
+            
+            // Load the connected agents
+            console.log('Calling loadConnectedAgents with agent_ids:', multiAgent.agent_ids);
+            loadConnectedAgents(multiAgent.agent_ids);
+        })
+        .catch(error => {
+            console.error('Error loading multi-agent details:', error);
+            appendMultiAgentMessage('Error loading multi-agent details.', 'manager');
+            const agentListContainer = document.getElementById('connectedAgentsList');
+            if(agentListContainer) agentListContainer.innerHTML = `<div class="error-message">Error loading details: ${error.message}</div>`;
+        });
+}
+
+// Load connected agents
+function loadConnectedAgents(agentIds) {
+    console.log('Loading connected agents for IDs:', agentIds);
+    const connectedAgentsListContainer = document.getElementById('connectedAgentsList');
+    
+    if (!connectedAgentsListContainer) {
+        console.error("Connected agents list container (#connectedAgentsList) not found!");
+        return; 
+    }
+    
+    if (!agentIds || !agentIds.length) {
+         console.warn('No agent IDs provided for multi-agent.');
+        connectedAgentsListContainer.innerHTML = '<div class="empty-state">No agents connected</div>';
+        return;
+    }
+    
+    connectedAgentsListContainer.innerHTML = '<div class="loading-placeholder"><i class="fas fa-spinner fa-spin"></i> Loading agents...</div>';
+    
+    fetch('/api/agents') // Fetch all agents
+        .then(response => {
+            console.log('Response status for /api/agents:', response.status);
+            if (!response.ok) throw new Error('Failed to fetch agents list');
+            return response.json();
+        })
+        .then(allAgents => {
+            console.log('Fetched all agents:', allAgents);
+            // Filter agents based on IDs from the multi-agent config
+            const connectedAgents = allAgents.filter(agent => agent && agent.id && agentIds.includes(agent.id));
+            console.log('Filtered connected agents:', connectedAgents);
+            renderConnectedAgents(connectedAgents);
+        })
+        .catch(error => {
+            console.error('Error loading connected agents:', error);
+            connectedAgentsListContainer.innerHTML = 
+                `<div class="error-message">Failed to load connected agents: ${error.message}</div>`;
+        });
+}
+
+// Render the connected agents
+function renderConnectedAgents(agents) {
+    console.log('Rendering connected agents:', agents);
+    const connectedAgentsList = document.getElementById('connectedAgentsList');
+    const agentSelector = document.getElementById('activeAgentSelector');
+    
+     if (!connectedAgentsList) {
+         console.error("Connected agents list container (#connectedAgentsList) not found during render!");
+         return;
+     }
+     if (!agentSelector) {
+         console.error("Agent selector dropdown (#activeAgentSelector) not found during render!");
+         return;
+     }
+    
+    if (!agents || !agents.length) {
+        console.log('No connected agents to render.');
+        connectedAgentsList.innerHTML = '<div class="empty-state">No agents connected</div>';
+        return;
+    }
+    
+    // Generate HTML for connected agents
+    connectedAgentsList.innerHTML = agents.map(agent => {
+        // Basic check for agent data validity
+        const agentId = agent && agent.id ? agent.id : 'invalid-' + Math.random();
+        const agentName = agent && agent.name ? agent.name : 'Unnamed Agent';
+        const agentDesc = agent && agent.description ? agent.description : 'No description';
+        const agentModel = agent && agent.llmModel ? agent.llmModel : 'Unknown';
+        const agentProvider = agent && agent.llmProvider ? agent.llmProvider : 'Unknown';
+        
+        // Check if stringToGradient exists before calling
+        const iconColor = typeof stringToGradient === 'function' ? stringToGradient(agentName) : 'grey'; 
+        
+        return `
+            <div class="connected-agent-item" data-agent-id="${agentId}">
+                <div class="connected-agent-icon" style="background: ${iconColor}">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="connected-agent-details">
+                    <div class="connected-agent-name">${agentName}</div>
+                    <div class="connected-agent-desc">${agentDesc}</div>
+                    <div class="connected-agent-model">${agentModel} | ${agentProvider}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    console.log('Connected agents list updated in DOM.');
+    
+    // Also populate the agent selector dropdown
+    // First clear existing options except for the manager
+    while (agentSelector.options.length > 1) {
+        agentSelector.remove(1);
+    }
+    
+    // Add options for each agent
+    agents.forEach(agent => {
+        const option = document.createElement('option');
+        option.value = agent.id;
+        option.text = agent.name;
+        agentSelector.add(option);
+    });
+    console.log('Agent selector dropdown populated.');
+}
+
+// Handle sending messages in the multi-agent chat
+function handleMultiAgentSendMessage() {
+    const userInput = document.getElementById('multiAgentUserInput');
+    if (!userInput) return;
+    const message = userInput.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    appendMultiAgentMessage(message, 'user');
+    
+    // Clear the input
+    userInput.value = '';
+    userInput.style.height = 'auto';
+    
+    // Show "typing" indicator from the manager initially
+    showTypingIndicator('manager');
+    
+    const multiAgentId = window.selectedMultiAgentId;
+    if (!multiAgentId) {
+        hideTypingIndicator();
+        appendMultiAgentMessage('Error: No multi-agent selected', 'manager');
+        return;
+    }
+    
+    // Call the backend API
+    fetch('/api/multi_agent/infer', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            multi_agent_id: multiAgentId,
+            user_input: message
+        })
+    })
+    .then(response => {
+        hideTypingIndicator(); // Hide indicator once response starts coming
+        if (!response.ok) {
+            // Try to get error details from the response body
+            return response.json().then(err => { 
+                throw new Error(err.detail || `HTTP error! status: ${response.status}`); 
+            }).catch(() => { // Fallback if response body is not JSON or empty
+                throw new Error(`HTTP error! status: ${response.status}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Multi-agent API response:', data);
+        // Assuming the response has a structure like { response: "...", sender_agent_name: "..." } or similar
+        // Adjust parsing based on the actual API response format
+        const responseText = data.response || 'No response text received.';
+        const senderName = data.sender_agent_name || 'Manager Agent'; // Default to Manager if no specific agent name
+        
+        // Determine sender type based on name or default
+        const senderType = senderName === 'Manager Agent' ? 'manager' : 'agent'; 
+        
+        appendMultiAgentMessage(responseText, senderType, senderName);
+    })
+    .catch(error => {
+        hideTypingIndicator();
+        console.error('Error calling multi-agent infer API:', error);
+        appendMultiAgentMessage(`Error: ${error.message}`, 'manager');
+    });
+}
+
+// Append message to the multi-agent chat
+function appendMultiAgentMessage(message, sender, senderName = null) {
+    const chatContainer = document.getElementById('multiAgentChatContainer');
+     if (!chatContainer) {
+         console.error("Chat container (#multiAgentChatContainer) not found!");
+         return;
+     }
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+    
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = `message-avatar ${sender === 'user' ? 'user' : (sender === 'manager' ? 'manager' : 'agent')}`;
+    
+    const icon = document.createElement('i');
+    icon.className = sender === 'user' ? 'fas fa-user' : (sender === 'manager' ? 'fas fa-brain' : 'fas fa-robot');
+    avatarDiv.appendChild(icon);
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = `message-content ${sender}`;
+    
+    // Add header if sender is not user and there's a sender name
+    if (sender !== 'user' && senderName) {
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'message-header';
+        headerDiv.textContent = senderName;
+        contentDiv.appendChild(headerDiv);
+    }
+    
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.textContent = message;
+    contentDiv.appendChild(textDiv);
+    
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    chatContainer.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Show typing indicator
+function showTypingIndicator(sender, agentId = null) {
+    const chatContainer = document.getElementById('multiAgentChatContainer');
+    if (!chatContainer) {
+        console.error("Chat container not found when trying to show typing indicator.");
+        return;
+    }
+    
+    // Remove any existing typing indicators
+    document.querySelectorAll('.typing-indicator').forEach(el => el.remove());
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'chat-message typing-indicator';
+    
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = `message-avatar ${sender}`;
+    
+    const icon = document.createElement('i');
+    icon.className = sender === 'user' ? 'fas fa-user' : (sender === 'manager' ? 'fas fa-brain' : 'fas fa-robot');
+    avatarDiv.appendChild(icon);
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = `message-content ${sender}`;
+    
+    // Add header if there's an agent name
+    if (sender === 'agent' && agentId) {
+        const agentItems = document.querySelectorAll('.connected-agent-item');
+        let agentName = 'Agent';
+        
+        agentItems.forEach(item => {
+            if (item.dataset.agentId === agentId) {
+                agentName = item.querySelector('.connected-agent-name').textContent;
+            }
+        });
+        
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'message-header';
+        headerDiv.textContent = agentName;
+        contentDiv.appendChild(headerDiv);
+    } else if (sender === 'manager') {
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'message-header';
+        headerDiv.textContent = 'Manager Agent';
+        contentDiv.appendChild(headerDiv);
+    }
+    
+    const dots = document.createElement('div');
+    dots.className = 'typing-dots';
+    dots.innerHTML = '<span></span><span></span><span></span>';
+    contentDiv.appendChild(dots);
+    
+    typingDiv.appendChild(avatarDiv);
+    typingDiv.appendChild(contentDiv);
+    chatContainer.appendChild(typingDiv);
+    
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Hide typing indicator
+function hideTypingIndicator() {
+    document.querySelectorAll('.typing-indicator').forEach(el => el.remove());
+}
+
+// Toggle edit mode for multi-agent details
+function toggleMultiAgentEditMode() {
+    const editButton = document.getElementById('multiAgentEditButton');
+    const saveButton = document.getElementById('multiAgentSaveButton');
+    const fields = document.querySelectorAll('.launch-multi-agent .form-input, .launch-multi-agent .form-textarea');
+    
+    if (!editButton || !saveButton || !fields) return;
+    
+    if (editButton.classList.contains('active')) {
+        // Switch to view mode
+        editButton.classList.remove('active');
+        editButton.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        saveButton.style.display = 'none';
+        fields.forEach(field => {
+            field.readOnly = true;
+            field.classList.remove('editing');
+        });
+    } else {
+        // Switch to edit mode
+        editButton.classList.add('active');
+        editButton.innerHTML = '<i class="fas fa-times"></i> Cancel';
+        saveButton.style.display = 'inline-flex';
+        fields.forEach(field => {
+            field.readOnly = false;
+            field.classList.add('editing');
+        });
+    }
+}
+
+// Save multi-agent changes
+function saveMultiAgentChanges() {
+    const multiAgentId = window.selectedMultiAgentId;
+    if (!multiAgentId) {
+        alert('No multi-agent selected');
+        return;
+    }
+    
+    const nameInput = document.getElementById('multiAgentName');
+    const descTextarea = document.getElementById('multiAgentDescription');
+    
+    if (!nameInput || !descTextarea) return;
+    
+    const multiAgentData = {
+        name: nameInput.value,
+        description: descTextarea.value,
+        agent_ids: [] // Start with an empty array
+    };
+    
+    // Get the agent IDs from the connected agents list displayed on the page
+    const connectedAgents = document.querySelectorAll('.connected-agent-item');
+    multiAgentData.agent_ids = Array.from(connectedAgents).map(agent => agent.dataset.agentId);
+    
+    fetch(`/api/multi-agents/${multiAgentId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(multiAgentData)
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Failed to save changes');
+        return response.json();
+    })
+    .then(() => {
+        // Switch back to view mode
+        toggleMultiAgentEditMode();
+        
+        // Show success message
+        const toast = document.createElement('div');
+        toast.className = 'toast success';
+        toast.innerHTML = '<i class="fas fa-check-circle"></i> Changes saved successfully';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    })
+    .catch(error => {
+        console.error('Error saving changes:', error);
+        
+        // Show error message
+        const toast = document.createElement('div');
+        toast.className = 'toast error';
+        toast.innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to save changes';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    });
+}
+
+// Refresh the multi-agent page
+function refreshMultiAgent() {
+    const multiAgentId = window.selectedMultiAgentId;
+    if (multiAgentId) {
+        loadMultiAgentDetails(multiAgentId);
+        
+        // Add a refresh message to the chat
+        appendMultiAgentMessage('Multi-agent interface refreshed', 'manager', 'Manager Agent');
+    }
+}
+
+// Add CSS for typing indicator
+const typingStyle = document.createElement('style');
+typingStyle.textContent = `
+    .typing-dots {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 0;
+    }
+    
+    .typing-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: rgba(99, 179, 237, 0.6);
+        display: inline-block;
+        animation: typingAnimation 1.3s infinite ease-in-out;
+    }
+    
+    .typing-dots span:nth-child(1) {
+        animation-delay: 0s;
+    }
+    
+    .typing-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes typingAnimation {
+        0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.6;
+        }
+        30% {
+            transform: translateY(-5px);
+            opacity: 1;
+        }
+    }
+`;
+if (!document.getElementById('typing-indicator-styles')) {
+    typingStyle.id = 'typing-indicator-styles';
+    document.head.appendChild(typingStyle);
+}
+
+// --- End Multi-Agent Launch Page Functions ---
+
+
+
+
+
+
+
+function initializeChatFeatures() {
+    console.log('Initializing chat features...');
+
+    // Event delegation for the send message button
+    document.addEventListener('click', function(event) {
+        const sendButton = event.target.closest('[data-action="send-message"]');
+        if (sendButton) {
+            handleSendMessage();
+        }
+
+        // Handle file upload button click
+        const uploadButton = event.target.closest('[data-action="upload-file"]');
+        if (uploadButton) {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+            }
+        }
+
+        // Handle remove file button click
+        const removeFileButton = event.target.closest('.remove-file');
+        if (removeFileButton) {
+            removeFilePreview();
+        }
+    });
+
+    // Handle file selection
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                showFilePreview(file);
+            }
+        });
+    }
+
+    // Event listener for Enter key in chat input
+    document.addEventListener('keydown', function(event) {
+        if (event.target.id === 'userInput' && event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleSendMessage();
+        }
+    });
+
+    // Auto-resize textarea as user types
+    document.addEventListener('input', function(event) {
+        if (event.target.id === 'userInput') {
+            const textarea = event.target;
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+    });
+}
+
+// Function to handle sending messages
+function handleSendMessage() {
+    console.log('Send button clicked!');
+    const chatInput = document.getElementById('userInput');
+    const fileInput = document.getElementById('fileInput');
+    const chatContainer = document.getElementById('chatContainer');
+    
+    if (!chatInput || !chatContainer) {
+        console.error('Required chat elements not found!');
+        return;
+    }
+
+    const userInput = chatInput.value.trim();
+    if (!userInput) {
+        console.log('Empty input, not sending.');
+        return;
+    }
+
+    if (!selectedAgentId) {
+        console.error('No agent ID found');
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'Could not identify the agent',
+                details: 'Please go back and select an agent.'
+            }
+        }, 'agent');
+        return;
+    }
+
+    console.log('Agent ID:', selectedAgentId);
+
+    // Add user message to chat
+    appendMessage({
+        type: 'text',
+        content: {
+            text: userInput
+        }
+    }, 'user');
+    
+    // Clear input
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+
+    // Check if a file is selected
+    const file = fileInput && fileInput.files.length > 0 ? fileInput.files[0] : null;
+
+    // Show loading message
+    showLoading("Agent is processing the request...");
+
+    // Prepare FormData for the request
+    const formData = new FormData();
+    formData.append('agentId', selectedAgentId);
+    formData.append('userInput', userInput);
+    if (file) {
+        formData.append('file', file);
+        console.log('File attached:', file.name);
+    }
+
+    clearFileSelection();
+
+
+    // Send to backend
+    fetch('/api/agent/infer', {
+        method: 'POST',
+        body: formData // Use FormData instead of JSON.stringify
+        // Note: Do not set 'Content-Type' header manually; let the browser set it to multipart/form-data with the correct boundary
+    })
+    .then(response => {
+        hideLoading();
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        hideLoading();
+        console.log('Response received:', data);
+        appendMessage(data, 'agent');
+        
+        // Clear file input after successful submission
+        if (file && fileInput) {
+            fileInput.value = '';
+            removeFilePreview();
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'Error processing request',
+                details: error.message
+            }
+        }, 'agent');
+    });
+}
+
+// Function to handle file upload
+function handleFileUpload(file) {
+    console.log('File selected:', file.name);
+    
+    // Check file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'File too large',
+                details: 'Maximum file size is 10MB'
+            }
+        }, 'agent');
+        removeFilePreview();
+        return;
+    }
+
+    // Create FormData object
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('agentId', selectedAgentId);
+
+    // Show loading message
+    appendMessage({
+        type: 'text',
+        content: {
+            text: `Uploading file: ${file.name}...`
+        }
+    }, 'agent');
+
+    // Send file to backend
+    fetch('/api/agent/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Upload response:', data);
+        appendMessage(data, 'agent');
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        appendMessage({
+            type: 'error',
+            content: {
+                message: 'File upload failed',
+                details: error.message
+            }
+        }, 'agent');
+    })
+    .finally(() => {
+        removeFilePreview();
+    });
+}
+
+// Function to show file preview
+function showFilePreview(file) {
+    const previewContainer = document.getElementById('filePreview');
+    const imagePreview = document.getElementById('imagePreview');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = fileInfo.querySelector('.file-name');
+    const fileSize = fileInfo.querySelector('.file-size');
+
+    // Show preview container
+    previewContainer.style.display = 'block';
+
+    // Set file name
+    fileName.textContent = file.name;
+
+    // Set file size
+    const size = formatFileSize(file.size);
+    fileSize.textContent = size;
+
+    // Handle image preview
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        imagePreview.style.display = 'none';
+    }
+}
+
+// Function to remove file preview
+function removeFilePreview() {
+    const previewContainer = document.getElementById('filePreview');
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+
+    previewContainer.style.display = 'none';
+    imagePreview.src = '';
+    fileInput.value = '';
+}
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Helper function to append messages to the chat
+function appendMessage(messageData, sender) {
+    const chatContainer = document.getElementById('chatContainer');
+    if (!chatContainer) return;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = `message-avatar ${sender}`;
+    const icon = document.createElement('i');
+    icon.className = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
+    avatarDiv.appendChild(icon);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = `message-content ${sender}`;
+
+    // Handle different message types
+    switch (messageData.type) {
+        case 'text':
+            contentDiv.textContent = messageData.content.text;
+            break;
+        case 'error':
+            contentDiv.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div class="error-content">
+                        <div class="error-title">${messageData.content.message}</div>
+                        ${messageData.content.details ? `<div class="error-details">${messageData.content.details}</div>` : ''}
+                    </div>
+                </div>
+            `;
+            break;
+        case 'table':
+            contentDiv.innerHTML = createTableHTML(messageData.content);
+            break;
+        case 'chart':
+            contentDiv.innerHTML = createChartHTML(messageData.content);
+            break;
+        case 'code':
+            contentDiv.innerHTML = `
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-language">${messageData.content.language}</span>
+                        <button class="copy-code" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <pre><code class="language-${messageData.content.language}">${messageData.content.code}</code></pre>
+                </div>
+            `;
+            break;
+        case 'list':
+            contentDiv.innerHTML = `
+                <ul class="message-list">
+                    ${messageData.content.items.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+            `;
+            break;
+        default:
+            contentDiv.textContent = JSON.stringify(messageData.content);
+    }
+
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    chatContainer.appendChild(messageDiv);
+
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }

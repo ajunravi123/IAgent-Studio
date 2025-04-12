@@ -42,6 +42,21 @@
                         <p class="form-help">This will be used as the instructions for the manager agent that coordinates the connected agents.</p>
                     </div>
                     <div class="form-group">
+                        <label for="multiAgentRole">Role</label>
+                        <input type="text" id="multiAgentRole" name="role" placeholder="e.g., Project Manager, Research Lead (optional)">
+                        <p class="form-help">Define the primary role of this orchestration.</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="multiAgentGoal">Goal</label>
+                        <textarea id="multiAgentGoal" name="goal" rows="2" placeholder="e.g., Analyze market trends and generate a report (optional)"></textarea>
+                        <p class="form-help">What is the main objective of this multi-agent setup?</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="multiAgentBackstory">Backstory</label>
+                        <textarea id="multiAgentBackstory" name="backstory" rows="3" placeholder="Provide context or background for the orchestration (optional)"></textarea>
+                        <p class="form-help">Give the manager agent some context for its coordination tasks.</p>
+                    </div>
+                    <div class="form-group">
                         <label>Connected Agents</label>
                         <div class="agents-selection-container">
                             <div id="agentSelectionList" class="agent-selection-list">

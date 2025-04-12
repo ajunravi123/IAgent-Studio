@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Optional, List, Union, Any
 import json
 import os
@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
 from task_executor import TaskExecutor
+from multi_agent_executor import MultiAgentExecutor
+from langchain.tools import Tool # If tools are needed for manager/agents
 
 
 
@@ -593,30 +595,23 @@ async def agent_infer(
                         tool_config["auth"] = json.load(f)
                 tools_config.append(tool_config)
 
-        # Pass the agent configuration, tools, and file path to TaskExecutor
-        agent_configs = [
-            {
-                "role": agent["role"],
-                "goal": agent["goal"],
-                "backstory": agent["backstory"],
-                "llm_provider": agent["llmProvider"].lower(),
-                "llm_model": agent["llmModel"],
-                "api_key": API_KEYS.get(agent["llmProvider"].lower(), agent["apiKey"]),
-                "tools": tools_config
-            }
-        ]
+        # Pass the single agent configuration dict and tools_config list to TaskExecutor
+        agent_config_dict = {
+            "role": agent["role"],
+            "goal": agent["goal"],
+            "backstory": agent["backstory"],
+            "instructions": agent["instructions"] # Pass instructions here
+        }
+        
+        # Instantiate the single-agent executor
+        executor = TaskExecutor(agent_config=agent_config_dict, tools_config=tools_config)
 
-        executor = TaskExecutor(agent_configs=agent_configs)
-
-        if userInput:
-            agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
-
-        # Execute the task, passing the file path if a file was uploaded
+        # Execute the task using the original TaskExecutor logic
         result = executor.execute_task(
-            description=agent["instructions"],
+            description=agent["instructions"], # Base instructions
             expected_output=agent["expectedOutput"],
             task_name=agent["name"],
-            input=userInput,
+            input=userInput, # Pass user input as kwarg
             file_path=file_path if file_info else None
         )
         print(result)
@@ -636,135 +631,112 @@ async def agent_infer(
 
 
 
+class MultiAgentInferenceRequest(BaseModel):
+    multi_agent_id: str
+    user_input: str
+    # Add file handling if needed later
+
 @app.post("/api/multi_agent/infer")
-async def multi_agent_infer(
-    agentId: str = Form(...),
-    userInput: str = Form(...),
-    file: Optional[UploadFile] = File(None)
-):
+async def multi_agent_infer(request: MultiAgentInferenceRequest):
     try:
-        # Load all agents
-        agents = load_agents()
-        primary_agent = next((a for a in agents if a["id"] == agentId), None)
+        multi_agent_id = request.multi_agent_id
+        user_input = request.user_input
         
-        if not primary_agent:
-            return MessageResponse(
-                type="error",
-                content=ErrorData(message="Agent not found", details=f"No agent found with ID: {agentId}")
-            )
+        print(f"Received multi-agent infer request for ID: {multi_agent_id}")
+        print(f"User input: {user_input}")
 
-        # Handle file upload if present
-        file_info = None
-        file_path = None
-        if file:
-            contents = await file.read()
-            file_size = len(contents)
-            if file_size > 10 * 1024 * 1024:  # 10MB limit
-                return MessageResponse(
-                    type="error",
-                    content=ErrorData(message="File too large", details="Maximum file size is 10MB")
-                )
+        # Load multi-agent configuration
+        multi_agents = load_multi_agents()
+        multi_agent_config = next((ma for ma in multi_agents if ma["id"] == multi_agent_id), None)
+        
+        if not multi_agent_config:
+            raise HTTPException(status_code=404, detail=f"Multi-Agent not found: {multi_agent_id}")
+            
+        # Ensure defaults are present
+        multi_agent_config.setdefault("role", "Coordinator")
+        multi_agent_config.setdefault("goal", "Efficiently manage and delegate tasks.")
+        multi_agent_config.setdefault("backstory", "Orchestrator for connected agents.")
+        multi_agent_config.setdefault("description", "Process the user request using available agents.")
+        
+        # Load configurations for connected agents
+        all_agents = load_agents()
+        connected_agent_ids = multi_agent_config.get("agent_ids", [])
+        worker_agent_configs = [] # Renamed for clarity
+        
+        for agent_id in connected_agent_ids:
+            agent_data = next((a for a in all_agents if a["id"] == agent_id), None)
+            if agent_data:
+                # Load full tool configurations for this specific worker agent
+                worker_tools_config = []
+                for tool_id in agent_data.get("tools", []):
+                    schema_path = f"tool_schemas/{tool_id}.json"
+                    auth_path = f"tool_auth/{tool_id}.json"
+                    if os.path.exists(schema_path):
+                        tool_cfg = {"id": tool_id}
+                        try:
+                            with open(schema_path, 'r') as f:
+                                tool_cfg["schema"] = json.load(f)
+                        except json.JSONDecodeError:
+                             print(f"Warning: Invalid JSON in schema file {schema_path} for agent {agent_id}")
+                             continue # Skip malformed schema
+                             
+                        if os.path.exists(auth_path):
+                            try:
+                                with open(auth_path, 'r') as f:
+                                    tool_cfg["auth"] = json.load(f)
+                            except json.JSONDecodeError:
+                                print(f"Warning: Invalid JSON in auth file {auth_path} for agent {agent_id}")
+                                # Assign None or empty dict if auth is optional but file invalid
+                                tool_cfg["auth"] = None 
+                        worker_tools_config.append(tool_cfg)
+                    else:
+                         print(f"Warning: Schema file not found for tool {tool_id} referenced by agent {agent_id}")
 
-            if file.content_type not in ALLOWED_FILE_TYPES:
-                return MessageResponse(
-                    type="error",
-                    content=ErrorData(
-                        message="Unsupported file type",
-                        details=f"Only CSV, JSON, TXT, PDF, and image (JPEG, PNG, GIF) files are supported. Got: {file.content_type}"
-                    )
-                )
+                # Prepare the config dict for the worker agent, including tools
+                worker_config = {
+                    "id": agent_data["id"],
+                    "role": agent_data["role"],
+                    "goal": agent_data["goal"],
+                    "backstory": agent_data["backstory"],
+                    "instructions": agent_data["instructions"],
+                    "expectedOutput": agent_data["expectedOutput"],
+                    "tools": worker_tools_config # Pass the loaded tool configs
+                }
+                worker_agent_configs.append(worker_config)
+            else:
+                print(f"Warning: Agent with ID {agent_id} not found, skipping.")
+        
+        if not worker_agent_configs:
+             raise HTTPException(status_code=400, detail="No valid connected agents found.")
 
-            file_extension = os.path.splitext(file.filename)[1]
-            unique_filename = f"{uuid.uuid4()}{file_extension}"
-            file_path = UPLOAD_DIR / unique_filename
-            with open(file_path, "wb") as buffer:
-                buffer.write(contents)
-            file_info = {
-                "original_name": file.filename,
-                "saved_name": unique_filename,
-                "size": file_size,
-                "type": file.content_type,
-                "path": str(file_path),
-                "uploaded_at": datetime.now().isoformat()
-            }
-            print(f"File saved: {file_path}")
+        # Instantiate the MultiAgentExecutor
+        executor = MultiAgentExecutor(
+            multi_agent_config=multi_agent_config,
+            worker_agent_configs=worker_agent_configs
+        )
 
-        # Get API keys
-        API_KEYS = {
-            "gemini": os.getenv("GEMINI_API_KEY"),
-            "openai": os.getenv("OPENAI_API_KEY"),
-            "groq": os.getenv("GROQ_API_KEY"),
+        # Execute the multi-agent task
+        # Pass user_input and potentially file_path if MultiAgentExecutor handles it
+        result = executor.execute_task(
+            user_input=user_input,
+            # file_path=None # Add file path if needed
+        )
+
+        # Format the response
+        response_content = {
+            "response": str(result),
+            "sender_agent_name": "Manager Agent" # Orchestration result attributed to the manager
         }
 
-        # Load tool configurations for the primary agent
-        tools_config = []
-        for tool_id in primary_agent.get("tools", []):
-            schema_path = f"tool_schemas/{tool_id}.json"
-            auth_path = f"tool_auth/{tool_id}.json"
-            if os.path.exists(schema_path):
-                tool_config = {"id": tool_id}
-                with open(schema_path, 'r') as f:
-                    tool_config["schema"] = json.load(f)
-                if os.path.exists(auth_path):
-                    with open(auth_path, 'r') as f:
-                        tool_config["auth"] = json.load(f)
-                tools_config.append(tool_config)
-
-        # Prepare agent configurations for multi-agent orchestration
-        agent_configs = [
-            {
-                "id": primary_agent["id"],
-                "role": primary_agent["role"],
-                "goal": primary_agent["goal"],
-                "backstory": primary_agent["backstory"],
-                "llm_provider": primary_agent["llmProvider"].lower(),
-                "llm_model": primary_agent["llmModel"],
-                "api_key": API_KEYS.get(primary_agent["llmProvider"].lower(), primary_agent["apiKey"]),
-                "tools": tools_config
-            }
-        ]
-
-        # Optionally add more agents dynamically based on task complexity (example logic)
-        # For simplicity, you can hardcode additional agents or fetch from `agents` based on some criteria
-        if "complex_task" in userInput.lower():  # Example condition
-            analyst_agent = next((a for a in agents if a["role"] == "Analyst"), None)
-            if analyst_agent:
-                agent_configs.append({
-                    "id": analyst_agent["id"],
-                    "role": analyst_agent["role"],
-                    "goal": analyst_agent["goal"],
-                    "backstory": analyst_agent["backstory"],
-                    "llm_provider": analyst_agent["llmProvider"].lower(),
-                    "llm_model": analyst_agent["llmModel"],
-                    "api_key": API_KEYS.get(analyst_agent["llmProvider"].lower(), analyst_agent["apiKey"]),
-                    "tools": []  # Add tools if needed
-                })
-
-        # Initialize TaskExecutor with multiple agents
-        executor = TaskExecutor(agent_configs=agent_configs)
-
-        if userInput:
-            primary_agent["instructions"] = check_in_sentence(primary_agent["instructions"], "{{input}}")
-
-        # Execute the task with multi-agent orchestration
-        result = executor.execute_task(
-            description=primary_agent["instructions"],
-            expected_output=primary_agent["expectedOutput"],
-            task_name=primary_agent["name"],
-            input=userInput,
-            file_path=file_path if file_info else None
-        )
-        print(result)
-
-        return MessageResponse(type="text", content=TextData(text=result))
+        return response_content # Return the JSON directly
         
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        return MessageResponse(
-            type="error",
-            content=ErrorData(message="Error processing request", details=str(e))
-        )
-    
-
+        print(f"Error in multi_agent_infer: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 def check_in_sentence(sentence="", input_to_check="{{input}}"):
     """
@@ -863,6 +835,9 @@ class MultiAgentCreate(BaseModel):
     name: str
     description: str
     agent_ids: List[str]
+    role: Optional[str] = "Coordinator"
+    goal: Optional[str] = "Efficiently manage and delegate tasks to connected agents based on user requests."
+    backstory: Optional[str] = "I am a manager agent responsible for orchestrating multiple specialized agents to achieve complex goals."
 
 class MultiAgent(MultiAgentCreate):
     id: str
@@ -874,9 +849,11 @@ async def get_multi_agents():
 @app.post("/api/multi-agents")
 async def create_multi_agent(multi_agent: MultiAgentCreate):
     multi_agents = load_multi_agents()
+    # Ensure default values are included if not provided
+    agent_data = multi_agent.dict(exclude_unset=False)
     new_multi_agent = MultiAgent(
         id=str(uuid.uuid4()),
-        **multi_agent.dict()
+        **agent_data
     )
     multi_agents.append(new_multi_agent.dict())
     save_multi_agents(multi_agents)
@@ -887,6 +864,10 @@ async def get_multi_agent(multi_agent_id: str):
     multi_agents = load_multi_agents()
     for ma in multi_agents:
         if ma["id"] == multi_agent_id:
+            # Ensure defaults are present for older entries
+            ma.setdefault("role", "Coordinator")
+            ma.setdefault("goal", "Efficiently manage and delegate tasks.")
+            ma.setdefault("backstory", "Orchestrator for connected agents.")
             return ma
     raise HTTPException(status_code=404, detail="Multi-Agent not found")
 
@@ -895,9 +876,11 @@ async def update_multi_agent(multi_agent_id: str, updated_multi_agent: MultiAgen
     multi_agents = load_multi_agents()
     for i, ma in enumerate(multi_agents):
         if ma["id"] == multi_agent_id:
+            # Merge update, keeping the ID and ensuring defaults are included
+            updated_data = updated_multi_agent.dict(exclude_unset=False)
             multi_agents[i] = {
                 "id": multi_agent_id,
-                **updated_multi_agent.dict()
+                **updated_data
             }
             save_multi_agents(multi_agents)
             return multi_agents[i]

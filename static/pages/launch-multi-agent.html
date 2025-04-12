@@ -1,0 +1,317 @@
+<!-- Launch Multi-Agent Page -->
+<link rel="stylesheet" href="/static/css/light-theme.css">
+<div class="page launch-multi-agent">
+    <div class="page-header">
+        <div class="header-left">
+            <button class="btn-back" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1>Multi-Agent Orchestration</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" onclick="refreshMultiAgent()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <a href="#" class="agent-api-link" title="API support is coming soon">
+                <i class="fas fa-code"></i> API
+            </a>
+            <button id="themeToggle" class="theme-toggle" title="Toggle Theme">
+                <i class="fas fa-moon dark-icon"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="launch-agent-window">
+        <!-- Left side: Multi-Agent Configuration -->
+        <div class="agent-config-section">
+            <div class="form-actions">
+                <button class="btn-edit" onclick="toggleMultiAgentEditMode()" id="multiAgentEditButton">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn-save" onclick="saveMultiAgentChanges()" id="multiAgentSaveButton" style="display: none;">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Name
+                    <i class="fas fa-info-circle" title="Multi-Agent name"></i>
+                </label>
+                <input type="text" id="multiAgentName" class="form-input" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Description
+                    <i class="fas fa-info-circle" title="Multi-Agent description"></i>
+                </label>
+                <textarea id="multiAgentDescription" class="form-textarea" readonly></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Role
+                    <i class="fas fa-info-circle" title="Multi-Agent role"></i>
+                </label>
+                <input type="text" id="multiAgentRoleDisplay" class="form-input" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Goal
+                    <i class="fas fa-info-circle" title="Multi-Agent goal"></i>
+                </label>
+                <textarea id="multiAgentGoalDisplay" class="form-textarea" readonly></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Backstory
+                    <i class="fas fa-info-circle" title="Multi-Agent backstory"></i>
+                </label>
+                <textarea id="multiAgentBackstoryDisplay" class="form-textarea" readonly></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Connected Agents
+                    <i class="fas fa-info-circle" title="Agents connected to this orchestration"></i>
+                </label>
+                <div class="connected-agents-list" id="connectedAgentsList">
+                    <!-- Connected agents will be loaded dynamically -->
+                    <div class="loading-placeholder">
+                        <i class="fas fa-spinner fa-spin"></i> Loading agents...
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Orchestration Settings
+                    <i class="fas fa-info-circle" title="Settings for the multi-agent orchestration"></i>
+                </label>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="verboseLogging" class="toggle-label">
+                            <span>Verbose Logging</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="verboseLogging">
+                                <span class="slider round"></span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label for="autoAgentSelection" class="toggle-label">
+                            <span>Auto Agent Selection</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="autoAgentSelection" checked>
+                                <span class="slider round"></span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right side: Test Inference -->
+        <div class="test-inference-section">
+            <div class="test-inference-header">
+                <h2>Multi-Agent Chat</h2>
+                <div class="agent-selector">
+                    <select id="activeAgentSelector">
+                        <option value="manager">Manager (Orchestrator)</option>
+                        <!-- Other agents will be added dynamically -->
+                    </select>
+                </div>
+            </div>
+            <div class="test-inference-content">
+                <div class="chat-container" id="multiAgentChatContainer">
+                    <!-- Chat messages will be populated by JavaScript -->
+                    <div class="chat-message">
+                        <div class="message-avatar manager">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="message-content agent">
+                            <div class="message-header">Manager Agent</div>
+                            <div class="message-text">Welcome to the Multi-Agent Orchestration interface. I'll coordinate between different specialized agents to solve your task. How can we help you today?</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="multi_preview_box">
+                    <div id="multi_my_file">No file selected</div>
+                    <div id="multi_clear_selected_file" title="clear_selected_file" style="display: none;">X</div>
+                </div>
+                <div class="chat-input-container">
+                    <textarea id="multiAgentUserInput" class="chat-input" placeholder="Type your input here" rows="1"></textarea>
+                    <div class="chat-input-actions">
+                        <input type="file" id="multiAgentFileInput" style="display: none" accept=".txt,.pdf,.doc,.docx,.csv,.json,.png,.jpg,.jpeg,.gif">
+                        <button class="chat-input-action" title="Upload file" data-action="upload-file">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <button class="chat-input-action send" data-action="send-message" title="Send message">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="keyboard-shortcut">Press <span>Enter ↵</span> to send</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .launch-multi-agent .agent-selector {
+        margin-left: 20px;
+    }
+    
+    .launch-multi-agent .agent-selector select {
+        background-color: rgba(47, 73, 128, 0.5);
+        color: #fff;
+        border: 1px solid rgba(99, 179, 237, 0.4);
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 14px;
+        min-width: 200px;
+    }
+    
+    .launch-multi-agent .message-avatar.manager {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    }
+    
+    .launch-multi-agent .connected-agents-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .launch-multi-agent .connected-agent-item {
+        display: flex;
+        align-items: center;
+        background: rgba(30, 41, 59, 0.4);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(99, 179, 237, 0.2);
+    }
+    
+    .launch-multi-agent .connected-agent-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+    }
+    
+    .launch-multi-agent .connected-agent-details {
+        flex: 1;
+    }
+    
+    .launch-multi-agent .connected-agent-name {
+        font-weight: 500;
+        font-size: 14px;
+        margin-bottom: 2px;
+    }
+    
+    .launch-multi-agent .connected-agent-desc {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .launch-multi-agent .connected-agent-model {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-top: 4px;
+    }
+    
+    .launch-multi-agent .settings-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .launch-multi-agent .setting-item {
+        background: rgba(30, 41, 59, 0.4);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(99, 179, 237, 0.2);
+    }
+    
+    .launch-multi-agent .toggle-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+    }
+    
+    .launch-multi-agent .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 24px;
+    }
+    
+    .launch-multi-agent .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .launch-multi-agent .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(100, 116, 139, 0.5);
+        transition: .4s;
+    }
+    
+    .launch-multi-agent .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+    }
+    
+    .launch-multi-agent .toggle-switch input:checked + .slider {
+        background-color: rgba(99, 179, 237, 0.8);
+    }
+    
+    .launch-multi-agent .toggle-switch input:checked + .slider:before {
+        transform: translateX(22px);
+    }
+    
+    .launch-multi-agent .slider.round {
+        border-radius: 24px;
+    }
+    
+    .launch-multi-agent .slider.round:before {
+        border-radius: 50%;
+    }
+    
+    .launch-multi-agent .message-header {
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(99, 179, 237, 1);
+        margin-bottom: 4px;
+    }
+    
+    body.light-theme .launch-multi-agent .message-header {
+        color: rgba(49, 130, 206, 1);
+    }
+    
+    .launch-multi-agent .message-text {
+        font-size: 14px;
+    }
+</style> 
