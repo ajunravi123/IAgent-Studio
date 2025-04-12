@@ -3582,7 +3582,8 @@ function setupMultiAgentLaunchPageEventListeners() {
     }
 
     if (editBtn && !editBtn.dataset.listenerAttached) {
-        editBtn.addEventListener('click', toggleMultiAgentEditMode);
+        // Change the event listener to call the new popup function
+        editBtn.addEventListener('click', openMultiAgentEditPopup); 
         editBtn.dataset.listenerAttached = 'true';
     }
     
@@ -3685,16 +3686,16 @@ function loadConnectedAgents(agentIds) {
 function renderConnectedAgents(agents) {
     console.log('Rendering connected agents:', agents);
     const connectedAgentsList = document.getElementById('connectedAgentsList');
-    const agentSelector = document.getElementById('activeAgentSelector');
+    // const agentSelector = document.getElementById('activeAgentSelector');
     
      if (!connectedAgentsList) {
          console.error("Connected agents list container (#connectedAgentsList) not found during render!");
          return;
      }
-     if (!agentSelector) {
-         console.error("Agent selector dropdown (#activeAgentSelector) not found during render!");
-         return;
-     }
+    //  if (!agentSelector) {
+    //      console.error("Agent selector dropdown (#activeAgentSelector) not found during render!");
+    //      return;
+    //  }
     
     if (!agents || !agents.length) {
         console.log('No connected agents to render.');
@@ -3731,18 +3732,18 @@ function renderConnectedAgents(agents) {
     
     // Also populate the agent selector dropdown
     // First clear existing options except for the manager
-    while (agentSelector.options.length > 1) {
-        agentSelector.remove(1);
-    }
+    // while (agentSelector.options.length > 1) {
+    //     agentSelector.remove(1);
+    // }
     
     // Add options for each agent
-    agents.forEach(agent => {
-        const option = document.createElement('option');
-        option.value = agent.id;
-        option.text = agent.name;
-        agentSelector.add(option);
-    });
-    console.log('Agent selector dropdown populated.');
+    // agents.forEach(agent => {
+    //     const option = document.createElement('option');
+    //     option.value = agent.id;
+    //     option.text = agent.name;
+    //     agentSelector.add(option);
+    // });
+    // console.log('Agent selector dropdown populated.');
 }
 
 // Handle sending messages in the multi-agent chat
@@ -3982,6 +3983,7 @@ function saveMultiAgentChanges() {
     })
     .then(() => {
         // Switch back to view mode
+        debugger;
         toggleMultiAgentEditMode();
         
         // Show success message
@@ -3989,6 +3991,7 @@ function saveMultiAgentChanges() {
         toast.className = 'toast success';
         toast.innerHTML = '<i class="fas fa-check-circle"></i> Changes saved successfully';
         document.body.appendChild(toast);
+
         setTimeout(() => toast.remove(), 3000);
     })
     .catch(error => {
@@ -4405,3 +4408,144 @@ function appendMessage(messageData, sender) {
     // Scroll to bottom
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
+
+// Function to open the multi-agent edit popup
+function openMultiAgentEditPopup() {
+    const multiAgentId = window.selectedMultiAgentId;
+    if (!multiAgentId) {
+        console.error('No multi-agent selected to edit.');
+        alert('Please select a multi-agent first.');
+        return;
+    }
+
+    console.log(`Opening edit popup for multi-agent ID: ${multiAgentId}`);
+
+    // Fetch current multi-agent data
+    fetch(`/api/multi-agents/${multiAgentId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(multiAgentData => {
+            // Assume a modal with ID 'multiAgentEditModal' exists
+            const modal = document.getElementById('multiAgentEditModal');
+            const nameInput = document.getElementById('editMultiAgentName');
+            const descTextarea = document.getElementById('editMultiAgentDescription');
+            // TODO: Add logic to populate agent selection/list in the modal
+            // const agentListContainer = document.getElementById('editMultiAgentAgents');
+
+            // if (!modal || !nameInput || !descTextarea /* || !agentListContainer */) {
+            //     console.error('Edit modal or its elements not found!');
+            //     alert('Edit functionality is not properly configured.');
+            //     return;
+            // }
+
+            
+
+            // Populate modal fields
+            // nameInput.value = multiAgentData.name || '';
+            // descTextarea.value = multiAgentData.description || '';
+            // TODO: Populate agent list based on multiAgentData.agent_ids
+
+            // Store the ID for saving
+            // modal.dataset.editingId = multiAgentId;
+
+            // Show the modal (assuming a function or class controls visibility)
+            // modal.style.display = 'block'; // Or modal.classList.add('show');
+            // TODO: Add logic to handle agent selection population
+
+            // Attach save handler to the modal's save button (assuming ID 'editMultiAgentSaveChangesButton')
+             const saveChangesButton = document.getElementById('editMultiAgentSaveChangesButton');
+             if (saveChangesButton) {
+                 // Remove previous listener to avoid duplicates
+                 saveChangesButton.replaceWith(saveChangesButton.cloneNode(true));
+                 document.getElementById('editMultiAgentSaveChangesButton').addEventListener('click', handleMultiAgentEditSave);
+             }
+
+
+             // Attach close handler (assuming a close button with class 'close-modal')
+            //  const closeButton = modal.querySelector('.close-modal');
+            //   if (closeButton) {
+            //       closeButton.onclick = () => {
+            //           modal.style.display = 'none'; // Or modal.classList.remove('show');
+            //       };
+            //   }
+        })
+        .catch(error => {
+            console.error('Error fetching multi-agent details for edit:', error);
+            alert('Failed to load multi-agent details for editing.');
+        });
+}
+
+// Function to handle saving changes from the edit modal
+function handleMultiAgentEditSave() {
+    const modal = document.getElementById('multiAgentEditModal');
+    const multiAgentId = modal.dataset.editingId;
+    const nameInput = document.getElementById('editMultiAgentName');
+    const descTextarea = document.getElementById('editMultiAgentDescription');
+     // TODO: Get selected agent IDs from the modal's agent selection element
+
+    if (!multiAgentId || !nameInput || !descTextarea) {
+        console.error('Cannot save, missing data or elements.');
+        alert('Could not save changes. Required information is missing.');
+        return;
+    }
+
+    const updatedData = {
+        name: nameInput.value,
+        description: descTextarea.value,
+        agent_ids: [] // TODO: Populate with selected agent IDs from the modal
+    };
+
+    console.log(`Saving changes for multi-agent ID: ${multiAgentId}`, updatedData);
+
+    fetch(`/api/multi-agents/${multiAgentId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedData)
+    })
+    .then(response => {
+        if (!response.ok) {
+             return response.json().then(err => { throw new Error(err.detail || 'Failed to save changes') });
+        }
+        return response.json();
+    })
+    .then(() => {
+        console.log('Multi-agent changes saved successfully.');
+        modal.style.display = 'none'; // Close modal
+         // Optionally show a success toast
+        showToast('Changes saved successfully', 'success');
+
+        // Refresh the multi-agent details on the main page
+        loadMultiAgentDetails(multiAgentId);
+
+         // Also refresh the multi-agent list in the sidebar
+        // loadMultiAgents(); // Assuming this function exists and is needed
+    })
+    .catch(error => {
+        console.error('Error saving multi-agent changes:', error);
+        alert(`Failed to save changes: ${error.message}`);
+         // Optionally show an error toast
+         showToast(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Simple Toast Notification Function (Example)
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`; // Assumes CSS for .toast and .success/.error/.info
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000); // Remove after 3 seconds
+}
+
+// TODO: Ensure the event listener for 'multiAgentEditButton' calls openMultiAgentEditPopup()
+// This might be in loadMultiAgentDetails or an initialization function. Example:
+// const editButton = document.getElementById('multiAgentEditButton');
+// if (editButton) {
+//    editButton.onclick = openMultiAgentEditPopup;
+// }
