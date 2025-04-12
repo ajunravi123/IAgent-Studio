@@ -151,78 +151,134 @@ let selectedAgentId = null;
 let selectedTools = new Set();
 
 function loadAgents() {
-    fetch('/api/agents')
+    // First get multi-agent configurations to check for agent usage
+    fetch('/api/multi-agents')
         .then(response => response.json())
-        .then(agents => {
-            const agentsContent = document.querySelector('.agents-content');
-            if (agents.length === 0) {
-                agentsContent.innerHTML = `
-                    <div class="empty-state">
-                        <img src="/static/images/ufo-illustration.svg" alt="No agents found" class="empty-illustration">
-                        <h2>No Agents found</h2>
-                        <button class="btn-primary" onclick="createNewAgent()">
-                            + Create new
-                        </button>
-                    </div>
-                `;
-            } else {
-                agentsContent.innerHTML = agents.map(agent => `
-                    <div class="agent-card">
-                        <div class="agent-card-header">
-                            <div class="agent-info">
-                                <div class="agent-icon">
-                                    <i class="fas fa-robot"></i>
-                                </div>
-                                <div class="agent-details">
-                                    <h3>${agent.name}</h3>
-                                    <p>${agent.description}</p>
-                                </div>
-                            </div>
-                            <div class="agent-actions">
-                                <button class="btn-more" onclick="showAgentMenu(event, '${agent.id}')">
-                                    <i class="fas fa-ellipsis-v"></i>
+        .then(multiAgents => {
+            // Create a set of agent IDs that are used in multi-agent configurations
+            const usedInMultiAgents = new Set();
+            multiAgents.forEach(ma => {
+                if (ma.agent_ids && Array.isArray(ma.agent_ids)) {
+                    ma.agent_ids.forEach(id => usedInMultiAgents.add(id));
+                }
+            });
+            
+            // Now fetch the agents and mark those that are used in multi-agents
+            return fetch('/api/agents')
+                .then(response => response.json())
+                .then(agents => {
+                    const agentsContent = document.querySelector('.agents-content');
+                    if (agents.length === 0) {
+                        agentsContent.innerHTML = `
+                            <div class="empty-state">
+                                <img src="/static/images/ufo-illustration.svg" alt="No agents found" class="empty-illustration">
+                                <h2>No Agents found</h2>
+                                <button class="btn-primary" onclick="createNewAgent()">
+                                    + Create new
                                 </button>
                             </div>
-                        </div>
-                        <div class="agent-card-content">
-                            <div class="agent-stats">
-                                <div class="stat-left">
-                                    <span class="stat-label">Model</span>
-                                    <span class="stat-value">${agent.llmModel}</span>
+                        `;
+                    } else {
+                        agentsContent.innerHTML = agents.map(agent => {
+                            // Check if agent is used in a multi-agent
+                            const isUsedInMultiAgent = usedInMultiAgents.has(agent.id);
+                            
+                            // Add badge for agents used in multi-agent configs
+                            const multiAgentBadge = isUsedInMultiAgent ? 
+                                `<div class="multi-agent-badge" title="This agent is used in one or more Multi-Agent Orchestrations">
+                                    <i class="fas fa-network-wired"></i> Used in Orchestration
+                                </div>` : '';
+                                
+                            return `
+                            <div class="agent-card">
+                                <div class="agent-card-header">
+                                    <div class="agent-info">
+                                        <div class="agent-icon">
+                                            <i class="fas fa-robot"></i>
+                                        </div>
+                                        <div class="agent-details">
+                                            <h3>${agent.name}</h3>
+                                            <p>${agent.description}</p>
+                                        </div>
+                                    </div>
+                                    <div class="agent-actions">
+                                        <button class="btn-more" onclick="showAgentMenu(event, '${agent.id}')">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="stat-right">
-                                    <span class="stat-label">Tools</span>
-                                    <span class="stat-value">${agent.tools ? agent.tools.length : 0}</span>
+                                <div class="agent-card-content">
+                                    <div class="agent-stats">
+                                        <div class="stat-left">
+                                            <span class="stat-label">Model</span>
+                                            <span class="stat-value">${agent.llmModel}</span>
+                                        </div>
+                                        <div class="stat-right">
+                                            <span class="stat-label">Tools</span>
+                                            <span class="stat-value">${agent.tools ? agent.tools.length : 0}</span>
+                                        </div>
+                                    </div>
+                                    ${multiAgentBadge}
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                `).join('');
+                            `;
+                        }).join('');
 
-                // Add CSS for the new layout
-                const style = document.createElement('style');
-                style.textContent = `
-                    .agent-stats {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        width: 100%;
+                        // Add CSS for the new layout and multi-agent badge
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            .agent-stats {
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                width: 100%;
+                            }
+                            .stat-left, .stat-right {
+                                display: flex;
+                                flex-direction: column;
+                            }
+                            .stat-label {
+                                color: var(--text-secondary);
+                                font-size: 12px;
+                            }
+                            .stat-value {
+                                color: var(--text-primary);
+                                font-size: 14px;
+                                font-weight: 500;
+                            }
+                            .multi-agent-badge {
+                                margin-top: 12px;
+                                padding: 5px 10px;
+                                background-color: rgba(59, 130, 246, 0.15);
+                                color: rgba(59, 130, 246, 0.9);
+                                border-radius: 10px;
+                                font-size: 12px;
+                                font-weight: 500;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 5px;
+                                border: 1px solid rgba(59, 130, 246, 0.3);
+                                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                            }
+                            body.light-theme .multi-agent-badge {
+                                background-color: rgba(59, 130, 246, 0.1);
+                                color: rgba(37, 99, 235, 0.9);
+                                border-color: rgba(37, 99, 235, 0.2);
+                                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                            }
+                            .multi-agent-badge i {
+                                font-size: 11px;
+                            }
+                        `;
+                        document.head.appendChild(style);
                     }
-                    .stat-left, .stat-right {
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .stat-label {
-                        color: var(--text-secondary);
-                        font-size: 12px;
-                    }
-                    .stat-value {
-                        color: var(--text-primary);
-                        font-size: 14px;
-                        font-weight: 500;
-                    }
-                `;
-                document.head.appendChild(style);
+                });
+        })
+        .catch(error => {
+            console.error('Error loading agents:', error);
+            const agentsContent = document.querySelector('.agents-content');
+            if (agentsContent) {
+                agentsContent.innerHTML = `<p>Error loading agents: ${error.message}</p>`;
             }
         });
 }
@@ -1384,18 +1440,57 @@ function editAgent(agentId) {
 
 function deleteAgent(agentId) {
     if (confirm('Are you sure you want to delete this agent?')) {
-        showLoading("Please wait..");
-        fetch(`/api/agents/${agentId}`, {
-            method: 'DELETE'
-        })
-        .then(() => {
-            hideLoading();
-            loadAgents();
-        })
-        .catch(error => {
-            hideLoading();
-            console.error('Error deleting agent:', error);
-        });
+        showLoading("Checking agent usage...");
+        
+        // First check if the agent is used in any multi-agent configuration
+        fetch('/api/multi-agents')
+            .then(response => response.json())
+            .then(multiAgents => {
+                // Check if this agent is used in any multi-agent configuration
+                const isUsedInMultiAgent = multiAgents.some(ma => 
+                    Array.isArray(ma.agent_ids) && ma.agent_ids.includes(agentId)
+                );
+                
+                if (isUsedInMultiAgent) {
+                    hideLoading();
+                    // Show error message
+                    const toast = document.createElement('div');
+                    toast.className = 'toast error';
+                    toast.innerHTML = '<i class="fas fa-exclamation-circle"></i> Cannot delete this agent because it is used in one or more multi-agent configurations. Remove it from all multi-agents first.';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 5000);
+                    return;
+                }
+                
+                // If not used in any multi-agent, proceed with deletion
+                return fetch(`/api/agents/${agentId}`, {
+                    method: 'DELETE'
+                });
+            })
+            .then(response => {
+                if (response && response.ok) {
+                    hideLoading();
+                    loadAgents();
+                    
+                    // Show success message
+                    const toast = document.createElement('div');
+                    toast.className = 'toast success';
+                    toast.innerHTML = '<i class="fas fa-check-circle"></i> Agent deleted successfully';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error deleting agent:', error);
+                
+                // Show error message
+                const toast = document.createElement('div');
+                toast.className = 'toast error';
+                toast.innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to delete agent';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            });
     }
 }
 
