@@ -2090,7 +2090,7 @@ function populateAgentSelectionList(agents, selectedAgentIds = []) {
     agentSelectionList.innerHTML = `
         <div class="central-agent-node">
             <i class="fas fa-brain"></i>
-        </div>
+                    </div>
         <div class="central-node-label">Manager Agent</div>
     ` + agents.map(agent => {
         // Basic check for agent data validity
@@ -2114,7 +2114,7 @@ function populateAgentSelectionList(agents, selectedAgentIds = []) {
                 <div class="agent-card-header">
                     <div class="agent-icon" style="background: ${iconColor}">
                         <i class="fas fa-robot"></i>
-                    </div>
+                </div>
                     <div class="agent-header-content">
                         <div class="agent-name">${agentName}</div>
                     </div>
@@ -2131,8 +2131,8 @@ function populateAgentSelectionList(agents, selectedAgentIds = []) {
                     </div>
                 </div>
             </label>
-        </div>
-        `;
+                </div>
+            `;
     }).join('');
 
     // Get the central node again after HTML was updated
@@ -2205,20 +2205,22 @@ function updateAgentArrows(container) {
     // Show the central node if there are any selected agents
     centralNode.classList.add('visible');
     
-    // Calculate central node position
+    // Calculate central node position, accounting for scroll
     const centralRect = centralNode.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
+    const scrollTop = container.scrollTop;
+    const scrollLeft = container.scrollLeft;
     
     const centralX = centralRect.left + centralRect.width/2 - containerRect.left;
-    const centralY = centralRect.top + centralRect.height/2 - containerRect.top;
+    const centralY = centralRect.top + centralRect.height/2 - containerRect.top + scrollTop;
     
     // Create arrows for each selected agent
     selectedAgents.forEach(agent => {
         const agentRect = agent.getBoundingClientRect();
         
-        // Calculate agent center position relative to container
-        const agentX = agentRect.left + agentRect.width/2 - containerRect.left;
-        const agentY = agentRect.top + agentRect.height/2 - containerRect.top;
+        // Calculate agent center position relative to container, accounting for scroll
+        const agentX = agentRect.left + agentRect.width/2 - containerRect.left + scrollLeft;
+        const agentY = agentRect.top + agentRect.height/2 - containerRect.top + scrollTop;
         
         // Calculate distance and angle
         const dx = centralX - agentX;
@@ -2240,10 +2242,19 @@ function updateAgentArrows(container) {
         container.appendChild(arrow);
         
         // Trigger animation
-        setTimeout(() => {
+    setTimeout(() => {
             arrow.style.opacity = '1';
         }, 50);
     });
+    
+    // Add scroll event listener to update arrows when scrolling
+    container.onscroll = function() {
+        // Debounce the scroll event to improve performance
+        clearTimeout(container.scrollTimer);
+        container.scrollTimer = setTimeout(() => {
+            updateAgentArrows(container);
+        }, 100);
+    };
 }
 
 // Helper function to capitalize the first letter of a string

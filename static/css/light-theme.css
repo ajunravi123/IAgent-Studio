@@ -54,6 +54,10 @@ body.light-theme .notifications-menu {
     color: #333;
 }
 
+body.light-theme .multi-agent-card {
+    background: linear-gradient(297deg, #96a9bb, #e3daea) !important;
+}
+
 body.light-theme .form-input,
 body.light-theme .form-textarea,
 body.light-theme .form-select,
@@ -62,6 +66,7 @@ body.light-theme .chat-input {
     background-color: #f9f9f9;
     border-color: #ccc;
     color: #333;
+    margin-left: 10px;
 }
 
 body.light-theme .chat-input::placeholder {
