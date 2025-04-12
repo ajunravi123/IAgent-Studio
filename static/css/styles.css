@@ -6,6 +6,86 @@ body {
     color: white;
 }
 
+/* Global scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(20, 30, 60, 0.1);
+    border-radius: 6px;
+    margin: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(66, 153, 225, 0.3);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(66, 153, 225, 0.5);
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+body.light-theme ::-webkit-scrollbar-track {
+    background: rgba(240, 245, 255, 0.3);
+}
+
+body.light-theme ::-webkit-scrollbar-thumb {
+    background: rgba(66, 153, 225, 0.2);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+body.light-theme ::-webkit-scrollbar-thumb:hover {
+    background: rgba(66, 153, 225, 0.4);
+    background-clip: padding-box;
+}
+
+/* Sidebar-specific scrollbar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: rgba(10, 15, 30, 0.05);
+    margin: 6px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(66, 153, 225, 0.2);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(66, 153, 225, 0.4);
+    background-clip: padding-box;
+}
+
+body.light-theme .sidebar::-webkit-scrollbar-track {
+    background: rgba(240, 245, 255, 0.2);
+}
+
+body.light-theme .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(49, 130, 206, 0.15);
+}
+
+body.light-theme .sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(49, 130, 206, 0.3);
+}
+
+/* End of scrollbar styling */
+
 .app-container {
     display: flex;
     height: 100vh;
