@@ -574,11 +574,11 @@ async def agent_infer(
             print(f"File saved: {file_path}")
 
         # Get API keys from environment variables
-        API_KEYS = {
-            "gemini": os.getenv("GEMINI_API_KEY"),
-            "openai": os.getenv("OPENAI_API_KEY"),
-            "groq": os.getenv("GROQ_API_KEY"),
-        }
+        # API_KEYS = {
+        #     "gemini": os.getenv("GEMINI_API_KEY"),
+        #     "openai": os.getenv("OPENAI_API_KEY"),
+        #     "groq": os.getenv("GROQ_API_KEY"),
+        # }
 
         # Load tool configurations for this agent
         tools_config = []

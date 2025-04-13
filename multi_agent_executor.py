@@ -2,6 +2,7 @@ from crewai import Crew, Process, Task, Agent as CrewAgent, LLM
 from langchain.tools import Tool
 import os
 import requests
+import random
 from dotenv import load_dotenv
 from functools import partial
 import json
@@ -59,8 +60,10 @@ class MultiAgentExecutor:
             "groq": os.getenv("GROQ_API_KEY"),
         }
 
+        API_KEY = get_api_key()
+
         # Initialize LLM client (consistent across agents)
-        self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
+        self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEY)
 
         # Initialize utility agents (same as TaskExecutor, needed for tool handling)
         self.schema_agent = CrewAgent(
@@ -444,3 +447,13 @@ class MultiAgentExecutor:
             import traceback
             traceback.print_exc()
             return f"An error occurred during multi-agent processing: {e}" 
+        
+
+
+# This is a temporary function to get a random API key from the GEMINI_API_KEYS environment variable.
+def get_api_key():
+    keys = os.getenv("GEMINI_API_KEYS", "")
+    key_list = [key.strip() for key in keys.split(",") if key.strip()]
+    if not key_list:
+        raise ValueError("No API keys found in GEMINI_API_KEYS environment variable.")
+    return random.choice(key_list)

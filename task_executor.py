@@ -13,6 +13,7 @@ import pytz
 from typing import Optional, Dict, Any, List
 import PyPDF2
 from PIL import Image
+import random
 
 load_dotenv()
 
@@ -75,7 +76,9 @@ class TaskExecutor:
             "groq": os.getenv("GROQ_API_KEY"),
         }
 
-        self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEYS["gemini"])
+        API_KEY = get_api_key()
+
+        self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEY)
 
         self.schema_agent = CrewAgent(
             role="Schema Analyzer",
@@ -400,3 +403,15 @@ class TaskExecutor:
         else:
             print(f"Raw LLM output: {raw_output}")
         return raw_output
+
+
+
+
+
+# This is a temporary function to get a random API key from the GEMINI_API_KEYS environment variable.
+def get_api_key():
+    keys = os.getenv("GEMINI_API_KEYS", "")
+    key_list = [key.strip() for key in keys.split(",") if key.strip()]
+    if not key_list:
+        raise ValueError("No API keys found in GEMINI_API_KEYS environment variable.")
+    return random.choice(key_list)
