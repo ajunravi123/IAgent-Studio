@@ -80,6 +80,12 @@ class TaskExecutor:
 
         self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEY)
 
+        # self.llm_client = LLM(
+        #     model="deepseek-chat",
+        #     api_key='sk-5936f2f8151847fb8374d1111fe2c00a',
+        #     base_url="https://api.deepseek.com/v1"
+        # )
+
         self.schema_agent = CrewAgent(
             role="Schema Analyzer",
             goal="Analyze OpenAPI schemas and extract key information about required fields, data types, and constraints",

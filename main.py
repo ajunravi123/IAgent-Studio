@@ -14,7 +14,10 @@ from multi_agent_executor import MultiAgentExecutor
 from langchain.tools import Tool # If tools are needed for manager/agents
 
 
-
+import logging
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI()
@@ -606,6 +609,10 @@ async def agent_infer(
         # Instantiate the single-agent executor
         executor = TaskExecutor(agent_config=agent_config_dict, tools_config=tools_config)
 
+
+        if userInput:
+            agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
+
         # Execute the task using the original TaskExecutor logic
         result = executor.execute_task(
             description=agent["instructions"], # Base instructions
@@ -636,107 +643,116 @@ class MultiAgentInferenceRequest(BaseModel):
     user_input: str
     # Add file handling if needed later
 
+
+
 @app.post("/api/multi_agent/infer")
 async def multi_agent_infer(request: MultiAgentInferenceRequest):
     try:
         multi_agent_id = request.multi_agent_id
         user_input = request.user_input
         
-        print(f"Received multi-agent infer request for ID: {multi_agent_id}")
-        print(f"User input: {user_input}")
+        logger.info(f"Received multi-agent infer request for ID: {multi_agent_id}")
+        logger.debug(f"User input: {user_input}")
 
         # Load multi-agent configuration
         multi_agents = load_multi_agents()
         multi_agent_config = next((ma for ma in multi_agents if ma["id"] == multi_agent_id), None)
         
         if not multi_agent_config:
+            logger.error(f"Multi-Agent not found: {multi_agent_id}")
             raise HTTPException(status_code=404, detail=f"Multi-Agent not found: {multi_agent_id}")
-            
-        # Ensure defaults are present
+
+        # Set default values for manager config
         multi_agent_config.setdefault("role", "Coordinator")
         multi_agent_config.setdefault("goal", "Efficiently manage and delegate tasks.")
         multi_agent_config.setdefault("backstory", "Orchestrator for connected agents.")
         multi_agent_config.setdefault("description", "Process the user request using available agents.")
-        
-        # Load configurations for connected agents
+
+        # Load worker agent configurations
         all_agents = load_agents()
         connected_agent_ids = multi_agent_config.get("agent_ids", [])
-        worker_agent_configs = [] # Renamed for clarity
-        
+        worker_agent_configs = []
+
         for agent_id in connected_agent_ids:
             agent_data = next((a for a in all_agents if a["id"] == agent_id), None)
-            if agent_data:
-                # Load full tool configurations for this specific worker agent
-                worker_tools_config = []
-                for tool_id in agent_data.get("tools", []):
-                    schema_path = f"tool_schemas/{tool_id}.json"
-                    auth_path = f"tool_auth/{tool_id}.json"
-                    if os.path.exists(schema_path):
-                        tool_cfg = {"id": tool_id}
-                        try:
-                            with open(schema_path, 'r') as f:
-                                tool_cfg["schema"] = json.load(f)
-                        except json.JSONDecodeError:
-                             print(f"Warning: Invalid JSON in schema file {schema_path} for agent {agent_id}")
-                             continue # Skip malformed schema
-                             
-                        if os.path.exists(auth_path):
-                            try:
-                                with open(auth_path, 'r') as f:
-                                    tool_cfg["auth"] = json.load(f)
-                            except json.JSONDecodeError:
-                                print(f"Warning: Invalid JSON in auth file {auth_path} for agent {agent_id}")
-                                # Assign None or empty dict if auth is optional but file invalid
-                                tool_cfg["auth"] = None 
-                        worker_tools_config.append(tool_cfg)
-                    else:
-                         print(f"Warning: Schema file not found for tool {tool_id} referenced by agent {agent_id}")
+            if not agent_data:
+                logger.warning(f"Agent with ID {agent_id} not found, skipping.")
+                continue
 
-                # Prepare the config dict for the worker agent, including tools
-                worker_config = {
-                    "id": agent_data["id"],
-                    "role": agent_data["role"],
-                    "goal": agent_data["goal"],
-                    "backstory": agent_data["backstory"],
-                    "instructions": agent_data["instructions"],
-                    "expectedOutput": agent_data["expectedOutput"],
-                    "tools": worker_tools_config # Pass the loaded tool configs
-                }
-                worker_agent_configs.append(worker_config)
-            else:
-                print(f"Warning: Agent with ID {agent_id} not found, skipping.")
-        
+            # Load tool configurations
+            worker_tools_config = []
+            for tool_id in agent_data.get("tools", []):
+                schema_path = f"tool_schemas/{tool_id}.json"
+                auth_path = f"tool_auth/{tool_id}.json"
+                tool_cfg = {"id": tool_id}
+
+                if os.path.exists(schema_path):
+                    try:
+                        with open(schema_path, 'r') as f:
+                            tool_cfg["schema"] = json.load(f)
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Invalid JSON in schema file {schema_path} for agent {agent_id}: {e}")
+                        continue
+                else:
+                    logger.warning(f"Schema file not found for tool {tool_id} in agent {agent_id}")
+                    continue
+
+                if os.path.exists(auth_path):
+                    try:
+                        with open(auth_path, 'r') as f:
+                            tool_cfg["auth"] = json.load(f)
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Invalid JSON in auth file {auth_path} for agent {agent_id}: {e}")
+                        tool_cfg["auth"] = {}
+
+                worker_tools_config.append(tool_cfg)
+
+            # Prepare worker config
+            worker_config = {
+                "id": agent_data["id"],
+                "role": agent_data["role"],
+                "goal": agent_data["goal"],
+                "backstory": agent_data["backstory"],
+                "instructions": agent_data.get("instructions", f"Perform tasks as {agent_data['role']}"),
+                "expectedOutput": agent_data.get("expectedOutput", "A contribution to the overall goal"),
+                "tools": worker_tools_config
+            }
+            worker_agent_configs.append(worker_config)
+            logger.info(f"Loaded config for worker agent {agent_id}")
+
         if not worker_agent_configs:
-             raise HTTPException(status_code=400, detail="No valid connected agents found.")
+            logger.error("No valid connected agents found.")
+            raise HTTPException(status_code=400, detail="No valid connected agents found.")
 
-        # Instantiate the MultiAgentExecutor
+        # Update manager description with user input
+        if user_input:
+            multi_agent_config["description"] = (
+                multi_agent_config["description"].replace("{{input}}", user_input)
+                if "{{input}}" in multi_agent_config["description"]
+                else f"{multi_agent_config['description']}\n\nUser Input: {user_input}"
+            )
+
+        # Instantiate and execute
         executor = MultiAgentExecutor(
             multi_agent_config=multi_agent_config,
             worker_agent_configs=worker_agent_configs
         )
 
-        # Execute the multi-agent task
-        # Pass user_input and potentially file_path if MultiAgentExecutor handles it
-        result = executor.execute_task(
-            user_input=user_input,
-            # file_path=None # Add file path if needed
-        )
+        result = executor.execute_task(user_input=user_input)
+        logger.info("Multi-agent task completed successfully")
 
-        # Format the response
-        response_content = {
-            "response": str(result),
-            "sender_agent_name": "Manager Agent" # Orchestration result attributed to the manager
+        return {
+            "response": result,
+            "sender_agent_name": "Manager Agent"
         }
 
-        return response_content # Return the JSON directly
-        
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
-        print(f"Error in multi_agent_infer: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+        logger.error(f"Error in multi_agent_infer: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 
 def check_in_sentence(sentence="", input_to_check="{{input}}"):
     """
