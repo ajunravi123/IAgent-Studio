@@ -3242,6 +3242,393 @@ function showAgentAPIPopup() {
     modal.classList.add('show');
 }
 
+
+function showMultiAgentAPIPopup() {
+    let modal = document.getElementById('agentAPIModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'agentAPIModal';
+        modal.className = 'modal';
+        
+        // Use the multi-agent endpoint and ID
+        const sampleCurl = `curl -X POST "${window.location.origin}/api/multi_agent/infer" \\
+    -H "Content-Type: application/json" \\
+    -H "X-API-Key: your_api_key_here" \\
+    -d '{ 
+        "multi_agent_id": "${window.selectedMultiAgentId || 'your_multi_agent_id'}",
+        "userInput": "Specify the input here"
+    }'`;
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="header-content">
+                        <h2>Multi-Agent API Reference</h2>
+                        <p class="api-description">Use this API endpoint to interact with your multi-agent orchestration programmatically.</p>
+                    </div>
+                    <button class="btn-close" onclick="closeAgentAPIPopup()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="api-section">
+                        <h3>Endpoint</h3>
+                        <div class="endpoint-info">
+                            <code>POST /api/multi_agent/infer</code>
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <h3>Sample Request</h3>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-language">cURL</span>
+                                <button class="copy-code" onclick="copyAPICode(this)">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <pre><code class="language-bash">${sampleCurl}</code></pre>
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <h3>Request Body Parameters</h3>
+                        <table class="api-params">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>multi_agent_id</td>
+                                    <td>string</td>
+                                    <td>The unique identifier of your multi-agent orchestration</td>
+                                </tr>
+                                <tr>
+                                    <td>userInput</td>
+                                    <td>string</td>
+                                    <td>The message or query to send to the multi-agent orchestration</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add styles if not already present
+        if (!document.getElementById('agentAPIModalStyles')) {
+            const style = document.createElement('style');
+            style.id = 'agentAPIModalStyles';
+            style.textContent = `
+                #agentAPIModal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: none;
+                    z-index: 1000;
+                    overflow-y: auto;
+                    padding: 20px;
+                }
+
+                #agentAPIModal.show {
+                    display: block;
+                }
+
+                #agentAPIModal .modal-content {
+                    background: linear-gradient(145deg, #1a1f35, #2a2f45);
+                    border: 1px solid rgba(99, 179, 237, 0.1);
+                    border-radius: 16px;
+                    box-shadow: 0 0 40px rgba(0, 0, 0, 0.3),
+                                inset 0 0 20px rgba(99, 179, 237, 0.1);
+                    backdrop-filter: blur(10px);
+                    max-width: 800px;
+                    margin: 20px auto;
+                    position: relative;
+                    max-height: calc(100vh - 40px);
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                #agentAPIModal .modal-header {
+                    background: linear-gradient(180deg, rgba(26, 31, 53, 0.8), transparent);
+                    padding: 24px;
+                    border-bottom: 1px solid rgba(99, 179, 237, 0.1);
+                    position: sticky;
+                    top: 0;
+                    z-index: 2;
+                    backdrop-filter: blur(5px);
+                }
+
+                #agentAPIModal .modal-body {
+                    padding: 24px;
+                    overflow-y: auto;
+                    flex: 1;
+                }
+
+                #agentAPIModal .modal-content::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 1px;
+                    background: linear-gradient(90deg, 
+                        transparent, 
+                        rgba(99, 179, 237, 0.2), 
+                        transparent);
+                }
+
+                #agentAPIModal h2 {
+                    color: #63b3ed;
+                    font-size: 24px;
+                    margin: 0;
+                    font-weight: 600;
+                    letter-spacing: 0.5px;
+                    text-shadow: 0 0 10px rgba(99, 179, 237, 0.3);
+                }
+
+                #agentAPIModal .api-description {
+                    color: #a0aec0;
+                    margin-top: 8px;
+                    font-size: 14px;
+                    line-height: 1.5;
+                }
+
+                #agentAPIModal .api-section {
+                    margin-bottom: 32px;
+                    animation: fadeInUp 0.5s ease-out;
+                }
+
+                #agentAPIModal .api-section h3 {
+                    color: #63b3ed;
+                    font-size: 18px;
+                    margin-bottom: 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                #agentAPIModal .api-section h3::before {
+                    content: '';
+                    display: block;
+                    width: 4px;
+                    height: 16px;
+                    background: #63b3ed;
+                    border-radius: 2px;
+                }
+
+                #agentAPIModal .endpoint-info {
+                    background: rgba(26, 31, 53, 0.6);
+                    border: 1px solid rgba(99, 179, 237, 0.2);
+                    border-radius: 8px;
+                    padding: 16px;
+                    font-family: 'Monaco', monospace;
+                    color: #63b3ed;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                #agentAPIModal .endpoint-info::before {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: linear-gradient(
+                        45deg,
+                        transparent,
+                        rgba(99, 179, 237, 0.1),
+                        transparent
+                    );
+                    animation: shimmer 2s linear infinite;
+                    pointer-events: none;
+                }
+
+                #agentAPIModal .code-block {
+                    background: rgba(26, 31, 53, 0.6);
+                    border: 1px solid rgba(99, 179, 237, 0.2);
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+
+                #agentAPIModal .code-header {
+                    background: rgba(26, 31, 53, 0.8);
+                    padding: 12px 16px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid rgba(99, 179, 237, 0.2);
+                }
+
+                #agentAPIModal .code-language {
+                    color: #63b3ed;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+
+                #agentAPIModal .copy-code {
+                    background: rgba(99, 179, 237, 0.1);
+                    border: 1px solid rgba(99, 179, 237, 0.2);
+                    color: #63b3ed;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+
+                #agentAPIModal .copy-code:hover {
+                    background: rgba(99, 179, 237, 0.2);
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 8px rgba(99, 179, 237, 0.2);
+                }
+
+                #agentAPIModal pre {
+                    margin: 0;
+                    padding: 20px;
+                    overflow-x: auto;
+                }
+
+                #agentAPIModal code {
+                    color: #a0aec0;
+                    font-family: 'Monaco', monospace;
+                    line-height: 1.5;
+                }
+
+                #agentAPIModal .api-params {
+                    width: 100%;
+                    border-collapse: separate;
+                    border-spacing: 0;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    border: 1px solid rgba(99, 179, 237, 0.2);
+                }
+
+                #agentAPIModal .api-params th {
+                    background: rgba(26, 31, 53, 0.8);
+                    color: #63b3ed;
+                    font-weight: 500;
+                    text-align: left;
+                    padding: 16px;
+                    border-bottom: 1px solid rgba(99, 179, 237, 0.2);
+                }
+
+                #agentAPIModal .api-params td {
+                    padding: 16px;
+                    color: #a0aec0;
+                    border-bottom: 1px solid rgba(99, 179, 237, 0.1);
+                    background: rgba(26, 31, 53, 0.4);
+                }
+
+                #agentAPIModal .api-params tr:last-child td {
+                    border-bottom: none;
+                }
+
+                #agentAPIModal .btn-close {
+                    background: none;
+                    border: none;
+                    color: #63b3ed;
+                    font-size: 24px;
+                    cursor: pointer;
+                    padding: 4px;
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                #agentAPIModal .btn-close:hover {
+                    background: rgba(99, 179, 237, 0.1);
+                    transform: rotate(90deg);
+                }
+
+                #agentAPIModal .btn-close:before {
+                    content: '';
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    background: radial-gradient(circle, rgba(99, 179, 237, 0.2) 0%, transparent 70%);
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                }
+
+                #agentAPIModal .btn-close:hover:before {
+                    opacity: 1;
+                }
+
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @keyframes shimmer {
+                    0% {
+                        transform: translateX(-100%) rotate(45deg);
+                    }
+                    100% {
+                        transform: translateX(100%) rotate(45deg);
+                    }
+                }
+
+                /* Scrollbar styling */
+                #agentAPIModal pre::-webkit-scrollbar,
+                #agentAPIModal .modal-body::-webkit-scrollbar {
+                    width: 8px;
+                    height: 8px;
+                }
+
+                #agentAPIModal pre::-webkit-scrollbar-track,
+                #agentAPIModal .modal-body::-webkit-scrollbar-track {
+                    background: rgba(26, 31, 53, 0.4);
+                    border-radius: 4px;
+                }
+
+                #agentAPIModal pre::-webkit-scrollbar-thumb,
+                #agentAPIModal .modal-body::-webkit-scrollbar-thumb {
+                    background: rgba(99, 179, 237, 0.3);
+                    border-radius: 4px;
+                }
+
+                #agentAPIModal pre::-webkit-scrollbar-thumb:hover,
+                #agentAPIModal .modal-body::-webkit-scrollbar-thumb:hover {
+                    background: rgba(99, 179, 237, 0.5);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        document.body.appendChild(modal);
+    } else {
+        // If modal exists, just update the code with current agent ID
+        const codeBlock = modal.querySelector('code');
+        const sampleCurl = `curl -X POST "<HOST>/api/multi_agent/infer" \\
+    -H "Content-Type: application/json" \\
+    -H "X-API-Key: your_api_key_here" \\
+    -d '{ 
+        "multi_agent_id": "${window.selectedMultiAgentId || 'your_multi_agent_id'}",
+        "userInput": "Specify the input here"
+    }'`;
+        codeBlock.textContent = sampleCurl;
+    }
+    
+    // Show the modal
+    modal.classList.add('show');
+}
+
 function closeAgentAPIPopup() {
     const modal = document.getElementById('agentAPIModal');
     if (modal) {
@@ -3251,19 +3638,30 @@ function closeAgentAPIPopup() {
 
 function copyAPICode(button) {
     const codeBlock = button.closest('.code-block').querySelector('code');
-    const textArea = document.createElement('textarea');
-    textArea.value = codeBlock.textContent;
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
+    if (!codeBlock) {
+        console.error("Could not find code block to copy.");
+        return;
+    }
+    const codeToCopy = codeBlock.textContent;
     
-    // Show feedback
-    const icon = button.querySelector('i');
-    icon.className = 'fas fa-check';
-    setTimeout(() => {
-        icon.className = 'fas fa-copy';
-    }, 2000);
+    // Use modern Clipboard API
+    navigator.clipboard.writeText(codeToCopy).then(() => {
+        // Success: Show feedback
+        const icon = button.querySelector('i');
+        if (icon) {
+            const originalIconClass = icon.className;
+            icon.className = 'fas fa-check';
+            button.disabled = true; // Briefly disable button
+            setTimeout(() => {
+                icon.className = originalIconClass;
+                button.disabled = false;
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        // Fallback or error message (optional)
+        alert('Failed to copy code. Please try copying manually.');
+    });
 }
 
 // Add event listener for the API link
@@ -3272,6 +3670,15 @@ document.addEventListener('click', function(event) {
     if (apiLink) {
         event.preventDefault();
         showAgentAPIPopup();
+    }
+});
+
+
+document.addEventListener('click', function(event) {
+    const apiLink = event.target.closest('.multi-agent-api-link');
+    if (apiLink) {
+        event.preventDefault();
+        showMultiAgentAPIPopup();
     }
 });
 
