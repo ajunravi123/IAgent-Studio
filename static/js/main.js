@@ -3594,10 +3594,10 @@ function setupMultiAgentLaunchPageEventListeners() {
         editBtn.dataset.listenerAttached = 'true';
     }
     
-    if (saveBtn && !saveBtn.dataset.listenerAttached) {
-        saveBtn.addEventListener('click', saveMultiAgentChanges);
-        saveBtn.dataset.listenerAttached = 'true';
-    }
+    // if (saveBtn && !saveBtn.dataset.listenerAttached) {
+    //     saveBtn.addEventListener('click', saveMultiAgentChanges);
+    //     saveBtn.dataset.listenerAttached = 'true';
+    // }
     
     if (refreshBtn && !refreshBtn.dataset.listenerAttached) {
         refreshBtn.addEventListener('click', refreshMultiAgent);
@@ -3990,7 +3990,6 @@ function saveMultiAgentChanges() {
     })
     .then(() => {
         // Switch back to view mode
-        debugger;
         toggleMultiAgentEditMode();
         
         // Show success message
