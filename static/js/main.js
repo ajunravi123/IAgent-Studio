@@ -129,6 +129,9 @@ function loadPage(pagePath) {
                          // If not, explicitly call its init function here: loadMarketplace(); 
                     }
                     // Add other page specific initializations here
+                    else if (basePage === 'data-connectors') {
+                        initializeDataConnectorsPage();
+                    }
 
                 }, 100);
             })
@@ -4992,3 +4995,276 @@ function showToast(message, type = 'info') {
 // if (editButton) {
 //    editButton.onclick = openMultiAgentEditPopup;
 // }
+
+// --- Data Connectors Page Functions ---
+
+function initializeDataConnectorsPage() {
+    console.log('Initializing Data Connectors page...');
+    loadDataConnectors(); // Load the connectors
+    // Setup search listener
+    const searchInput = document.getElementById('searchDataConnectorsInput');
+    if (searchInput) {
+        // Use debounce if needed for performance
+        searchInput.addEventListener('input', (e) => searchDataConnectors(e.target.value));
+    }
+}
+
+async function loadDataConnectors() {
+    const connectorsGrid = document.getElementById('dataConnectorsGrid');
+    if (!connectorsGrid) {
+        console.error("Connectors grid container not found!");
+        return;
+    }
+    connectorsGrid.innerHTML = '<div class="loading-placeholder"><i class="fas fa-spinner fa-spin"></i> Loading connectors...</div>';
+
+    // --- MOCK DATA --- 
+    // Replace this with an actual API call later
+    const mockConnectors = [
+        { id: 'qdrant', name: 'Qdrant', description: 'Configure Qdrant Vector Store', icon: '/static/images/connectors/qdrant.svg', connections: 0, docsUrl: '#' },
+        { id: 'weaviate', name: 'Weaviate', description: 'Configure Weaviate Vector Store', icon: '/static/images/connectors/weaviate.svg', connections: 0, docsUrl: '#' },
+        { id: 'pgvector', name: 'PG-Vector', description: 'Configure PG-Vector Vector Store', icon: '/static/images/connectors/pgvector.svg', connections: 0, docsUrl: '#' },
+        { id: 'singlestore', name: 'Singlestore', description: 'Configure Singlestore Vector DB', icon: '/static/images/connectors/singlestore.svg', connections: 0, docsUrl: '#' },
+        { id: 'redshift', name: 'Redshift', description: 'A fully managed, petabyte-scale cloud-based data warehouse service, provided by Amazon Web Services.', icon: '/static/images/connectors/redshift.svg', connections: 0, docsUrl: '#' },
+        { id: 'postgres', name: 'Postgres', description: 'An open source object-relational database system that uses and extends SQL.', icon: '/static/images/connectors/postgres.svg', connections: 0, docsUrl: '#' },
+        { id: 'mysql', name: 'My SQL', description: 'An open-source relational database management system, developed by Oracle.', icon: '/static/images/connectors/mysql.svg', connections: 0, docsUrl: '#' },
+        { id: 'bigquery', name: 'Big Query', description: 'A serverless and scalable multi-cloud data warehouse service, provided by Google Cloud.', icon: '/static/images/connectors/bigquery.svg', connections: 0, docsUrl: '#' },
+        // Add more mock connectors as needed based on the image
+    ];
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500)); 
+
+    try {
+        // In a real scenario, you would fetch from /api/data-connectors
+        // const response = await fetch('/api/data-connectors');
+        // if (!response.ok) throw new Error('Failed to fetch connectors');
+        // const connectors = await response.json();
+        renderDataConnectors(mockConnectors); // Use mock data for now
+    } catch (error) {
+        console.error("Error loading data connectors:", error);
+        connectorsGrid.innerHTML = '<div class="error-message"><i class="fas fa-exclamation-triangle"></i> Failed to load connectors.</div>';
+    }
+}
+
+// Helper function to get Font Awesome class based on connector ID/name
+function getConnectorIconClass(connectorId) {
+    // Map specific IDs to icons - add more as needed
+    switch (connectorId.toLowerCase()) {
+        case 'qdrant': return 'fas fa-database'; // Example
+        case 'weaviate': return 'fas fa-wave-square'; // Example
+        case 'pgvector': return 'fas fa-database'; // Example
+        case 'singlestore': return 'fas fa-circle-nodes'; // Example
+        case 'redshift': return 'fab fa-aws'; // Example
+        case 'postgres': return 'fas fa-database'; // Example
+        case 'mysql': return 'fas fa-database'; // Example
+        case 'bigquery': return 'fab fa-google'; // Example
+        default: return 'fas fa-plug'; // Default plug icon
+    }
+}
+
+function renderDataConnectors(connectors) {
+    const connectorsGrid = document.getElementById('dataConnectorsGrid');
+    if (!connectorsGrid) return;
+
+    if (!connectors || connectors.length === 0) {
+        connectorsGrid.innerHTML = '<div class="empty-state">No data connectors found.</div>';
+        return;
+    }
+
+    connectorsGrid.innerHTML = connectors.map(connector => {
+        const iconClass = getConnectorIconClass(connector.id);
+        return `
+        <div class="connector-card" data-connector-id="${connector.id}">
+            <div class="card-header">
+                <div class="connector-icon-wrapper">
+                    <i class="${iconClass}"></i>
+                </div>
+                <h3 class="connector-name">${connector.name}</h3>
+                <button class="btn-add-connector" onclick="addConnector('${connector.id}')">
+                    <i class="fas fa-plus"></i> Add
+                </button>
+            </div>
+            <p class="connector-description">${connector.description}</p>
+            <div class="card-footer">
+                <span class="connections-info">${connector.connections} DB's connected</span>
+                <a href="${connector.docsUrl}" target="_blank" class="docs-link">
+                    View Documentation <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+        </div>
+    `}).join('');
+
+    // Add necessary CSS if not already present (placeholder)
+    ensureDataConnectorStyles();
+}
+
+function searchDataConnectors(query) {
+    const searchQuery = query.toLowerCase().trim();
+    const connectorCards = document.querySelectorAll('#dataConnectorsGrid .connector-card');
+
+    connectorCards.forEach(card => {
+        const name = card.querySelector('.connector-name').textContent.toLowerCase();
+        const description = card.querySelector('.connector-description').textContent.toLowerCase();
+        
+        const matches = name.includes(searchQuery) || description.includes(searchQuery);
+        card.style.display = matches ? '' : 'none';
+    });
+}
+
+// Placeholder for adding a connector - implement actual logic later
+function addConnector(connectorId) {
+    console.log(`Add connector clicked: ${connectorId}`);
+    alert(`Configuration for ${connectorId} is not yet implemented.`);
+    // TODO: Implement modal or logic to configure and add the connector
+}
+
+// Function to add CSS styles if they don't exist
+function ensureDataConnectorStyles() {
+    if (!document.getElementById('data-connector-styles')) {
+        const style = document.createElement('style');
+        style.id = 'data-connector-styles';
+        // Updated CSS for better appearance
+        style.textContent = `
+            .page.data-connectors .page-description {
+                margin-bottom: 25px;
+                color: var(--text-secondary);
+                max-width: 800px; /* Limit width for readability */
+            }
+            .page.data-connectors .quick-guide-link {
+                color: var(--primary-accent);
+                text-decoration: none;
+                font-weight: 500;
+            }
+            .page.data-connectors .quick-guide-link:hover {
+                text-decoration: underline;
+            }
+            .search-and-filter {
+                margin-bottom: 30px;
+            }
+            .search-and-filter .search-bar {
+                max-width: 450px;
+                background-color: var(--input-bg);
+            }
+            .connectors-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); /* Slightly larger cards */
+                gap: 25px;
+            }
+            .connector-card {
+                background: linear-gradient(313deg, #222222 0%, #031235 100%);
+                border: 1px solid var(--border-color);
+                border-radius: 12px; /* More rounded */
+                padding: 25px;
+                display: flex;
+                flex-direction: column;
+                transition: transform 0.2s ease, box-shadow 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                overflow: hidden; /* Ensure gradients/shadows look clean */
+            }
+            .connector-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+                border-color: var(--primary-accent-light);
+            }
+            .connector-card .card-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 18px;
+                gap: 15px;
+            }
+            /* Icon Styling */
+            .connector-card .connector-icon-wrapper {
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                background: linear-gradient(135deg, var(--primary-accent-light), var(--primary-accent));
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                flex-shrink: 0; /* Prevent shrinking */
+            }
+            .connector-card .connector-name {
+                font-size: 19px;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin: 0;
+                flex-grow: 1;
+                white-space: nowrap; /* Prevent wrapping */
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .connector-card .btn-add-connector {
+                background-color: transparent;
+                color: var(--primary-accent);
+                border: 1px solid var(--primary-accent-light);
+                padding: 7px 14px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                transition: all 0.2s ease;
+                white-space: nowrap;
+            }
+             .connector-card .btn-add-connector:hover {
+                 background-color: var(--primary-accent-faded);
+                 border-color: var(--primary-accent);
+                 color: var(--primary-contrast);
+             }
+             .connector-card .btn-add-connector i {
+                 margin-right: 4px;
+             }
+            .connector-card .connector-description {
+                font-size: 14px;
+                color: var(--text-secondary);
+                margin-bottom: 25px;
+                flex-grow: 1; 
+                line-height: 1.6;
+            }
+            .connector-card .card-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-top: auto; 
+                padding-top: 15px;
+                border-top: 1px solid var(--border-color-light);
+                font-size: 13px;
+            }
+            .connector-card .connections-info {
+                background-color: var(--tag-bg);
+                color: var(--tag-text);
+                padding: 5px 10px;
+                border-radius: 12px;
+                font-weight: 500;
+                font-size: 12px;
+            }
+            .connector-card .docs-link {
+                color: var(--text-link);
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+            }
+             .connector-card .docs-link:hover {
+                 color: var(--primary-accent);
+                 text-decoration: underline;
+             }
+             .connector-card .docs-link i {
+                 font-size: 11px;
+             }
+             .loading-placeholder, .empty-state, .error-message {
+                 grid-column: 1 / -1; 
+                 text-align: center;
+                 padding: 50px 20px;
+                 color: var(--text-secondary);
+                 font-size: 16px;
+             }
+             .loading-placeholder i {
+                 margin-right: 8px;
+             }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// --- End Data Connectors Page Functions ---
