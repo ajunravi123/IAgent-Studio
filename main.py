@@ -654,6 +654,11 @@ async def multi_agent_infer(request: MultiAgentInferenceRequest):
         logger.info(f"Received multi-agent infer request for ID: {multi_agent_id}")
         logger.debug(f"User input: {user_input}")
 
+        # Validate user input
+        if not user_input or user_input.strip() == "":
+            logger.error("Empty or invalid user input provided.")
+            raise HTTPException(status_code=400, detail="User input cannot be empty.")
+
         # Load multi-agent configuration
         multi_agents = load_multi_agents()
         multi_agent_config = next((ma for ma in multi_agents if ma["id"] == multi_agent_id), None)
@@ -666,8 +671,13 @@ async def multi_agent_infer(request: MultiAgentInferenceRequest):
         multi_agent_config.setdefault("role", "Coordinator")
         multi_agent_config.setdefault("goal", "Efficiently manage and delegate tasks.")
         multi_agent_config.setdefault("backstory", "Orchestrator for connected agents.")
-        multi_agent_config.setdefault("description", "Process the user request using available agents.")
+        multi_agent_config.setdefault("description", "Coordinate the processing of the user request by delegating to worker agents.")
 
+        multi_agent_config.setdefault("expected_output", (
+            "Agent Outputs:\n"
+            "<agent_name> Output: <output from agent>\n"
+            "(repeated for each agent in the sequence)\n"
+        ))
         # Load worker agent configurations
         all_agents = load_agents()
         connected_agent_ids = multi_agent_config.get("agent_ids", [])
@@ -710,7 +720,7 @@ async def multi_agent_infer(request: MultiAgentInferenceRequest):
             # Prepare worker config
             worker_config = {
                 "id": agent_data["id"],
-                "name": agent_data.get("name", agent_data["role"]),  # Add name, fallback to role
+                "name": agent_data.get("name", agent_data["role"]),
                 "role": agent_data["role"],
                 "goal": agent_data["goal"],
                 "backstory": agent_data["backstory"],
@@ -721,17 +731,18 @@ async def multi_agent_infer(request: MultiAgentInferenceRequest):
             worker_agent_configs.append(worker_config)
             logger.info(f"Loaded config for worker agent {agent_id} ({worker_config['name']})")
 
-        if not worker_agent_configs:
-            logger.error("No valid connected agents found.")
-            raise HTTPException(status_code=400, detail="No valid connected agents found.")
+        # Validate minimum worker agents
+        if len(worker_agent_configs) < 2:
+            logger.error("At least two worker agents are required.")
+            raise HTTPException(status_code=400, detail="Multi-agent requires at least two worker agents.")
 
         # Update manager description with user input
         if user_input:
-            multi_agent_config["description"] = (
-                multi_agent_config["description"].replace("{{input}}", user_input)
-                if "{{input}}" in multi_agent_config["description"]
-                else f"{multi_agent_config['description']}\n\nUser Input: {user_input}"
-            )
+            default_description = multi_agent_config["description"]
+            if "{{input}}" in default_description:
+                multi_agent_config["description"] = default_description.replace("{{input}}", user_input)
+            else:
+                multi_agent_config["description"] = f"{default_description}\nInput to process: {user_input}"
 
         # Instantiate and execute
         executor = MultiAgentExecutor(
@@ -752,8 +763,9 @@ async def multi_agent_infer(request: MultiAgentInferenceRequest):
     except Exception as e:
         logger.error(f"Error in multi_agent_infer: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    
 
-
+    
 
 def check_in_sentence(sentence="", input_to_check="{{input}}"):
     """
@@ -855,6 +867,7 @@ class MultiAgentCreate(BaseModel):
     role: Optional[str] = "Coordinator"
     goal: Optional[str] = "Efficiently manage and delegate tasks to connected agents based on user requests."
     backstory: Optional[str] = "I am a manager agent responsible for orchestrating multiple specialized agents to achieve complex goals."
+    expected_output: str # Make mandatory
 
 class MultiAgent(MultiAgentCreate):
     id: str

@@ -76,13 +76,16 @@ class MultiAgentExecutor:
 
     def _validate_configs(self):
         """Validates configurations."""
-        required_manager_fields = ["role", "goal", "backstory", "description"]
+        required_manager_fields = ["role", "goal", "backstory", "description", "expected_output"]
         required_worker_fields = ["id", "role", "goal", "backstory", "instructions", "expectedOutput"]
 
         for field in required_manager_fields:
             if field not in self.multi_agent_config:
                 logger.warning(f"Missing manager config field: {field}. Using default.")
-                self.multi_agent_config[field] = f"Default {field}"
+                self.multi_agent_config[field] = (
+                    f"Default {field}" if field != "expected_output"
+                    else "Formatted output containing each agent's result as specified in the description."
+                )
 
         for config in self.worker_agent_configs:
             for field in required_worker_fields:
@@ -306,10 +309,7 @@ class MultiAgentExecutor:
 
             manager_task = Task(
                 description=manager_task_description,
-                expected_output=(
-                    "Formatted output containing each agent's output in the format:\n" +
-                    "\n".join([f"{agent['name']} Output: <output>" for agent in agent_sequence])
-                ),
+                expected_output=self.multi_agent_config.get("expected_output"),
                 agent=self.manager_agent
             )
 
