@@ -416,7 +416,7 @@ class TaskExecutor:
 
 # This is a temporary function to get a random API key from the GEMINI_API_KEYS environment variable.
 def get_api_key():
-    keys = os.getenv("GEMINI_API_KEYS", "")
+    keys = os.getenv("GEMINI_API_KEYS_FREE", "")
     key_list = [key.strip() for key in keys.split(",") if key.strip()]
     if not key_list:
         raise ValueError("No API keys found in GEMINI_API_KEYS environment variable.")

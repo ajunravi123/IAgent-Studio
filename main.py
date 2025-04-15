@@ -710,6 +710,7 @@ async def multi_agent_infer(request: MultiAgentInferenceRequest):
             # Prepare worker config
             worker_config = {
                 "id": agent_data["id"],
+                "name": agent_data.get("name", agent_data["role"]),  # Add name, fallback to role
                 "role": agent_data["role"],
                 "goal": agent_data["goal"],
                 "backstory": agent_data["backstory"],
@@ -718,7 +719,7 @@ async def multi_agent_infer(request: MultiAgentInferenceRequest):
                 "tools": worker_tools_config
             }
             worker_agent_configs.append(worker_config)
-            logger.info(f"Loaded config for worker agent {agent_id}")
+            logger.info(f"Loaded config for worker agent {agent_id} ({worker_config['name']})")
 
         if not worker_agent_configs:
             logger.error("No valid connected agents found.")
