@@ -57,6 +57,11 @@
                         <p class="form-help">Give the manager agent some context for its coordination tasks.</p>
                     </div>
                     <div class="form-group">
+                        <label for="multiAgentExpectedOutput">Expected Output<span class="required">*</span></label>
+                        <textarea id="multiAgentExpectedOutput" name="multiAgentExpectedOutput" rows="3" required placeholder="Describe the expected final output format or content..."></textarea>
+                        <small class="field-description">Define what the final output from the orchestration should look like.</small>
+                    </div>
+                    <div class="form-group agent-selection-group">
                         <label>Connected Agents</label>
                         <div class="agents-selection-container">
                             <div id="agentSelectionList" class="agent-selection-list">

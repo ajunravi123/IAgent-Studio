@@ -2433,6 +2433,7 @@ function showEditMultiAgentModal(multiAgent) {
     document.getElementById('multiAgentRole').value = multiAgent.role || 'Coordinator'; 
     document.getElementById('multiAgentGoal').value = multiAgent.goal || ''; 
     document.getElementById('multiAgentBackstory').value = multiAgent.backstory || ''; 
+    document.getElementById('multiAgentExpectedOutput').value = multiAgent.expected_output || ''; // Populate expected output
     
     // Populate agent list and check the ones that are part of this multi-agent
     populateAgentSelectionList(allAvailableAgents, multiAgent.agent_ids || []);
@@ -2454,11 +2455,16 @@ async function handleMultiAgentFormSubmit(event) {
     const role = form.querySelector('#multiAgentRole').value.trim(); // Get role
     const goal = form.querySelector('#multiAgentGoal').value.trim(); // Get goal
     const backstory = form.querySelector('#multiAgentBackstory').value.trim(); // Get backstory
+    const expected_output = form.querySelector('#multiAgentExpectedOutput').value.trim(); // Get expected output
     const selectedAgentCheckboxes = form.querySelectorAll('input[name="selectedAgents"]:checked');
     const agent_ids = Array.from(selectedAgentCheckboxes).map(cb => cb.value);
 
     if (!name || !description) {
         alert('Name and Description are required.');
+        return;
+    }
+    if (!expected_output) { // Validate expected output
+        alert('Expected Output is required.');
         return;
     }
     if (agent_ids.length === 0) {
@@ -2473,7 +2479,8 @@ async function handleMultiAgentFormSubmit(event) {
         agent_ids,
         role: role || "Coordinator", // Default if empty
         goal: goal || "Efficiently manage and delegate tasks.", // Default if empty
-        backstory: backstory || "Orchestrator for connected agents." // Default if empty
+        backstory: backstory || "Orchestrator for connected agents.", // Default if empty
+        expected_output // Add expected output
     };
 
     const url = multiAgentId ? `/api/multi-agents/${multiAgentId}` : '/api/multi-agents';
@@ -4035,6 +4042,7 @@ function loadMultiAgentDetails(multiAgentId) {
             const roleInput = document.getElementById('multiAgentRoleDisplay'); // Get display element
             const goalTextarea = document.getElementById('multiAgentGoalDisplay'); // Get display element
             const backstoryTextarea = document.getElementById('multiAgentBackstoryDisplay'); // Get display element
+            const expectedOutputTextarea = document.getElementById('multiAgentExpectedOutputDisplay'); // Get expected output display element
             
             if (nameInput) nameInput.value = multiAgent.name;
             if (descTextarea) descTextarea.value = multiAgent.description;
@@ -4042,6 +4050,7 @@ function loadMultiAgentDetails(multiAgentId) {
             if (roleInput) roleInput.value = multiAgent.role || 'Coordinator';
             if (goalTextarea) goalTextarea.value = multiAgent.goal || 'Not specified';
             if (backstoryTextarea) backstoryTextarea.value = multiAgent.backstory || 'Not specified';
+            if (expectedOutputTextarea) expectedOutputTextarea.value = multiAgent.expected_output || 'Not specified'; // Populate expected output
             
             // Store the ID for later use
             window.selectedMultiAgentId = multiAgentId;
@@ -4368,22 +4377,43 @@ function saveMultiAgentChanges() {
         alert('No multi-agent selected');
         return;
     }
-    
+
+    // Get elements from the launch page
     const nameInput = document.getElementById('multiAgentName');
     const descTextarea = document.getElementById('multiAgentDescription');
-    
-    if (!nameInput || !descTextarea) return;
-    
+    const roleInput = document.getElementById('multiAgentRoleDisplay');
+    const goalTextarea = document.getElementById('multiAgentGoalDisplay');
+    const backstoryTextarea = document.getElementById('multiAgentBackstoryDisplay');
+    const expectedOutputTextarea = document.getElementById('multiAgentExpectedOutputDisplay');
+
+    if (!nameInput || !descTextarea || !roleInput || !goalTextarea || !backstoryTextarea || !expectedOutputTextarea) {
+        console.error("One or more required display elements not found on the launch page.");
+        alert("Error: Could not find all necessary fields to save.");
+        return;
+    }
+
     const multiAgentData = {
         name: nameInput.value,
         description: descTextarea.value,
+        role: roleInput.value,
+        goal: goalTextarea.value,
+        backstory: backstoryTextarea.value,
+        expected_output: expectedOutputTextarea.value, // Include expected output
         agent_ids: [] // Start with an empty array
     };
-    
+
     // Get the agent IDs from the connected agents list displayed on the page
     const connectedAgents = document.querySelectorAll('.connected-agent-item');
     multiAgentData.agent_ids = Array.from(connectedAgents).map(agent => agent.dataset.agentId);
-    
+
+    // Validation (Example - add more as needed)
+    if (!multiAgentData.name || !multiAgentData.description || !multiAgentData.expected_output) {
+         alert('Name, Description, and Expected Output are required.');
+         return;
+    }
+
+    showLoading("Saving changes..."); // Show loading indicator
+
     fetch(`/api/multi-agents/${multiAgentId}`, {
         method: 'PUT',
         headers: {
@@ -4392,30 +4422,30 @@ function saveMultiAgentChanges() {
         body: JSON.stringify(multiAgentData)
     })
     .then(response => {
-        if (!response.ok) throw new Error('Failed to save changes');
+        hideLoading(); // Hide loading indicator on response
+        if (!response.ok) {
+             // Try to parse error detail
+             return response.json().then(err => {
+                 throw new Error(err.detail || 'Failed to save changes');
+             }).catch(() => { // Fallback if not JSON
+                 throw new Error(`Failed to save changes (Status: ${response.status})`);
+             });
+        }
         return response.json();
     })
     .then(() => {
         // Switch back to view mode
-        toggleMultiAgentEditMode();
-        
-        // Show success message
-        const toast = document.createElement('div');
-        toast.className = 'toast success';
-        toast.innerHTML = '<i class="fas fa-check-circle"></i> Changes saved successfully';
-        document.body.appendChild(toast);
+        toggleMultiAgentEditMode(); // Assuming this correctly toggles readonly/button states
 
-        setTimeout(() => toast.remove(), 3000);
+        // Show success message
+        showToast('Changes saved successfully', 'success');
     })
     .catch(error => {
+        hideLoading(); // Ensure loader is hidden on error
         console.error('Error saving changes:', error);
-        
+
         // Show error message
-        const toast = document.createElement('div');
-        toast.className = 'toast error';
-        toast.innerHTML = '<i class="fas fa-exclamation-circle"></i> Failed to save changes';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        showToast(`Failed to save changes: ${error.message}`, 'error');
     });
 }
 
