@@ -61,7 +61,7 @@ function loadPage(pagePath) {
                 app.innerHTML = html;
 
                 // Add a small delay to ensure DOM is fully loaded for JS initializations
-                setTimeout(() => {
+                // setTimeout(() => {
                     // Page specific JS initializations
                     if (basePage === 'agents') {
                     loadAgents();
@@ -130,10 +130,16 @@ function loadPage(pagePath) {
                     }
                     // Add other page specific initializations here
                     else if (basePage === 'data-connectors') {
+                        // Ensure the main container for this page exists before initializing
+                        const container = document.getElementById('dataConnectorsGrid');
+                        if (container) {
                         initializeDataConnectorsPage();
+                        } else {
+                            console.error('Data Connectors container not found after loading fragment!');
+                        }
                     }
 
-                }, 100);
+                // }, 100); // Removed fixed timeout, initialize directly if container exists
             })
             .catch(error => {
                 app.innerHTML = '<p>Error loading page content.</p>';
@@ -5000,13 +5006,15 @@ function showToast(message, type = 'info') {
 
 function initializeDataConnectorsPage() {
     console.log('Initializing Data Connectors page...');
-    loadDataConnectors(); // Load the connectors
+    loadDataConnectors(); // Load the available connector cards
+    loadConfiguredConnectorsDisplay(); // Load the new display for configured connectors
     // Setup search listener
     const searchInput = document.getElementById('searchDataConnectorsInput');
     if (searchInput) {
         // Use debounce if needed for performance
         searchInput.addEventListener('input', (e) => searchDataConnectors(e.target.value));
     }
+    ensureDataConnectorStyles(); // Ensure styles are loaded
 }
 
 async function loadDataConnectors() {
@@ -5045,22 +5053,641 @@ async function loadDataConnectors() {
     }
 }
 
-// Helper function to get Font Awesome class based on connector ID/name
+// --- New Function to Load Configured Connectors Display ---
+async function loadConfiguredConnectorsDisplay() {
+    const displayContainer = document.getElementById('configuredConnectorsDisplay');
+    const listContainer = displayContainer.querySelector('.configured-items-list');
+    const loadingPlaceholder = displayContainer.querySelector('.loading-placeholder');
+    const emptyMessage = displayContainer.querySelector('.empty-state');
+
+    if (!displayContainer || !listContainer || !loadingPlaceholder || !emptyMessage) {
+        console.error("Required display elements for configured connectors not found!");
+        return;
+    }
+
+    // Initial state: show loading
+    loadingPlaceholder.style.display = 'block';
+    loadingPlaceholder.classList.add('active');
+    listContainer.style.display = 'none';
+    emptyMessage.style.display = 'none';
+    listContainer.innerHTML = ''; // Clear existing items
+
+    try {
+        const response = await fetch('/api/data-connectors');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+        }
+        const configuredConnectors = await response.json();
+
+        loadingPlaceholder.style.display = 'none';
+        loadingPlaceholder.classList.remove('active');
+
+        if (configuredConnectors && configuredConnectors.length > 0) {
+            listContainer.style.display = 'flex'; // Use flex for horizontal layout
+            configuredConnectors.forEach(connector => {
+                const item = document.createElement('div');
+                item.className = 'configured-connector-item';
+                item.dataset.connectorId = connector.id;
+
+                const iconClass = getConnectorIconClass(connector.connectorType);
+                const createdAtDate = new Date(connector.createdAt);
+                const formattedDate = createdAtDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+                item.innerHTML = `
+                    <div class="item-highlight"></div>
+                    <div class="item-header">
+                        <div class="item-icon ${connector.connectorType}">
+                    <i class="${iconClass}"></i>
+                </div>
+                        <h4 class="item-name">${connector.uniqueName}</h4>
+                        <div class="item-actions">
+                            <button class="btn-icon btn-edit" onclick="editConnector('${connector.id}', '${connector.connectorType}')" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deleteConnector('${connector.id}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            </div>
+                    <div class="item-details">
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-server"></i> Host:</span>
+                            <span class="detail-value">${connector.vectorStoreHost}</span>
+        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-database"></i> DB:</span>
+                            <span class="detail-value">${connector.vectorStoreDBName}</span>
+                        </div>
+                    </div>
+                    <div class="item-footer">
+                         <span class="detail-label"><i class="fas fa-calendar-alt"></i> Added:</span>
+                         <span class="detail-value">${formattedDate}</span>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        } else {
+            emptyMessage.style.display = 'block'; // Show empty state message
+        }
+    } catch (error) {
+        console.error("Error loading configured connectors:", error);
+        loadingPlaceholder.style.display = 'none';
+        loadingPlaceholder.classList.remove('active');
+        // Display error within the container
+        listContainer.innerHTML = `<div class="error-message full-width">Failed to load connections: ${error.message}</div>`;
+        listContainer.style.display = 'block'; // Show container to display error
+    }
+}
+
+
+// ... existing getConnectorIconClass, renderDataConnectors, searchDataConnectors ...
+
+
+// Ensure styles are loaded/updated
+function ensureDataConnectorStyles() {
+    const styleId = 'data-connector-styles';
+    let styleElement = document.getElementById(styleId);
+    if (!styleElement) {
+        styleElement = document.createElement('style');
+        styleElement.id = styleId;
+        document.head.appendChild(styleElement);
+    }
+
+    // CSS includes styles for both available connectors grid AND the new configured connectors display
+    styleElement.textContent = `
+        /* General Page Styles */
+            .page.data-connectors .page-description {
+                margin-bottom: 25px;
+                color: var(--text-secondary);
+            max-width: 800px;
+            }
+            .page.data-connectors .quick-guide-link {
+                color: var(--primary-accent);
+                text-decoration: none;
+                font-weight: 500;
+            }
+            .page.data-connectors .quick-guide-link:hover {
+                text-decoration: underline;
+            }
+            .search-and-filter {
+            margin-bottom: 20px; /* Reduced margin */
+            }
+            .search-and-filter .search-bar {
+                max-width: 450px;
+                background-color: var(--input-bg);
+            }
+
+        /* Configured Connectors Display Section */
+        .configured-connectors-display-section {
+            margin-bottom: 45px; /* Space before the "Add New" section */
+        }
+        .configured-connectors-display-section h2 {
+            font-size: 20px; /* Slightly smaller title */
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color-light);
+        }
+        #configuredConnectorsDisplay {
+            position: relative;
+            min-height: 150px; /* Ensure space for loading/empty states */
+            padding-bottom: 10px; /* Space for scrollbar */
+        }
+        .configured-items-list {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto; /* Enable horizontal scroll */
+            padding: 5px 0 15px 0; /* Padding for scrollbar and item shadow */
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: var(--primary-accent-light) var(--background);
+        }
+        /* Webkit Scrollbar */
+        .configured-items-list::-webkit-scrollbar {
+            height: 8px;
+        }
+        .configured-items-list::-webkit-scrollbar-track {
+            background: var(--background-secondary);
+            border-radius: 4px;
+        }
+        .configured-items-list::-webkit-scrollbar-thumb {
+            background-color: var(--border-color-light);
+            border-radius: 4px;
+            border: 2px solid var(--background-secondary);
+        }
+        .configured-items-list::-webkit-scrollbar-thumb:hover {
+            background-color: var(--primary-accent-light);
+        }
+
+        .configured-connector-item {
+            flex: 0 0 auto; /* Prevent shrinking/growing */
+            width: 280px; /* Fixed width for each card */
+            background: linear-gradient(145deg, var(--background-secondary) 0%, var(--background-gradient-dark) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.25s ease, box-shadow 0.3s ease;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .configured-connector-item:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            border-color: var(--primary-accent-faded);
+        }
+        .configured-connector-item .item-highlight {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 100%;
+            background: linear-gradient(90deg, var(--primary-accent), var(--primary-accent-light));
+            opacity: 0.8;
+        }
+        .configured-connector-item .item-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 18px;
+            gap: 12px;
+        }
+        .configured-connector-item .item-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--primary-accent-faded);
+            color: var(--primary-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        /* Add specific icon colors if needed */
+        .configured-connector-item .item-icon.postgres {
+             background: rgba(52, 144, 220, 0.15);
+             color: #3490dc;
+        }
+        .configured-connector-item .item-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .configured-connector-item .item-actions {
+            display: flex;
+            align-items: center;
+            margin-left: auto; /* Push actions to the right */
+        }
+        .configured-connector-item .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            margin-left: 5px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: color 0.2s, transform 0.2s;
+        }
+        .configured-connector-item .btn-icon:hover {
+            transform: scale(1.1);
+        }
+        .configured-connector-item .btn-edit:hover {
+            color: #3b82f6; /* Blue */
+        }
+        .configured-connector-item .btn-delete:hover {
+            color: #ef4444; /* Red */
+        }
+        .configured-connector-item .item-details {
+            margin-bottom: 15px;
+            flex-grow: 1; /* Allow details to take up space */
+        }
+        .configured-connector-item .detail-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+         .configured-connector-item .detail-row i {
+             width: 14px; /* Align icons */
+             text-align: center;
+             color: var(--primary-accent-light);
+         }
+        .configured-connector-item .detail-label {
+            font-weight: 500;
+            display: inline-flex; /* Align icon and text */
+            align-items: center;
+            gap: 5px;
+        }
+        .configured-connector-item .detail-value {
+            color: var(--text-primary);
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .configured-connector-item .item-footer {
+             margin-top: auto;
+             padding-top: 12px;
+             border-top: 1px solid var(--border-color-light);
+             font-size: 12px;
+             color: var(--text-secondary);
+             display: flex;
+             align-items: center;
+             gap: 6px;
+        }
+        .configured-connector-item .item-footer i {
+            color: var(--primary-accent-light);
+        }
+
+        /* Loading/Empty/Error States within the display */
+        #configuredConnectorsDisplay .loading-placeholder,
+        #configuredConnectorsDisplay .empty-state,
+        #configuredConnectorsDisplay .error-message {
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             justify-content: center;
+             text-align: center;
+             padding: 30px 20px;
+             color: var(--text-secondary);
+             font-size: 15px;
+             position: absolute; /* Center within container */
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             background: var(--background);
+             border-radius: 8px;
+             opacity: 0;
+             visibility: hidden;
+             transition: opacity 0.3s, visibility 0.3s;
+         }
+        #configuredConnectorsDisplay .loading-placeholder.active,
+        #configuredConnectorsDisplay .empty-state[style*="block"],
+        #configuredConnectorsDisplay .error-message.active {
+            opacity: 1;
+            visibility: visible;
+        }
+         #configuredConnectorsDisplay .loading-placeholder i,
+         #configuredConnectorsDisplay .empty-state i {
+             font-size: 28px;
+             margin-bottom: 15px;
+             display: block;
+             color: var(--primary-accent-light);
+         }
+         .error-message.full-width {
+             width: 100%;
+             text-align: center;
+             color: var(--error-color);
+         }
+
+        /* Add New Connector Section */
+        .add-connectors-title {
+             font-size: 20px;
+             font-weight: 600;
+             margin-top: 0; /* Reset top margin */
+             margin-bottom: 20px;
+             color: var(--text-primary);
+             padding-bottom: 10px;
+             border-bottom: 1px solid var(--border-color-light);
+            }
+            .connectors-grid {
+                display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Slightly smaller cards */
+            gap: 20px;
+            }
+            .connector-card {
+            /* Styles from previous iteration, adjust if needed */
+            background: var(--background-secondary);
+                border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+                display: flex;
+                flex-direction: column;
+                transition: transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            }
+            .connector-card:hover {
+             transform: translateY(-3px);
+             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+                border-color: var(--primary-accent-light);
+            }
+         /* ... rest of connector-card styles ... */
+            .connector-card .card-header {
+                display: flex;
+                align-items: center;
+            margin-bottom: 15px;
+            gap: 12px;
+            }
+            .connector-card .connector-icon-wrapper {
+             width: 38px;
+             height: 38px;
+                border-radius: 8px;
+                background: linear-gradient(135deg, var(--primary-accent-light), var(--primary-accent));
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+             font-size: 17px;
+             flex-shrink: 0;
+            }
+            .connector-card .connector-name {
+             font-size: 18px;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin: 0;
+                flex-grow: 1;
+             white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .connector-card .btn-add-connector {
+                background-color: transparent;
+                color: var(--primary-accent);
+                border: 1px solid var(--primary-accent-light);
+             padding: 6px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+             font-size: 12px;
+                font-weight: 500;
+                transition: all 0.2s ease;
+                white-space: nowrap;
+            }
+             .connector-card .btn-add-connector:hover {
+                 background-color: var(--primary-accent-faded);
+                 border-color: var(--primary-accent);
+                 color: var(--primary-contrast);
+             }
+             .connector-card .btn-add-connector i {
+                 margin-right: 4px;
+              font-size: 11px;
+             }
+            .connector-card .connector-description {
+             font-size: 13px;
+                color: var(--text-secondary);
+             margin-bottom: 20px;
+                flex-grow: 1; 
+             line-height: 1.5;
+            }
+            .connector-card .card-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-top: auto; 
+             padding-top: 12px;
+                border-top: 1px solid var(--border-color-light);
+             font-size: 12px;
+            }
+            .connector-card .connections-info {
+                background-color: var(--tag-bg);
+                color: var(--tag-text);
+             padding: 4px 8px;
+             border-radius: 10px;
+                font-weight: 500;
+             font-size: 11px;
+            }
+            .connector-card .docs-link {
+                color: var(--text-link);
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+             gap: 4px;
+            }
+             .connector-card .docs-link:hover {
+                 color: var(--primary-accent);
+                 text-decoration: underline;
+             }
+             .connector-card .docs-link i {
+              font-size: 10px;
+             }
+          /* Loading/Empty states for grid */
+          .connectors-grid .loading-placeholder,
+          .connectors-grid .empty-state,
+          .connectors-grid .error-message {
+                 grid-column: 1 / -1; 
+                 text-align: center;
+            padding: 40px 20px;
+                 color: var(--text-secondary);
+            font-size: 15px;
+             }
+         .connectors-grid .loading-placeholder i {
+                 margin-right: 8px;
+             }
+         .connectors-grid .empty-state i {
+             font-size: 30px;
+             margin-bottom: 15px;
+             display: block;
+             color: var(--primary-accent-light);
+         }
+    `;
+
+}
+
+
+// Function to show Postgres connection configuration modal
+// ... existing modal code ...
+
+// Function to close connector configuration modal
+// ... existing modal code ...
+
+// Function to test PostgreSQL connection
+// ... existing test connection code ...
+
+// Function to save PostgreSQL connection
+async function savePostgresConnection(isEditing = false) {
+    const form = document.getElementById('postgresConnectionForm');
+    if (!form) return;
+
+    // Basic form validation
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Validate required fields
+    const requiredFields = ['uniqueName', 'vectorStoreUser', 'vectorStoreHost', 'vectorStorePassword', 'vectorStorePort', 'vectorStoreDBName'];
+    const missingFields = requiredFields.filter(field => !data[field]);
+    
+    if (missingFields.length > 0) {
+        showToast(`Please fill in all required fields: ${missingFields.join(', ')}`, 'error');
+        return;
+    }
+
+    // If editing and password is empty, remove it from payload
+    if (isEditing && !data.vectorStorePassword) {
+        // delete data.vectorStorePassword;
+    } else if (!isEditing && !data.vectorStorePassword) {
+        showToast('Password is required for new connections', 'error');
+        return;
+    }
+
+    // Add connector type
+    data.connectorType = 'postgres';
+
+    showLoading('Saving connection...');
+    
+    try {
+        const url = isEditing ? `/api/data-connectors/${data.id}` : '/api/data-connectors';
+        const method = isEditing ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to save connection');
+        }
+
+        // Close modal and show success message
+        closeConnectorModal();
+        showToast(isEditing ? 'Connection updated successfully!' : 'Connection saved successfully!', 'success');
+        
+        // Reload the configured connectors display
+        await loadConfiguredConnectorsDisplay();
+
+    } catch (error) {
+        console.error('Error saving connection:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// --- New Edit/Delete Functions ---
+async function editConnector(connectorId, connectorType) {
+    console.log(`Editing connector: ${connectorId}, Type: ${connectorType}`);
+    
+    if (connectorType === 'postgres') {
+        showLoading('Loading connection details...');
+        try {
+            // Fetch ALL connectors first to find the one we need
+            // This is inefficient but necessary if GET /api/data-connectors/{id} doesn't exist
+            const response = await fetch(`/api/data-connectors`); 
+            if (!response.ok) throw new Error('Failed to fetch connectors');
+            const connectors = await response.json();
+            const connectorToEdit = connectors.find(c => c.id === connectorId);
+            
+            hideLoading();
+            
+            if (connectorToEdit) {
+                showPostgresConnectionModal(connectorToEdit); // Open modal with pre-filled data
+            } else {
+                showToast('Error: Connector not found.', 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('Error fetching connector for edit:', error);
+            showToast(`Error loading details: ${error.message}`, 'error');
+        }
+    } else {
+        alert(`Editing for connector type '${connectorType}' is not yet implemented.`);
+    }
+}
+
+async function deleteConnector(connectorId) {
+    if (!confirm('Are you sure you want to delete this connection?')) {
+        return;
+    }
+
+    showLoading('Deleting connection...');
+
+    try {
+        const response = await fetch(`/api/data-connectors/${connectorId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to delete connection');
+        }
+
+        // Show success message
+        showToast('Connection deleted successfully', 'success');
+        
+        // Refresh the configured connectors display
+        await loadConfiguredConnectorsDisplay();
+
+    } catch (error) {
+        console.error('Error deleting connection:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+// --- End Edit/Delete Functions ---
+
+// ... existing code ...
+// }
+
+
+// --- Helper function to get Connector Icon Class (Reinstated) ---
 function getConnectorIconClass(connectorId) {
     // Map specific IDs to icons - add more as needed
     switch (connectorId.toLowerCase()) {
         case 'qdrant': return 'fas fa-database'; // Example
         case 'weaviate': return 'fas fa-wave-square'; // Example
         case 'pgvector': return 'fas fa-database'; // Example
-        case 'singlestore': return 'fas fa-circle-nodes'; // Example
-        case 'redshift': return 'fab fa-aws'; // Example
-        case 'postgres': return 'fas fa-database'; // Example
+        case 'postgres': return 'fas fa-database'; // Example for configured type
         case 'mysql': return 'fas fa-database'; // Example
         case 'bigquery': return 'fab fa-google'; // Example
+        // Add more mappings based on your actual connector types/IDs
         default: return 'fas fa-plug'; // Default plug icon
     }
 }
 
+// --- Function to render AVAILABLE connectors grid (Reinstated) ---
 function renderDataConnectors(connectors) {
     const connectorsGrid = document.getElementById('dataConnectorsGrid');
     if (!connectorsGrid) return;
@@ -5071,7 +5698,8 @@ function renderDataConnectors(connectors) {
     }
 
     connectorsGrid.innerHTML = connectors.map(connector => {
-        const iconClass = getConnectorIconClass(connector.id);
+        // Use connector.id for available connectors mapping
+        const iconClass = getConnectorIconClass(connector.id); 
         return `
         <div class="connector-card" data-connector-id="${connector.id}">
             <div class="card-header">
@@ -5085,18 +5713,46 @@ function renderDataConnectors(connectors) {
             </div>
             <p class="connector-description">${connector.description}</p>
             <div class="card-footer">
-                <span class="connections-info">${connector.connections} DB's connected</span>
-                <a href="${connector.docsUrl}" target="_blank" class="docs-link">
+                <span class="connections-info">${connector.connections || 0} DB's connected</span>
+                <a href="${connector.docsUrl || '#'}" target="_blank" class="docs-link">
                     View Documentation <i class="fas fa-external-link-alt"></i>
                 </a>
             </div>
         </div>
     `}).join('');
-
-    // Add necessary CSS if not already present (placeholder)
-    ensureDataConnectorStyles();
 }
 
+// --- Function to load AVAILABLE connectors (Ensure it calls renderDataConnectors) ---
+async function loadDataConnectors() {
+    const connectorsGrid = document.getElementById('dataConnectorsGrid');
+    if (!connectorsGrid) {
+        console.error("Available connectors grid container not found!");
+        return;
+    }
+    connectorsGrid.innerHTML = '<div class="loading-placeholder"><i class="fas fa-spinner fa-spin"></i> Loading connectors...</div>';
+
+    // --- MOCK DATA --- 
+    // Replace this with an actual API call later if needed for AVAILABLE connectors
+    // Or potentially just use a static list if these don't change often.
+    const mockConnectors = [
+        { id: 'postgres', name: 'Postgres', description: 'An open source object-relational database system that uses and extends SQL.', icon: '/static/images/connectors/postgres.svg', connections: 0, docsUrl: 'https://www.postgresql.org/docs/' },
+        { id: 'mysql', name: 'My SQL', description: 'An open-source relational database management system, developed by Oracle.', icon: '/static/images/connectors/mysql.svg', connections: 0, docsUrl: 'https://dev.mysql.com/doc/' },
+        { id: 'bigquery', name: 'Big Query', description: 'A serverless and scalable multi-cloud data warehouse service, provided by Google Cloud.', icon: '/static/images/connectors/bigquery.svg', connections: 0, docsUrl: 'https://cloud.google.com/bigquery/docs' },
+    ];
+    
+    try {
+        // Simulate API delay if needed
+        await new Promise(resolve => setTimeout(resolve, 100)); 
+        // Call the reinstated render function
+        renderDataConnectors(mockConnectors);
+    } catch (error) { // This catch block might not be needed if using static data
+        console.error("Error loading available data connectors:", error);
+        connectorsGrid.innerHTML = '<div class="error-message"><i class="fas fa-exclamation-triangle"></i> Failed to load available connectors.</div>';
+    }
+}
+
+
+// --- Search function for AVAILABLE connectors ---
 function searchDataConnectors(query) {
     const searchQuery = query.toLowerCase().trim();
     const connectorCards = document.querySelectorAll('#dataConnectorsGrid .connector-card');
@@ -5110,174 +5766,28 @@ function searchDataConnectors(query) {
     });
 }
 
-// Placeholder for adding a connector - implement actual logic later
+// --- Add Connector Action ---
 function addConnector(connectorId) {
     console.log(`Add connector clicked: ${connectorId}`);
     
     // Special handling for Postgres
     if (connectorId === 'postgres') {
-        showPostgresConnectionModal();
+        showPostgresConnectionModal(); // Show modal for new connection
         return;
     }
     
     // Generic message for other connectors (can implement others later)
-    alert(`Configuration for ${connectorId} is not yet implemented.`);
+    showToast(`Configuration for ${connectorId} is not yet implemented.`, 'info');
 }
 
-// Function to add CSS styles if they don't exist
-function ensureDataConnectorStyles() {
-    if (!document.getElementById('data-connector-styles')) {
-        const style = document.createElement('style');
-        style.id = 'data-connector-styles';
-        // Updated CSS for better appearance
-        style.textContent = `
-            .page.data-connectors .page-description {
-                margin-bottom: 25px;
-                color: var(--text-secondary);
-                max-width: 800px; /* Limit width for readability */
-            }
-            .page.data-connectors .quick-guide-link {
-                color: var(--primary-accent);
-                text-decoration: none;
-                font-weight: 500;
-            }
-            .page.data-connectors .quick-guide-link:hover {
-                text-decoration: underline;
-            }
-            .search-and-filter {
-                margin-bottom: 30px;
-            }
-            .search-and-filter .search-bar {
-                max-width: 450px;
-                background-color: var(--input-bg);
-            }
-            .connectors-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); /* Slightly larger cards */
-                gap: 25px;
-            }
-            .connector-card {
-                background: linear-gradient(313deg, #222222 0%, #031235 100%);
-                border: 1px solid var(--border-color);
-                border-radius: 12px; /* More rounded */
-                padding: 25px;
-                display: flex;
-                flex-direction: column;
-                transition: transform 0.2s ease, box-shadow 0.3s ease;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                overflow: hidden; /* Ensure gradients/shadows look clean */
-            }
-            .connector-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-                border-color: var(--primary-accent-light);
-            }
-            .connector-card .card-header {
-                display: flex;
-                align-items: center;
-                margin-bottom: 18px;
-                gap: 15px;
-            }
-            /* Icon Styling */
-            .connector-card .connector-icon-wrapper {
-                width: 40px;
-                height: 40px;
-                border-radius: 8px;
-                background: linear-gradient(135deg, var(--primary-accent-light), var(--primary-accent));
-                color: #fff;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                flex-shrink: 0; /* Prevent shrinking */
-            }
-            .connector-card .connector-name {
-                font-size: 19px;
-                font-weight: 600;
-                color: var(--text-primary);
-                margin: 0;
-                flex-grow: 1;
-                white-space: nowrap; /* Prevent wrapping */
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .connector-card .btn-add-connector {
-                background-color: transparent;
-                color: var(--primary-accent);
-                border: 1px solid var(--primary-accent-light);
-                padding: 7px 14px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: 500;
-                transition: all 0.2s ease;
-                white-space: nowrap;
-            }
-             .connector-card .btn-add-connector:hover {
-                 background-color: var(--primary-accent-faded);
-                 border-color: var(--primary-accent);
-                 color: var(--primary-contrast);
-             }
-             .connector-card .btn-add-connector i {
-                 margin-right: 4px;
-             }
-            .connector-card .connector-description {
-                font-size: 14px;
-                color: var(--text-secondary);
-                margin-bottom: 25px;
-                flex-grow: 1; 
-                line-height: 1.6;
-            }
-            .connector-card .card-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-top: auto; 
-                padding-top: 15px;
-                border-top: 1px solid var(--border-color-light);
-                font-size: 13px;
-            }
-            .connector-card .connections-info {
-                background-color: var(--tag-bg);
-                color: var(--tag-text);
-                padding: 5px 10px;
-                border-radius: 12px;
-                font-weight: 500;
-                font-size: 12px;
-            }
-            .connector-card .docs-link {
-                color: var(--text-link);
-                text-decoration: none;
-                display: inline-flex;
-                align-items: center;
-                gap: 5px;
-            }
-             .connector-card .docs-link:hover {
-                 color: var(--primary-accent);
-                 text-decoration: underline;
-             }
-             .connector-card .docs-link i {
-                 font-size: 11px;
-             }
-             .loading-placeholder, .empty-state, .error-message {
-                 grid-column: 1 / -1; 
-                 text-align: center;
-                 padding: 50px 20px;
-                 color: var(--text-secondary);
-                 font-size: 16px;
-             }
-             .loading-placeholder i {
-                 margin-right: 8px;
-             }
-        `;
-        document.head.appendChild(style);
-    }
-}
 
-// --- End Data Connectors Page Functions ---
+// Ensure styles are loaded/updated
+// ... rest of the file ...
+
+// --- Postgres Connection Modal Functions (Reinstated) ---
 
 // Function to show Postgres connection configuration modal
-function showPostgresConnectionModal() {
+function showPostgresConnectionModal(connectorData = null) { // Accept optional data for editing
     // Create modal if it doesn't exist or get existing one
     let modal = document.getElementById('connectorConfigModal');
     if (modal) {
@@ -5289,45 +5799,50 @@ function showPostgresConnectionModal() {
     modal.id = 'connectorConfigModal';
     modal.className = 'modal';
     
+    const isEditing = connectorData !== null;
+    const title = isEditing ? `Edit Connection: ${connectorData.uniqueName}` : 'Connect Postgres Vector Store'; // Updated title
+    const submitButtonText = isEditing ? 'Save Changes' : 'Submit';
+    
     // Generate form fields for Postgres connection
     const modalHtml = `
         <div class="modal-content connector-config-modal">
             <div class="modal-header">
-                <h2>Connect Postgres vector_store</h2>
+                <h2>${title}</h2>
                 <button class="close-btn" onclick="closeConnectorModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="postgresConnectionForm">
+                    <input type="hidden" id="connectorId" name="id" value="${isEditing ? connectorData.id : ''}">
                     <div class="form-group">
                         <label for="uniqueName">Unique Name <span class="required">*</span></label>
-                        <input type="text" id="uniqueName" name="uniqueName" placeholder="Give this connection a name" required>
+                        <input type="text" id="uniqueName" name="uniqueName" placeholder="Give this connection a name" required value="${isEditing ? connectorData.uniqueName : ''}">
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group half">
                             <label for="vectorStoreUser">Vector Store User <span class="required">*</span></label>
-                            <input type="text" id="vectorStoreUser" name="vectorStoreUser" placeholder="Enter Vector Store User" required>
+                            <input type="text" id="vectorStoreUser" name="vectorStoreUser" placeholder="Enter Vector Store User" required value="${isEditing ? connectorData.vectorStoreUser : ''}">
                         </div>
                         <div class="form-group half">
                             <label for="vectorStoreHost">Vector Store Host <span class="required">*</span></label>
-                            <input type="text" id="vectorStoreHost" name="vectorStoreHost" placeholder="Enter Vector Store Host" required>
+                            <input type="text" id="vectorStoreHost" name="vectorStoreHost" placeholder="Enter Vector Store Host" required value="${isEditing ? connectorData.vectorStoreHost : ''}">
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group half">
-                            <label for="vectorStorePassword">Vector Store Password <span class="required">*</span></label>
-                            <input type="password_text" id="vectorStorePassword" name="vectorStorePassword" placeholder="Enter Vector Store Password" required>
+                            <label for="vectorStorePassword">Vector Store Password ${isEditing ? '' : '<span class="required">*</span>'}</label>
+                            <input type="password_text" id="vectorStorePassword" name="vectorStorePassword" placeholder="${isEditing ? 'Enter new password to update' : 'Enter Vector Store Password'}" ${isEditing ? '' : 'required'} value="${isEditing ? connectorData.vectorStorePassword : ''}">
                         </div>
                         <div class="form-group half">
                             <label for="vectorStorePort">Vector Store Port <span class="required">*</span></label>
-                            <input type="text" id="vectorStorePort" name="vectorStorePort" placeholder="Enter Vector Store Port" required>
+                            <input type="text" id="vectorStorePort" name="vectorStorePort" placeholder="Enter Vector Store Port" required value="${isEditing ? connectorData.vectorStorePort : ''}">
                         </div>
                     </div>
                     
                     <div class="form-group">
                         <label for="vectorStoreDBName">Vector Store DB Name <span class="required">*</span></label>
-                        <input type="text" id="vectorStoreDBName" name="vectorStoreDBName" placeholder="Enter Vector Store DB Name" required>
+                        <input type="text" id="vectorStoreDBName" name="vectorStoreDBName" placeholder="Enter Vector Store DB Name" required value="${isEditing ? connectorData.vectorStoreDBName : ''}">
                     </div>
                     
                     <div class="legal-text">
@@ -5351,7 +5866,7 @@ function showPostgresConnectionModal() {
                 </button>
                 <div class="action-buttons">
                     <button class="btn-cancel" onclick="closeConnectorModal()">Cancel</button>
-                    <button class="btn-submit" onclick="savePostgresConnection()">Submit</button>
+                    <button class="btn-submit" onclick="savePostgresConnection(${isEditing})">${submitButtonText}</button> 
                 </div>
             </div>
         </div>
@@ -5393,6 +5908,10 @@ function testPostgresConnection() {
     
     // Check if required fields are filled
     for (const [key, value] of Object.entries(connectionConfig)) {
+        // Skip password check if editing and field is empty
+        const isEditing = form.querySelector('#connectorId').value !== '';
+        if (isEditing && key === 'vectorStorePassword' && !value.trim()) continue; 
+        
         if (!value.trim()) {
             showToast(`Error: ${key} is required`, 'error');
             return;
@@ -5400,12 +5919,13 @@ function testPostgresConnection() {
     }
     
     // Show loading indicator
-    const testBtn = document.querySelector('.btn-test-connection');
+    const testBtn = document.querySelector('#connectorConfigModal .btn-test-connection');
     const originalBtnText = testBtn.innerHTML;
     testBtn.disabled = true;
     testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
     
     // Simulate testing the connection (replace with actual API call later)
+    console.log("Simulating connection test with:", connectionConfig);
     setTimeout(() => {
         // Simulate successful connection (would be an actual API call in production)
         const success = Math.random() > 0.3; // 70% success rate for demo
@@ -5422,112 +5942,13 @@ function testPostgresConnection() {
     }, 1500);
 }
 
-// Function to save PostgreSQL connection and download as JSON
-function savePostgresConnection() {
-    // Get form data
-    const form = document.getElementById('postgresConnectionForm');
-    if (!form) return;
-    
-    // Basic form validation
-    const formData = new FormData(form);
-    const connectionConfig = Object.fromEntries(formData.entries());
-    
-    // Check if required fields are filled
-    let isValid = true;
-    for (const [key, value] of Object.entries(connectionConfig)) {
-        if (!value.trim()) {
-            showToast(`Error: ${key} is required`, 'error');
-            isValid = false;
-            break;
-        }
-    }
-    
-    if (!isValid) return;
-    
-    // Add metadata
-    connectionConfig.connectorType = 'postgres';
-    connectionConfig.createdAt = new Date().toISOString();
-    
-    // In a real app, you would send this to your backend
-    console.log('Saving configuration:', connectionConfig);
-    
-    // Simulate API call to save configuration
-    showLoading('Saving connection...');
-    
-    // Simulate delay for API call
-    setTimeout(() => {
-        hideLoading();
-        
-        // Update the UI to show this connection is now active
-        const postgresCard = document.querySelector(`.connector-card[data-connector-id="postgres"]`);
-        if (postgresCard) {
-            const connectionsInfo = postgresCard.querySelector('.connections-info');
-            if (connectionsInfo) {
-                connectionsInfo.textContent = '1 DB\'s connected';
-            }
-        }
-        
-        // Download the configuration as JSON
-        downloadObjectAsJson(connectionConfig, `postgres-connection-${connectionConfig.uniqueName}`);
-        
-        // Close the modal
-        closeConnectorModal();
-        
-        // Show success message
-        showToast('Connection saved successfully!', 'success');
-    }, 1000);
-}
-
-// Helper function to download object as JSON file
-function downloadObjectAsJson(exportObj, exportName) {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", exportName + ".json");
-    document.body.appendChild(downloadAnchorNode); // Required for Firefox
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-}
-
-// Function to show toast notifications
-function showToast(message, type = 'info') {
-    // Remove existing toasts
-    const existingToasts = document.querySelectorAll('.toast');
-    existingToasts.forEach(toast => {
-        toast.remove();
-    });
-    
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    
-    let icon = 'info-circle';
-    if (type === 'success') icon = 'check-circle';
-    if (type === 'error') icon = 'exclamation-circle';
-    
-    toast.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
-    document.body.appendChild(toast);
-    
-    // Show toast with animation
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            toast.remove();
-        }, 300);
-    }, 3000);
-}
-
 // Function to add modal-specific CSS
 function ensureConnectorModalStyles() {
     if (!document.getElementById('connector-modal-styles')) {
         const style = document.createElement('style');
         style.id = 'connector-modal-styles';
+        // Paste the full CSS content for the modal here
         style.textContent = `
-            /* Modal-specific styles that won't affect other parts of the application */
             #connectorConfigModal.modal {
                 position: fixed;
                 top: 0;
@@ -5623,28 +6044,27 @@ function ensureConnectorModalStyles() {
                 overflow-x: hidden;
             }
             
-            /* Fixed form layout with proper spacing */
             #connectorConfigModal #postgresConnectionForm {
                 display: flex;
                 flex-direction: column;
-                gap: 12px; /* Space between form groups */
+                gap: 12px; 
             }
             
             #connectorConfigModal .form-group {
-                margin-bottom: 16px; /* Reduced from 24px to tighten layout */
+                margin-bottom: 16px;
                 position: relative;
             }
             
             #connectorConfigModal .form-row {
                 display: flex;
-                gap: 24px; /* Space between side-by-side inputs */
-                margin-bottom: 16px; /* Match form-group */
-                align-items: stretch; /* Make all items stretch to same height */
+                gap: 24px;
+                margin-bottom: 16px;
+                align-items: stretch;
             }
             
             #connectorConfigModal .form-group.half {
                 flex: 1;
-                min-width: 0; /* Allow shrinking */
+                min-width: 0;
                 display: flex;
                 flex-direction: column;
             }
@@ -5659,9 +6079,9 @@ function ensureConnectorModalStyles() {
             }
             
             #connectorConfigModal .form-group input {
-                box-sizing: border-box; /* Critical for consistent sizing */
+                box-sizing: border-box;
                 width: 100%;
-                height: 46px; /* Fixed height for all inputs */
+                height: 46px;
                 padding: 12px 16px;
                 border: 1px solid rgba(99, 179, 237, 0.3);
                 border-radius: 8px;
@@ -5671,7 +6091,7 @@ function ensureConnectorModalStyles() {
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15),
                             inset 0 1px 0 rgba(255, 255, 255, 0.05);
                 transition: all 0.2s;
-                margin: 0; /* Reset margins */
+                margin: 0;
                 caret-color: #63b3ed;
             }
             
@@ -5687,7 +6107,6 @@ function ensureConnectorModalStyles() {
                             inset 0 1px 0 rgba(255, 255, 255, 0.05);
             }
             
-            /* Subtle tech pattern in the background */
             #connectorConfigModal .modal-body::before {
                 content: '';
                 position: absolute;
@@ -5718,7 +6137,7 @@ function ensureConnectorModalStyles() {
                 background-color: rgba(0, 10, 30, 0.3);
                 border-radius: 12px;
                 padding: 18px;
-                margin: 16px 0 24px 0; /* Fixed margin */
+                margin: 16px 0 24px 0;
                 font-size: 13px;
                 color: rgba(255, 255, 255, 0.6);
                 line-height: 1.6;
@@ -5734,7 +6153,7 @@ function ensureConnectorModalStyles() {
             }
             
             #connectorConfigModal .documentation-link {
-                margin: 8px 0 24px 0; /* Fixed margin */
+                margin: 8px 0 24px 0;
                 padding: 12px 16px;
                 background: rgba(99, 179, 237, 0.08);
                 border-radius: 8px;
@@ -5776,7 +6195,6 @@ function ensureConnectorModalStyles() {
                 margin-left: 2px;
             }
             
-            /* Enhanced Button Styles */
             #connectorConfigModal .btn-test-connection {
                 background: linear-gradient(135deg, rgba(32, 121, 210, 0.2), rgba(28, 85, 176, 0.3));
                 border: 1px solid rgba(99, 179, 237, 0.4);
@@ -5974,7 +6392,6 @@ function ensureConnectorModalStyles() {
                 box-shadow: 0 6px 12px rgba(49, 130, 206, 0.3);
             }
             
-            /* Media query for smaller screens */
             @media (max-width: 768px) {
                 #connectorConfigModal .form-row {
                     flex-direction: column;
@@ -5989,3 +6406,11 @@ function ensureConnectorModalStyles() {
         document.head.appendChild(style);
     }
 }
+
+// Function to save PostgreSQL connection
+// ... existing function ...
+
+// Edit/Delete Functions
+// ... existing functions ...
+
+// ... rest of the file ...

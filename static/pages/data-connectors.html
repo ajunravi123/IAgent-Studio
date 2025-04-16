@@ -13,10 +13,32 @@
         <a href="#" class="quick-guide-link">quick guide</a> on building a Data Query agent.
     </p>
 
+    <!-- Section for Configured Connectors (Moved Above Grid) -->
+    <div class="configured-connectors-display-section">
+        <h2>Your Configured Connections</h2>
+        <div id="configuredConnectorsDisplay">
+            <!-- Loading state -->
+            <div class="loading-placeholder active">
+                <i class="fas fa-spinner fa-spin"></i> Loading connections...
+            </div>
+            <!-- Empty state -->
+            <div class="empty-state" style="display: none;">
+                <i class="fas fa-folder-open"></i>
+                <p>No connections configured yet. Add one from the options below.</p>
+            </div>
+            <!-- List container -->
+            <div class="configured-items-list" style="display: none;">
+                <!-- Configured connector cards will be loaded here by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Section for Adding New Connectors -->
+    <h2 class="add-connectors-title">Add New Connection</h2>
     <div class="search-and-filter">
         <div class="search-bar">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchDataConnectorsInput" placeholder="Search data connectors...">
+            <input type="text" id="searchDataConnectorsInput" placeholder="Search available data connectors...">
         </div>
         <!-- Add filter options if needed -->
     </div>
