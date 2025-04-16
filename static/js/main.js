@@ -6466,9 +6466,9 @@ async function testPostgresConnection() {
     
     if (missingFields.length > 0) {
         showToast(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
-        return;
+            return;
     }
-
+    
     // Show loading state on the test button
     const testBtn = document.querySelector('#connectorConfigModal .btn-test-connection');
     const originalBtnText = testBtn.innerHTML;
