@@ -5056,87 +5056,321 @@ async function loadDataConnectors() {
 // --- New Function to Load Configured Connectors Display ---
 async function loadConfiguredConnectorsDisplay() {
     const displayContainer = document.getElementById('configuredConnectorsDisplay');
-    const listContainer = displayContainer.querySelector('.configured-items-list');
-    const loadingPlaceholder = displayContainer.querySelector('.loading-placeholder');
-    const emptyMessage = displayContainer.querySelector('.empty-state');
-
-    if (!displayContainer || !listContainer || !loadingPlaceholder || !emptyMessage) {
-        console.error("Required display elements for configured connectors not found!");
+    if (!displayContainer) {
+        console.error("Display container for configured connectors not found!");
         return;
     }
 
-    // Initial state: show loading
-    loadingPlaceholder.style.display = 'block';
-    loadingPlaceholder.classList.add('active');
-    listContainer.style.display = 'none';
-    emptyMessage.style.display = 'none';
-    listContainer.innerHTML = ''; // Clear existing items
+    displayContainer.innerHTML = '<div class="loading-placeholder"><i class="fas fa-spinner fa-spin"></i> Loading configured connections...</div>';
 
     try {
         const response = await fetch('/api/data-connectors');
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         const configuredConnectors = await response.json();
 
-        loadingPlaceholder.style.display = 'none';
-        loadingPlaceholder.classList.remove('active');
-
-        if (configuredConnectors && configuredConnectors.length > 0) {
-            listContainer.style.display = 'flex'; // Use flex for horizontal layout
-            configuredConnectors.forEach(connector => {
-                const item = document.createElement('div');
-                item.className = 'configured-connector-item';
-                item.dataset.connectorId = connector.id;
-
-                const iconClass = getConnectorIconClass(connector.connectorType);
-                const createdAtDate = new Date(connector.createdAt);
-                const formattedDate = createdAtDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-
-                item.innerHTML = `
-                    <div class="item-highlight"></div>
-                    <div class="item-header">
-                        <div class="item-icon ${connector.connectorType}">
-                    <i class="${iconClass}"></i>
+        if (!configuredConnectors || configuredConnectors.length === 0) {
+            displayContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-database"></i>
+                    <p>No connections configured yet</p>
                 </div>
-                        <h4 class="item-name">${connector.uniqueName}</h4>
-                        <div class="item-actions">
-                            <button class="btn-icon btn-edit" onclick="editConnector('${connector.id}', '${connector.connectorType}')" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-icon btn-delete" onclick="deleteConnector('${connector.id}')" title="Delete">
-                                <i class="fas fa-trash"></i>
+            `;
+        return;
+    }
+
+        // Create table structure with futuristic design
+        displayContainer.innerHTML = `
+            <div class="table-responsive">
+                <div class="table-container">
+                    <div class="table-glow"></div>
+                    <table class="connectors-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Host</th>
+                                <th>Port</th>
+                                <th>Database</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${configuredConnectors.map(connector => `
+                                <tr>
+                                    <td>
+                                        <div class="name-cell">
+                                            <div class="cell-icon">
+                                                <i class="fas fa-database"></i>
+                </div>
+                                            ${connector.uniqueName}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="connector-type ${connector.connectorType}">
+                                            <i class="fas fa-plug"></i>
+                                            ${connector.connectorType}
+                                        </span>
+                                    </td>
+                                    <td>${connector.vectorStoreHost}</td>
+                                    <td>${connector.vectorStorePort}</td>
+                                    <td>${connector.vectorStoreDBName}</td>
+                                    <td class="actions">
+                                        <button class="btn-icon btn-edit" onclick="editConnector('${connector.id}', '${connector.connectorType}')" title="Edit">
+                                            <i class="fas fa-edit"></i>
                 </button>
+                                        <button class="btn-icon btn-delete" onclick="deleteConnector('${connector.id}')" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
             </div>
             </div>
-                    <div class="item-details">
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fas fa-server"></i> Host:</span>
-                            <span class="detail-value">${connector.vectorStoreHost}</span>
-        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fas fa-database"></i> DB:</span>
-                            <span class="detail-value">${connector.vectorStoreDBName}</span>
-                        </div>
-                    </div>
-                    <div class="item-footer">
-                         <span class="detail-label"><i class="fas fa-calendar-alt"></i> Added:</span>
-                         <span class="detail-value">${formattedDate}</span>
-                    </div>
-                `;
-                listContainer.appendChild(item);
-            });
-        } else {
-            emptyMessage.style.display = 'block'; // Show empty state message
-        }
+        `;
+
+        // Add futuristic styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .table-responsive {
+                margin: 20px 0;
+                border-radius: 16px;
+                overflow: hidden;
+                background: linear-gradient(145deg, rgba(20, 21, 38, 0.95), rgba(17, 19, 31, 0.98));
+                border: 1px solid rgba(99, 179, 237, 0.15);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+                position: relative;
+            }
+
+            .table-container {
+                overflow-x: auto;
+                position: relative;
+                z-index: 1;
+            }
+
+            .table-glow {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: linear-gradient(90deg, 
+                    rgba(99, 179, 237, 0),
+                    rgba(99, 179, 237, 0.5),
+                    rgba(99, 179, 237, 0)
+                );
+                box-shadow: 0 0 20px rgba(99, 179, 237, 0.3);
+                z-index: 2;
+            }
+
+            .connectors-table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                font-size: 14px;
+            }
+
+            .connectors-table th,
+            .connectors-table td {
+                padding: 18px 24px;
+                text-align: left;
+                border-bottom: 1px solid rgba(99, 179, 237, 0.1);
+            }
+
+            .connectors-table th {
+                background: rgba(13, 14, 25, 0.9);
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.9);
+                text-transform: uppercase;
+                font-size: 12px;
+                letter-spacing: 1px;
+                position: relative;
+            }
+
+            .connectors-table th::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: linear-gradient(90deg, 
+                    rgba(99, 179, 237, 0),
+                    rgba(99, 179, 237, 0.3),
+                    rgba(99, 179, 237, 0)
+                );
+            }
+
+            .connectors-table tr {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                background: transparent;
+            }
+
+            .connectors-table tr:hover {
+                background: rgba(99, 179, 237, 0.05);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            }
+
+            .connectors-table td {
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            .name-cell {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .cell-icon {
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 8px;
+                background: rgba(99, 179, 237, 0.1);
+                color: #63b3ed;
+                font-size: 14px;
+                transition: all 0.3s ease;
+            }
+
+            tr:hover .cell-icon {
+                transform: scale(1.1);
+                background: rgba(99, 179, 237, 0.15);
+                box-shadow: 0 0 15px rgba(99, 179, 237, 0.2);
+            }
+
+            .connector-type {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 12px;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: 500;
+                background: rgba(99, 179, 237, 0.1);
+                color: #63b3ed;
+                border: 1px solid rgba(99, 179, 237, 0.2);
+                transition: all 0.3s ease;
+            }
+
+            tr:hover .connector-type {
+                background: rgba(99, 179, 237, 0.15);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(99, 179, 237, 0.15);
+            }
+
+            .actions {
+                display: flex;
+                gap: 8px;
+                opacity: 0.7;
+                transition: all 0.3s ease;
+            }
+
+            tr:hover .actions {
+                opacity: 1;
+            }
+
+            .btn-icon {
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: none;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                color: rgba(255, 255, 255, 0.7);
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .btn-icon::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            .btn-icon:hover::before {
+                opacity: 1;
+            }
+
+            .btn-edit:hover {
+                background: rgba(99, 179, 237, 0.15);
+                color: #63b3ed;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(99, 179, 237, 0.2);
+            }
+
+            .btn-delete:hover {
+                background: rgba(245, 101, 101, 0.15);
+                color: #f56565;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(245, 101, 101, 0.2);
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 60px 20px;
+                background: linear-gradient(145deg, rgba(20, 21, 38, 0.95), rgba(17, 19, 31, 0.98));
+                border-radius: 16px;
+                border: 1px solid rgba(99, 179, 237, 0.15);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            }
+
+            .empty-state i {
+                font-size: 48px;
+                margin-bottom: 20px;
+                color: #63b3ed;
+                opacity: 0.8;
+                text-shadow: 0 0 20px rgba(99, 179, 237, 0.4);
+            }
+
+            .empty-state p {
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 16px;
+                margin: 0;
+            }
+
+            .error-message {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 20px;
+                background: rgba(245, 101, 101, 0.1);
+                border: 1px solid rgba(245, 101, 101, 0.2);
+                border-radius: 12px;
+                color: #f56565;
+                margin: 20px;
+            }
+
+            .error-message i {
+                font-size: 24px;
+                color: #f56565;
+            }
+        `;
+        document.head.appendChild(style);
+
     } catch (error) {
         console.error("Error loading configured connectors:", error);
-        loadingPlaceholder.style.display = 'none';
-        loadingPlaceholder.classList.remove('active');
-        // Display error within the container
-        listContainer.innerHTML = `<div class="error-message full-width">Failed to load connections: ${error.message}</div>`;
-        listContainer.style.display = 'block'; // Show container to display error
+        displayContainer.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                Failed to load connections: ${error.message}
+            </div>
+        `;
     }
 }
 
@@ -5693,34 +5927,354 @@ function renderDataConnectors(connectors) {
     if (!connectorsGrid) return;
 
     if (!connectors || connectors.length === 0) {
-        connectorsGrid.innerHTML = '<div class="empty-state">No data connectors found.</div>';
+        connectorsGrid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <h3>No Data Connectors Available</h3>
+                <p>No connectors have been configured yet.</p>
+            </div>`;
         return;
     }
 
     connectorsGrid.innerHTML = connectors.map(connector => {
-        // Use connector.id for available connectors mapping
-        const iconClass = getConnectorIconClass(connector.id); 
+        const iconClass = getConnectorIconClass(connector.id);
         return `
-        <div class="connector-card" data-connector-id="${connector.id}">
-            <div class="card-header">
-                <div class="connector-icon-wrapper">
-                    <i class="${iconClass}"></i>
+            <div class="connector-card">
+                <div class="card-glow"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <div class="connector-icon-wrapper">
+                            <div class="icon-glow"></div>
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <h3 class="connector-name">${connector.name}</h3>
+                        <button class="btn-add-connector" onclick="addConnector('${connector.id}')">
+                            <span class="btn-glow"></span>
+                            <i class="fas fa-plus"></i>
+                            Configure
+                        </button>
+                    </div>
+                    <p class="connector-description">${connector.description}</p>
+                    <div class="card-footer">
+                        
+                        <a href="${connector.docsUrl || '#'}" target="_blank" class="docs-link">
+                            <span>Documentation</span>
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </div>
                 </div>
-                <h3 class="connector-name">${connector.name}</h3>
-                <button class="btn-add-connector" onclick="addConnector('${connector.id}')">
-                    <i class="fas fa-plus"></i> Add
-                </button>
             </div>
-            <p class="connector-description">${connector.description}</p>
-            <div class="card-footer">
-                <span class="connections-info">${connector.connections || 0} DB's connected</span>
-                <a href="${connector.docsUrl || '#'}" target="_blank" class="docs-link">
-                    View Documentation <i class="fas fa-external-link-alt"></i>
-                </a>
-            </div>
-        </div>
-    `}).join('');
-}
+        `;
+    }).join('');
+
+    // Add enhanced futuristic styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .connectors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            padding: 12px;
+            position: relative;
+        }
+
+        .connector-card {
+            position: relative;
+            background: linear-gradient(165deg, 
+                rgba(30, 41, 59, 0.95),
+                rgba(17, 25, 40, 0.97)
+            );
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 179, 237, 0.1);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .connector-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(
+                circle at center,
+                rgba(99, 179, 237, 0.1),
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connector-card:hover::before {
+            opacity: 1;
+            animation: rotateGradient 3s linear infinite;
+        }
+
+        @keyframes rotateGradient {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .card-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg,
+                rgba(99, 179, 237, 0),
+                rgba(99, 179, 237, 0.5),
+                rgba(99, 179, 237, 0)
+            );
+            box-shadow: 0 0 20px rgba(99, 179, 237, 0.3);
+            z-index: 2;
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 3;
+            padding: 24px;
+        }
+
+        .connector-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
+                        0 0 20px rgba(99, 179, 237, 0.1),
+                        inset 0 0 20px rgba(99, 179, 237, 0.1);
+        }
+
+        .connector-icon-wrapper {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            border-radius: 15px;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.2),
+                rgba(66, 153, 225, 0.3)
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #63b3ed;
+            margin-right: 16px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .icon-glow {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+                circle at center,
+                rgba(99, 179, 237, 0.3),
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .connector-card:hover .icon-glow {
+            opacity: 1;
+            animation: pulseGlow 2s infinite;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 0.3; }
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .connector-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0;
+            flex-grow: 1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.5px;
+        }
+
+        .connector-description {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .btn-add-connector {
+            position: relative;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.2),
+                rgba(66, 153, 225, 0.3)
+            );
+            border: 1px solid rgba(99, 179, 237, 0.3);
+            color: #63b3ed;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .btn-glow {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transform: translateX(-100%);
+            transition: transform 0.3s;
+        }
+
+        .btn-add-connector:hover .btn-glow {
+            transform: translateX(100%);
+        }
+
+        .btn-add-connector:hover {
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.3),
+                rgba(66, 153, 225, 0.4)
+            );
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 179, 237, 0.2);
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .connections-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(99, 179, 237, 0.1);
+            border: 1px solid rgba(99, 179, 237, 0.2);
+            border-radius: 20px;
+            color: #63b3ed;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .connector-card:hover .connections-info {
+            background: rgba(99, 179, 237, 0.15);
+            box-shadow: 0 2px 8px rgba(99, 179, 237, 0.15);
+        }
+
+        .docs-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .docs-link:hover {
+            color: #63b3ed;
+            transform: translateX(4px);
+        }
+
+        .docs-link i {
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .docs-link:hover i {
+            transform: translateX(2px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(165deg,
+                rgba(30, 41, 59, 0.95),
+                rgba(17, 25, 40, 0.97)
+            );
+            border-radius: 20px;
+            border: 1px solid rgba(99, 179, 237, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            grid-column: 1 / -1;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.2),
+                rgba(66, 153, 225, 0.3)
+            );
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #63b3ed;
+            position: relative;
+        }
+
+        .empty-state-icon::after {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.1),
+                transparent
+            );
+            animation: rotateGlow 3s linear infinite;
+        }
+
+        @keyframes rotateGlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state h3 {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 20px;
+            margin: 0 0 12px;
+        }
+
+        .empty-state p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            margin: 0;
+             }
+        `;
+        document.head.appendChild(style);
+    }
 
 // --- Function to load AVAILABLE connectors (Ensure it calls renderDataConnectors) ---
 async function loadDataConnectors() {
