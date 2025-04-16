@@ -12,6 +12,8 @@ from pathlib import Path
 from task_executor import TaskExecutor
 from multi_agent_executor import MultiAgentExecutor
 from langchain.tools import Tool # If tools are needed for manager/agents
+import psycopg2
+from psycopg2 import Error as PostgresError
 
 
 import logging
@@ -668,7 +670,93 @@ async def delete_data_connector(connector_id: str):
     connectors = [c for c in connectors if c["id"] != connector_id]
     save_connectors(connectors)
     return {"message": "Connector deleted successfully"}
-# --- End Data Connectors API ---
+
+# Add new model for connection testing
+class PostgresConnectionTest(BaseModel):
+    type: str
+    config: Dict[str, Any]
+
+# Add the test connection endpoint
+@app.post("/api/data-connectors/test")
+async def test_connection(connection_data: PostgresConnectionTest):
+    if connection_data.type != "postgres":
+        raise HTTPException(status_code=400, detail="Only PostgreSQL connections are supported")
+    
+    config = connection_data.config
+    required_fields = ['host', 'port', 'database', 'user']
+    missing_fields = [field for field in required_fields if not config.get(field)]
+    
+    if missing_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required fields: {', '.join(missing_fields)}"
+        )
+
+    try:
+        # Convert port to integer if it's a string
+        try:
+            port = int(config['port'])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Port must be a valid number")
+
+        # Attempt to establish connection
+        conn = psycopg2.connect(
+            host=config['host'],
+            port=port,
+            database=config['database'],
+            user=config['user'],
+            password=config.get('password', ''),
+            # Add a shorter timeout for connection testing
+            connect_timeout=10
+        )
+
+        try:
+            # Test the connection with a simple query
+            with conn.cursor() as cur:
+                cur.execute('SELECT version();')
+                version = cur.fetchone()[0]
+            
+            # Close the connection properly
+            conn.close()
+
+            return {
+                "status": "success",
+                "message": "Connection successful",
+                "details": {
+                    "version": version,
+                    "connected_to": f"{config['host']}:{config['port']}/{config['database']}"
+                }
+            }
+
+        except PostgresError as e:
+            if not conn.closed:
+                conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Database query failed: {str(e)}"
+            )
+
+    except PostgresError as e:
+        # Handle different PostgreSQL error cases
+        error_message = str(e)
+        if "timeout expired" in error_message.lower():
+            error_message = "Connection timed out. Please check if the database is accessible and the host/port are correct."
+        elif "password authentication failed" in error_message.lower():
+            error_message = "Authentication failed. Please check your username and password."
+        elif "database" in error_message.lower() and "does not exist" in error_message.lower():
+            error_message = f"Database '{config['database']}' does not exist."
+        elif "could not connect to server" in error_message.lower():
+            error_message = "Could not connect to server. Please check if the host and port are correct and the server is running."
+
+        raise HTTPException(
+            status_code=400,
+            detail=error_message
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
 
 # --- Other Example Endpoints (Keep after specific APIs) ---
 

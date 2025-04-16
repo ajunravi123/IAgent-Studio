@@ -6451,7 +6451,7 @@ function closeConnectorModal() {
 }
 
 // Function to test PostgreSQL connection
-function testPostgresConnection() {
+async function testPostgresConnection() {
     // Get connection details
     const form = document.getElementById('postgresConnectionForm');
     if (!form) return;
@@ -6461,39 +6461,183 @@ function testPostgresConnection() {
     const connectionConfig = Object.fromEntries(formData.entries());
     
     // Check if required fields are filled
-    for (const [key, value] of Object.entries(connectionConfig)) {
-        // Skip password check if editing and field is empty
-        const isEditing = form.querySelector('#connectorId').value !== '';
-        if (isEditing && key === 'vectorStorePassword' && !value.trim()) continue; 
-        
-        if (!value.trim()) {
-            showToast(`Error: ${key} is required`, 'error');
-            return;
-        }
-    }
+    const requiredFields = ['vectorStoreUser', 'vectorStoreHost', 'vectorStorePort', 'vectorStoreDBName'];
+    const missingFields = requiredFields.filter(field => !connectionConfig[field]);
     
-    // Show loading indicator
+    if (missingFields.length > 0) {
+        showToast(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
+        return;
+    }
+
+    // Show loading state on the test button
     const testBtn = document.querySelector('#connectorConfigModal .btn-test-connection');
     const originalBtnText = testBtn.innerHTML;
     testBtn.disabled = true;
     testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
     
-    // Simulate testing the connection (replace with actual API call later)
-    console.log("Simulating connection test with:", connectionConfig);
-    setTimeout(() => {
-        // Simulate successful connection (would be an actual API call in production)
-        const success = Math.random() > 0.3; // 70% success rate for demo
-        
-        if (success) {
-            showToast('Connection successful!', 'success');
+    try {
+        const response = await fetch('/api/data-connectors/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'postgres',
+                config: {
+                    host: connectionConfig.vectorStoreHost,
+                    port: connectionConfig.vectorStorePort,
+                    database: connectionConfig.vectorStoreDBName,
+                    user: connectionConfig.vectorStoreUser,
+                    password: connectionConfig.vectorStorePassword || undefined
+                }
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showToast('Connection successful! ✨', 'success');
+            
+            // Add success visual feedback to the form
+            const successIndicator = document.createElement('div');
+            successIndicator.className = 'connection-success-indicator';
+            successIndicator.innerHTML = `
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="success-message">Connection verified</div>
+            `;
+            
+            // Remove any existing indicator
+            const existingIndicator = form.querySelector('.connection-success-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // Add the new indicator
+            form.appendChild(successIndicator);
+            
+            // Add success styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .connection-success-indicator {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px 16px;
+                    background: rgba(72, 187, 120, 0.1);
+                    border: 1px solid rgba(72, 187, 120, 0.2);
+                    border-radius: 8px;
+                    margin-top: 16px;
+                    animation: slideIn 0.3s ease;
+                }
+
+                @keyframes slideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .success-icon {
+                    color: #48bb78;
+                    font-size: 20px;
+                    animation: scaleIn 0.3s ease;
+                }
+
+                @keyframes scaleIn {
+                    from {
+                        transform: scale(0);
+                    }
+                    to {
+                        transform: scale(1);
+                    }
+                }
+
+                .success-message {
+                    color: #48bb78;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+            `;
+            document.head.appendChild(style);
         } else {
-            showToast('Connection failed. Please check your credentials.', 'error');
+            throw new Error(result.detail || 'Connection test failed');
+        }
+    } catch (error) {
+        console.error('Connection test error:', error);
+        showToast(`Connection failed: ${error.message}`, 'error');
+        
+        // Add error visual feedback
+        const errorIndicator = document.createElement('div');
+        errorIndicator.className = 'connection-error-indicator';
+        errorIndicator.innerHTML = `
+            <div class="error-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="error-details">
+                <div class="error-message">Connection failed</div>
+                <div class="error-description">${error.message}</div>
+            </div>
+        `;
+        
+        // Remove any existing indicator
+        const existingIndicator = form.querySelector('.connection-error-indicator, .connection-success-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
         }
         
-        // Reset button
+        // Add the new indicator
+        form.appendChild(errorIndicator);
+        
+        // Add error styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .connection-error-indicator {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px 16px;
+                background: rgba(245, 101, 101, 0.1);
+                border: 1px solid rgba(245, 101, 101, 0.2);
+                border-radius: 8px;
+                margin-top: 16px;
+                animation: slideIn 0.3s ease;
+            }
+
+            .error-icon {
+                color: #f56565;
+                font-size: 20px;
+                padding-top: 2px;
+            }
+
+            .error-details {
+                flex: 1;
+            }
+
+            .error-message {
+                color: #f56565;
+                font-size: 14px;
+                font-weight: 500;
+                margin-bottom: 4px;
+            }
+
+            .error-description {
+                color: rgba(245, 101, 101, 0.8);
+                font-size: 12px;
+                line-height: 1.4;
+            }
+        `;
+        document.head.appendChild(style);
+    } finally {
+        // Reset button state
         testBtn.disabled = false;
         testBtn.innerHTML = originalBtnText;
-    }, 1500);
+    }
 }
 
 // Function to add modal-specific CSS
