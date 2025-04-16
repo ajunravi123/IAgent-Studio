@@ -5020,11 +5020,11 @@ async function loadDataConnectors() {
     // --- MOCK DATA --- 
     // Replace this with an actual API call later
     const mockConnectors = [
-        { id: 'qdrant', name: 'Qdrant', description: 'Configure Qdrant Vector Store', icon: '/static/images/connectors/qdrant.svg', connections: 0, docsUrl: '#' },
-        { id: 'weaviate', name: 'Weaviate', description: 'Configure Weaviate Vector Store', icon: '/static/images/connectors/weaviate.svg', connections: 0, docsUrl: '#' },
-        { id: 'pgvector', name: 'PG-Vector', description: 'Configure PG-Vector Vector Store', icon: '/static/images/connectors/pgvector.svg', connections: 0, docsUrl: '#' },
-        { id: 'singlestore', name: 'Singlestore', description: 'Configure Singlestore Vector DB', icon: '/static/images/connectors/singlestore.svg', connections: 0, docsUrl: '#' },
-        { id: 'redshift', name: 'Redshift', description: 'A fully managed, petabyte-scale cloud-based data warehouse service, provided by Amazon Web Services.', icon: '/static/images/connectors/redshift.svg', connections: 0, docsUrl: '#' },
+        // { id: 'qdrant', name: 'Qdrant', description: 'Configure Qdrant Vector Store', icon: '/static/images/connectors/qdrant.svg', connections: 0, docsUrl: '#' },
+        // { id: 'weaviate', name: 'Weaviate', description: 'Configure Weaviate Vector Store', icon: '/static/images/connectors/weaviate.svg', connections: 0, docsUrl: '#' },
+        // { id: 'pgvector', name: 'PG-Vector', description: 'Configure PG-Vector Vector Store', icon: '/static/images/connectors/pgvector.svg', connections: 0, docsUrl: '#' },
+        // { id: 'singlestore', name: 'Singlestore', description: 'Configure Singlestore Vector DB', icon: '/static/images/connectors/singlestore.svg', connections: 0, docsUrl: '#' },
+        // { id: 'redshift', name: 'Redshift', description: 'A fully managed, petabyte-scale cloud-based data warehouse service, provided by Amazon Web Services.', icon: '/static/images/connectors/redshift.svg', connections: 0, docsUrl: '#' },
         { id: 'postgres', name: 'Postgres', description: 'An open source object-relational database system that uses and extends SQL.', icon: '/static/images/connectors/postgres.svg', connections: 0, docsUrl: '#' },
         { id: 'mysql', name: 'My SQL', description: 'An open-source relational database management system, developed by Oracle.', icon: '/static/images/connectors/mysql.svg', connections: 0, docsUrl: '#' },
         { id: 'bigquery', name: 'Big Query', description: 'A serverless and scalable multi-cloud data warehouse service, provided by Google Cloud.', icon: '/static/images/connectors/bigquery.svg', connections: 0, docsUrl: '#' },
@@ -5113,8 +5113,15 @@ function searchDataConnectors(query) {
 // Placeholder for adding a connector - implement actual logic later
 function addConnector(connectorId) {
     console.log(`Add connector clicked: ${connectorId}`);
+    
+    // Special handling for Postgres
+    if (connectorId === 'postgres') {
+        showPostgresConnectionModal();
+        return;
+    }
+    
+    // Generic message for other connectors (can implement others later)
     alert(`Configuration for ${connectorId} is not yet implemented.`);
-    // TODO: Implement modal or logic to configure and add the connector
 }
 
 // Function to add CSS styles if they don't exist
@@ -5268,3 +5275,717 @@ function ensureDataConnectorStyles() {
 }
 
 // --- End Data Connectors Page Functions ---
+
+// Function to show Postgres connection configuration modal
+function showPostgresConnectionModal() {
+    // Create modal if it doesn't exist or get existing one
+    let modal = document.getElementById('connectorConfigModal');
+    if (modal) {
+        modal.remove(); // Remove existing to avoid stacking modals
+    }
+    
+    // Create new modal
+    modal = document.createElement('div');
+    modal.id = 'connectorConfigModal';
+    modal.className = 'modal';
+    
+    // Generate form fields for Postgres connection
+    const modalHtml = `
+        <div class="modal-content connector-config-modal">
+            <div class="modal-header">
+                <h2>Connect Postgres vector_store</h2>
+                <button class="close-btn" onclick="closeConnectorModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="postgresConnectionForm">
+                    <div class="form-group">
+                        <label for="uniqueName">Unique Name <span class="required">*</span></label>
+                        <input type="text" id="uniqueName" name="uniqueName" placeholder="Give this connection a name" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="vectorStoreUser">Vector Store User <span class="required">*</span></label>
+                            <input type="text" id="vectorStoreUser" name="vectorStoreUser" placeholder="Enter Vector Store User" required>
+                        </div>
+                        <div class="form-group half">
+                            <label for="vectorStoreHost">Vector Store Host <span class="required">*</span></label>
+                            <input type="text" id="vectorStoreHost" name="vectorStoreHost" placeholder="Enter Vector Store Host" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="vectorStorePassword">Vector Store Password <span class="required">*</span></label>
+                            <input type="password_text" id="vectorStorePassword" name="vectorStorePassword" placeholder="Enter Vector Store Password" required>
+                        </div>
+                        <div class="form-group half">
+                            <label for="vectorStorePort">Vector Store Port <span class="required">*</span></label>
+                            <input type="text" id="vectorStorePort" name="vectorStorePort" placeholder="Enter Vector Store Port" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vectorStoreDBName">Vector Store DB Name <span class="required">*</span></label>
+                        <input type="text" id="vectorStoreDBName" name="vectorStoreDBName" placeholder="Enter Vector Store DB Name" required>
+                    </div>
+                    
+                    <div class="legal-text">
+                        <p>By using this service, you agree to take full responsibility for your actions and to protect IAgentic Studio and its affiliates, officers, employees, and agents from any claims, losses, damages, liabilities, or legal costs that may arise due to your violation of this policy — including, but not limited to, uploading sensitive personal information without proper authorization.</p>
+                    </div>
+                    
+                    <div class="documentation-link">
+                        <a href="https://www.postgresql.org/docs/" target="_blank">
+                            <i class="fas fa-external-link-alt"></i> View Documentation
+                        </a>
+                    </div>
+                    
+                    <div class="required-note">
+                        <span class="required">*</span> marked as required
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-test-connection" onclick="testPostgresConnection()">
+                    <i class="fas fa-plug"></i> Test Connection
+                </button>
+                <div class="action-buttons">
+                    <button class="btn-cancel" onclick="closeConnectorModal()">Cancel</button>
+                    <button class="btn-submit" onclick="savePostgresConnection()">Submit</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.innerHTML = modalHtml;
+    document.body.appendChild(modal);
+    
+    // Add modal styles if they don't exist
+    ensureConnectorModalStyles();
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 50);
+}
+
+// Function to close connector configuration modal
+function closeConnectorModal() {
+    const modal = document.getElementById('connectorConfigModal');
+    if (modal) {
+        modal.classList.remove('show');
+        // Remove after animation finishes
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+// Function to test PostgreSQL connection
+function testPostgresConnection() {
+    // Get connection details
+    const form = document.getElementById('postgresConnectionForm');
+    if (!form) return;
+    
+    // Basic form validation
+    const formData = new FormData(form);
+    const connectionConfig = Object.fromEntries(formData.entries());
+    
+    // Check if required fields are filled
+    for (const [key, value] of Object.entries(connectionConfig)) {
+        if (!value.trim()) {
+            showToast(`Error: ${key} is required`, 'error');
+            return;
+        }
+    }
+    
+    // Show loading indicator
+    const testBtn = document.querySelector('.btn-test-connection');
+    const originalBtnText = testBtn.innerHTML;
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    // Simulate testing the connection (replace with actual API call later)
+    setTimeout(() => {
+        // Simulate successful connection (would be an actual API call in production)
+        const success = Math.random() > 0.3; // 70% success rate for demo
+        
+        if (success) {
+            showToast('Connection successful!', 'success');
+        } else {
+            showToast('Connection failed. Please check your credentials.', 'error');
+        }
+        
+        // Reset button
+        testBtn.disabled = false;
+        testBtn.innerHTML = originalBtnText;
+    }, 1500);
+}
+
+// Function to save PostgreSQL connection and download as JSON
+function savePostgresConnection() {
+    // Get form data
+    const form = document.getElementById('postgresConnectionForm');
+    if (!form) return;
+    
+    // Basic form validation
+    const formData = new FormData(form);
+    const connectionConfig = Object.fromEntries(formData.entries());
+    
+    // Check if required fields are filled
+    let isValid = true;
+    for (const [key, value] of Object.entries(connectionConfig)) {
+        if (!value.trim()) {
+            showToast(`Error: ${key} is required`, 'error');
+            isValid = false;
+            break;
+        }
+    }
+    
+    if (!isValid) return;
+    
+    // Add metadata
+    connectionConfig.connectorType = 'postgres';
+    connectionConfig.createdAt = new Date().toISOString();
+    
+    // In a real app, you would send this to your backend
+    console.log('Saving configuration:', connectionConfig);
+    
+    // Simulate API call to save configuration
+    showLoading('Saving connection...');
+    
+    // Simulate delay for API call
+    setTimeout(() => {
+        hideLoading();
+        
+        // Update the UI to show this connection is now active
+        const postgresCard = document.querySelector(`.connector-card[data-connector-id="postgres"]`);
+        if (postgresCard) {
+            const connectionsInfo = postgresCard.querySelector('.connections-info');
+            if (connectionsInfo) {
+                connectionsInfo.textContent = '1 DB\'s connected';
+            }
+        }
+        
+        // Download the configuration as JSON
+        downloadObjectAsJson(connectionConfig, `postgres-connection-${connectionConfig.uniqueName}`);
+        
+        // Close the modal
+        closeConnectorModal();
+        
+        // Show success message
+        showToast('Connection saved successfully!', 'success');
+    }, 1000);
+}
+
+// Helper function to download object as JSON file
+function downloadObjectAsJson(exportObj, exportName) {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", exportName + ".json");
+    document.body.appendChild(downloadAnchorNode); // Required for Firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+// Function to show toast notifications
+function showToast(message, type = 'info') {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.toast');
+    existingToasts.forEach(toast => {
+        toast.remove();
+    });
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    let icon = 'info-circle';
+    if (type === 'success') icon = 'check-circle';
+    if (type === 'error') icon = 'exclamation-circle';
+    
+    toast.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+    document.body.appendChild(toast);
+    
+    // Show toast with animation
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+}
+
+// Function to add modal-specific CSS
+function ensureConnectorModalStyles() {
+    if (!document.getElementById('connector-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'connector-modal-styles';
+        style.textContent = `
+            /* Modal-specific styles that won't affect other parts of the application */
+            #connectorConfigModal.modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(5px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s, visibility 0.3s;
+            }
+            
+            #connectorConfigModal.modal.show {
+                opacity: 1;
+                visibility: visible;
+            }
+            
+            #connectorConfigModal .modal-content {
+                background: linear-gradient(135deg, #1a1f35, #2a3045);
+                border: 1px solid rgba(99, 179, 237, 0.3);
+                border-radius: 16px;
+                width: 100%;
+                max-width: 900px;
+                max-height: 90vh;
+                overflow-y: auto;
+                box-shadow: 0 8px 32px rgba(0, 10, 20, 0.5),
+                            inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+                position: relative;
+                animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            
+            @keyframes modalSlideIn {
+                from {
+                    transform: translateY(-30px) scale(0.97);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0) scale(1);
+                    opacity: 1;
+                }
+            }
+            
+            #connectorConfigModal .modal-header {
+                padding: 24px 28px;
+                border-bottom: 1px solid rgba(99, 179, 237, 0.2);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: linear-gradient(to right, rgba(30, 40, 70, 0.6), rgba(20, 30, 60, 0.4));
+                border-radius: 16px 16px 0 0;
+            }
+            
+            #connectorConfigModal .modal-header h2 {
+                margin: 0;
+                font-size: 22px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.9);
+                text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+                letter-spacing: 0.5px;
+            }
+            
+            #connectorConfigModal .close-btn {
+                background: rgba(255, 255, 255, 0.05);
+                border: none;
+                font-size: 22px;
+                cursor: pointer;
+                color: rgba(255, 255, 255, 0.7);
+                transition: all 0.2s;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+                padding: 0;
+            }
+            
+            #connectorConfigModal .close-btn:hover {
+                background: rgba(255, 255, 255, 0.15);
+                color: rgba(255, 255, 255, 1);
+                transform: rotate(90deg);
+            }
+            
+            #connectorConfigModal .modal-body {
+                padding: 28px;
+                position: relative;
+                overflow-x: hidden;
+            }
+            
+            /* Fixed form layout with proper spacing */
+            #connectorConfigModal #postgresConnectionForm {
+                display: flex;
+                flex-direction: column;
+                gap: 12px; /* Space between form groups */
+            }
+            
+            #connectorConfigModal .form-group {
+                margin-bottom: 16px; /* Reduced from 24px to tighten layout */
+                position: relative;
+            }
+            
+            #connectorConfigModal .form-row {
+                display: flex;
+                gap: 24px; /* Space between side-by-side inputs */
+                margin-bottom: 16px; /* Match form-group */
+                align-items: stretch; /* Make all items stretch to same height */
+            }
+            
+            #connectorConfigModal .form-group.half {
+                flex: 1;
+                min-width: 0; /* Allow shrinking */
+                display: flex;
+                flex-direction: column;
+            }
+            
+            #connectorConfigModal .form-group label {
+                display: block;
+                margin-bottom: 10px;
+                font-weight: 500;
+                font-size: 15px;
+                color: rgba(255, 255, 255, 0.85);
+                letter-spacing: 0.3px;
+            }
+            
+            #connectorConfigModal .form-group input {
+                box-sizing: border-box; /* Critical for consistent sizing */
+                width: 100%;
+                height: 46px; /* Fixed height for all inputs */
+                padding: 12px 16px;
+                border: 1px solid rgba(99, 179, 237, 0.3);
+                border-radius: 8px;
+                background-color: rgba(20, 30, 60, 0.5);
+                color: rgba(255, 255, 255, 0.95);
+                font-size: 15px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                transition: all 0.2s;
+                margin: 0; /* Reset margins */
+                caret-color: #63b3ed;
+            }
+            
+            #connectorConfigModal .form-group input::placeholder {
+                color: rgba(255, 255, 255, 0.4);
+            }
+            
+            #connectorConfigModal .form-group input:focus {
+                border-color: rgba(99, 179, 237, 0.7);
+                outline: none;
+                background-color: rgba(30, 40, 70, 0.6);
+                box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.25),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            }
+            
+            /* Subtle tech pattern in the background */
+            #connectorConfigModal .modal-body::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-image: 
+                    radial-gradient(rgba(99, 179, 237, 0.03) 1px, transparent 1px),
+                    radial-gradient(rgba(99, 179, 237, 0.02) 1px, transparent 1px);
+                background-size: 25px 25px;
+                background-position: 0 0, 12.5px 12.5px;
+                pointer-events: none;
+                z-index: -1;
+            }
+            
+            #connectorConfigModal .modal-footer {
+                padding: 20px 28px;
+                border-top: 1px solid rgba(99, 179, 237, 0.2);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: linear-gradient(to right, rgba(20, 30, 60, 0.4), rgba(30, 40, 70, 0.6));
+                border-radius: 0 0 16px 16px;
+            }
+            
+            #connectorConfigModal .legal-text {
+                background-color: rgba(0, 10, 30, 0.3);
+                border-radius: 12px;
+                padding: 18px;
+                margin: 16px 0 24px 0; /* Fixed margin */
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.6);
+                line-height: 1.6;
+                border: 1px solid rgba(99, 179, 237, 0.15);
+            }
+            
+            #connectorConfigModal .legal-text p {
+                margin: 0 0 10px 0;
+            }
+            
+            #connectorConfigModal .legal-text p:last-child {
+                margin-bottom: 0;
+            }
+            
+            #connectorConfigModal .documentation-link {
+                margin: 8px 0 24px 0; /* Fixed margin */
+                padding: 12px 16px;
+                background: rgba(99, 179, 237, 0.08);
+                border-radius: 8px;
+                display: inline-block;
+            }
+            
+            #connectorConfigModal .documentation-link a {
+                color: #63b3ed;
+                text-decoration: none;
+                font-size: 14px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                font-weight: 500;
+                transition: all 0.2s;
+            }
+            
+            #connectorConfigModal .documentation-link a:hover {
+                color: #90cdf4;
+                transform: translateX(3px);
+            }
+            
+            #connectorConfigModal .documentation-link a i {
+                transition: transform 0.2s;
+            }
+            
+            #connectorConfigModal .documentation-link a:hover i {
+                transform: translateX(2px);
+            }
+            
+            #connectorConfigModal .required-note {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.5);
+                margin: 10px 0;
+            }
+            
+            #connectorConfigModal .required {
+                color: #f56565;
+                margin-left: 2px;
+            }
+            
+            /* Enhanced Button Styles */
+            #connectorConfigModal .btn-test-connection {
+                background: linear-gradient(135deg, rgba(32, 121, 210, 0.2), rgba(28, 85, 176, 0.3));
+                border: 1px solid rgba(99, 179, 237, 0.4);
+                color: rgba(255, 255, 255, 0.9);
+                padding: 12px 20px;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                gap: 12px;
+                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                min-width: 180px;
+                justify-content: center;
+            }
+            
+            #connectorConfigModal .btn-test-connection::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: linear-gradient(
+                    45deg,
+                    transparent,
+                    rgba(129, 199, 245, 0.2),
+                    transparent
+                );
+                transform: rotate(45deg);
+                opacity: 0;
+                z-index: 1;
+            }
+            
+            #connectorConfigModal .btn-test-connection:hover {
+                background: linear-gradient(135deg, rgba(47, 133, 220, 0.3), rgba(38, 106, 207, 0.4));
+                color: white;
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(0, 20, 60, 0.3),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+                border-color: rgba(99, 179, 237, 0.7);
+            }
+            
+            #connectorConfigModal .btn-test-connection:hover::before {
+                animation: shine 1.5s infinite;
+                opacity: 1;
+            }
+            
+            @keyframes shine {
+                0% { transform: rotate(45deg) translate(-100%, -100%); }
+                100% { transform: rotate(45deg) translate(100%, 100%); }
+            }
+            
+            #connectorConfigModal .btn-test-connection:active {
+                transform: translateY(1px);
+                box-shadow: 0 4px 12px rgba(0, 20, 60, 0.25);
+            }
+            
+            #connectorConfigModal .btn-test-connection i {
+                font-size: 16px;
+                margin-right: 2px;
+                color: rgba(129, 199, 245, 0.9);
+                transition: all 0.3s;
+                z-index: 2;
+            }
+            
+            #connectorConfigModal .btn-test-connection:hover i {
+                color: white;
+                transform: rotate(15deg);
+            }
+            
+            #connectorConfigModal .btn-test-connection:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+            
+            #connectorConfigModal .action-buttons {
+                display: flex;
+                gap: 16px;
+            }
+            
+            #connectorConfigModal .btn-cancel {
+                background: rgba(30, 41, 72, 0.4);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: rgba(255, 255, 255, 0.8);
+                padding: 12px 24px;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                min-width: 120px;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            #connectorConfigModal .btn-cancel::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.08),
+                    transparent
+                );
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+            
+            #connectorConfigModal .btn-cancel:hover {
+                background: rgba(45, 55, 96, 0.6);
+                color: white;
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+                border-color: rgba(255, 255, 255, 0.25);
+            }
+            
+            #connectorConfigModal .btn-cancel:hover::after {
+                opacity: 1;
+            }
+            
+            #connectorConfigModal .btn-cancel:active {
+                transform: translateY(1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+            
+            #connectorConfigModal .btn-submit {
+                background: linear-gradient(135deg, #3182ce, #4c51bf);
+                border: none;
+                color: white;
+                padding: 12px 28px;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                box-shadow: 0 6px 18px rgba(49, 130, 206, 0.35),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                min-width: 140px;
+                text-align: center;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                position: relative;
+                overflow: hidden;
+                z-index: 1;
+            }
+            
+            #connectorConfigModal .btn-submit::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, 
+                    transparent, 
+                    rgba(255, 255, 255, 0.3), 
+                    transparent);
+                transition: left 0.7s ease;
+                z-index: -1;
+            }
+            
+            #connectorConfigModal .btn-submit:hover {
+                background: linear-gradient(135deg, #4299e1, #5a67d8);
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(49, 130, 206, 0.45),
+                            0 0 20px rgba(66, 153, 225, 0.3);
+            }
+            
+            #connectorConfigModal .btn-submit:hover::before {
+                animation: shimmer 2s infinite;
+            }
+            
+            @keyframes shimmer {
+                0% { left: -100%; }
+                100% { left: 100%; }
+            }
+            
+            #connectorConfigModal .btn-submit:active {
+                transform: translateY(1px);
+                box-shadow: 0 6px 12px rgba(49, 130, 206, 0.3);
+            }
+            
+            /* Media query for smaller screens */
+            @media (max-width: 768px) {
+                #connectorConfigModal .form-row {
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                
+                #connectorConfigModal .form-group.half {
+                    width: 100%;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
