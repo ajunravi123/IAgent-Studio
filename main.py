@@ -9,11 +9,17 @@ import uuid
 from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
-from task_executor import TaskExecutor
-from multi_agent_executor import MultiAgentExecutor
 from langchain.tools import Tool # If tools are needed for manager/agents
-import psycopg2
-from psycopg2 import Error as PostgresError
+
+
+
+DISABLE_RUN = False
+
+if DISABLE_RUN:
+    from task_executor import TaskExecutor
+    from multi_agent_executor import MultiAgentExecutor
+    import psycopg2
+    from psycopg2 import Error as PostgresError
 
 
 import logging
@@ -369,86 +375,89 @@ async def delete_data_connector(connector_id: str):
     save_connectors(connectors)
     return {"message": "Connector deleted successfully"}
 
-@app.post("/api/data-connectors/test")
-async def test_connection(connection_data: PostgresConnectionTest):
-    if connection_data.type != "postgres":
-        raise HTTPException(status_code=400, detail="Only PostgreSQL connections are supported")
-    
-    config = connection_data.config
-    required_fields = ['host', 'port', 'database', 'user']
-    missing_fields = [field for field in required_fields if not config.get(field)]
-    
-    if missing_fields:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Missing required fields: {', '.join(missing_fields)}"
-        )
 
-    try:
-        # Convert port to integer if it's a string
-        try:
-            port = int(config['port'])
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Port must be a valid number")
+if DISABLE_RUN:
 
-        # Attempt to establish connection
-        conn = psycopg2.connect(
-            host=config['host'],
-            port=port,
-            database=config['database'],
-            user=config['user'],
-            password=config.get('password', ''),
-            # Add a shorter timeout for connection testing
-            connect_timeout=10
-        )
-
-        try:
-            # Test the connection with a simple query
-            with conn.cursor() as cur:
-                cur.execute('SELECT version();')
-                version = cur.fetchone()[0]
-            
-            # Close the connection properly
-            conn.close()
-
-            return {
-                "status": "success",
-                "message": "Connection successful",
-                "details": {
-                    "version": version,
-                    "connected_to": f"{config['host']}:{config['port']}/{config['database']}"
-                }
-            }
-
-        except PostgresError as e:
-            if not conn.closed:
-                conn.close()
+    @app.post("/api/data-connectors/test")
+    async def test_connection(connection_data: PostgresConnectionTest):
+        if connection_data.type != "postgres":
+            raise HTTPException(status_code=400, detail="Only PostgreSQL connections are supported")
+        
+        config = connection_data.config
+        required_fields = ['host', 'port', 'database', 'user']
+        missing_fields = [field for field in required_fields if not config.get(field)]
+        
+        if missing_fields:
             raise HTTPException(
                 status_code=400,
-                detail=f"Database query failed: {str(e)}"
+                detail=f"Missing required fields: {', '.join(missing_fields)}"
             )
 
-    except PostgresError as e:
-        # Handle different PostgreSQL error cases
-        error_message = str(e)
-        if "timeout expired" in error_message.lower():
-            error_message = "Connection timed out. Please check if the database is accessible and the host/port are correct."
-        elif "password authentication failed" in error_message.lower():
-            error_message = "Authentication failed. Please check your username and password."
-        elif "database" in error_message.lower() and "does not exist" in error_message.lower():
-            error_message = f"Database '{config['database']}' does not exist."
-        elif "could not connect to server" in error_message.lower():
-            error_message = "Could not connect to server. Please check if the host and port are correct and the server is running."
+        try:
+            # Convert port to integer if it's a string
+            try:
+                port = int(config['port'])
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Port must be a valid number")
 
-        raise HTTPException(
-            status_code=400,
-            detail=error_message
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"An unexpected error occurred: {str(e)}"
-        )
+            # Attempt to establish connection
+            conn = psycopg2.connect(
+                host=config['host'],
+                port=port,
+                database=config['database'],
+                user=config['user'],
+                password=config.get('password', ''),
+                # Add a shorter timeout for connection testing
+                connect_timeout=10
+            )
+
+            try:
+                # Test the connection with a simple query
+                with conn.cursor() as cur:
+                    cur.execute('SELECT version();')
+                    version = cur.fetchone()[0]
+                
+                # Close the connection properly
+                conn.close()
+
+                return {
+                    "status": "success",
+                    "message": "Connection successful",
+                    "details": {
+                        "version": version,
+                        "connected_to": f"{config['host']}:{config['port']}/{config['database']}"
+                    }
+                }
+
+            except PostgresError as e:
+                if not conn.closed:
+                    conn.close()
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Database query failed: {str(e)}"
+                )
+
+        except PostgresError as e:
+            # Handle different PostgreSQL error cases
+            error_message = str(e)
+            if "timeout expired" in error_message.lower():
+                error_message = "Connection timed out. Please check if the database is accessible and the host/port are correct."
+            elif "password authentication failed" in error_message.lower():
+                error_message = "Authentication failed. Please check your username and password."
+            elif "database" in error_message.lower() and "does not exist" in error_message.lower():
+                error_message = f"Database '{config['database']}' does not exist."
+            elif "could not connect to server" in error_message.lower():
+                error_message = "Could not connect to server. Please check if the host and port are correct and the server is running."
+
+            raise HTTPException(
+                status_code=400,
+                detail=error_message
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"An unexpected error occurred: {str(e)}"
+            )
 
 # --- API Endpoints ---
 
@@ -713,261 +722,264 @@ ALLOWED_FILE_TYPES = {
     "application/pdf": "pdf"
 }
 
-@app.post("/api/agent/infer")
-async def agent_infer(
-    agentId: str = Form(...),
-    userInput: str = Form(...),
-    file: Optional[UploadFile] = File(None)
-):
-    try:
-        # Get the agent from storage
-        agents = load_agents()
-        agent = next((a for a in agents if a["id"] == agentId), None)
-        
-        if not agent:
+
+if DISABLE_RUN:
+
+    @app.post("/api/agent/infer")
+    async def agent_infer(
+        agentId: str = Form(...),
+        userInput: str = Form(...),
+        file: Optional[UploadFile] = File(None)
+    ):
+        try:
+            # Get the agent from storage
+            agents = load_agents()
+            agent = next((a for a in agents if a["id"] == agentId), None)
+            
+            if not agent:
+                return MessageResponse(
+                    type="error",
+                    content=ErrorData(
+                        message="Agent not found",
+                        details=f"No agent found with ID: {agentId}"
+                    )
+                )
+
+            # Handle file upload if present
+            file_info = None
+            file_path = None
+            if file:
+                # Validate file size (max 10MB)
+                contents = await file.read()
+                file_size = len(contents)
+                if file_size > 10 * 1024 * 1024:  # 10MB
+                    return MessageResponse(
+                        type="error",
+                        content=ErrorData(
+                            message="File too large",
+                            details="Maximum file size is 10MB"
+                        )
+                    )
+
+                # Check file type (case-insensitive MIME type check)
+                if file.content_type not in ALLOWED_FILE_TYPES:
+                    return MessageResponse(
+                        type="error",
+                        content=ErrorData(
+                            message="Unsupported file type",
+                            details=f"Only CSV, JSON, TXT, PDF, and image (JPEG, PNG, GIF) files are supported. Got: {file.content_type}"
+                        )
+                    )
+
+                # Generate unique filename (preserve original extension case)
+                file_extension = os.path.splitext(file.filename)[1]  # Keeps case, e.g., .JPEG or .jpeg
+                unique_filename = f"{uuid.uuid4()}{file_extension}"
+                file_path = UPLOAD_DIR / unique_filename
+
+                # Save file
+                with open(file_path, "wb") as buffer:
+                    buffer.write(contents)
+
+                # Store file info
+                file_info = {
+                    "original_name": file.filename,
+                    "saved_name": unique_filename,
+                    "size": file_size,
+                    "type": file.content_type,
+                    "path": str(file_path),
+                    "uploaded_at": datetime.now().isoformat()
+                }
+                print(f"File saved: {file_path}")
+
+            # Get API keys from environment variables
+            # API_KEYS = {
+            #     "gemini": os.getenv("GEMINI_API_KEY"),
+            #     "openai": os.getenv("OPENAI_API_KEY"),
+            #     "groq": os.getenv("GROQ_API_KEY"),
+            # }
+
+            # Load tool configurations for this agent
+            tools_config = []
+            for tool_id in agent.get("tools", []):
+                schema_path = f"tool_schemas/{tool_id}.json"
+                auth_path = f"tool_auth/{tool_id}.json"
+                
+                if os.path.exists(schema_path):
+                    tool_config = {"id": tool_id}
+                    with open(schema_path, 'r') as f:
+                        tool_config["schema"] = json.load(f)
+                    if os.path.exists(auth_path):
+                        with open(auth_path, 'r') as f:
+                            tool_config["auth"] = json.load(f)
+                    tools_config.append(tool_config)
+
+            # Pass the single agent configuration dict and tools_config list to TaskExecutor
+            agent_config_dict = {
+                "role": agent["role"],
+                "goal": agent["goal"],
+                "backstory": agent["backstory"],
+                "instructions": agent["instructions"] # Pass instructions here
+            }
+            
+            # Instantiate the single-agent executor
+            executor = TaskExecutor(agent_config=agent_config_dict, tools_config=tools_config)
+
+
+            if userInput:
+                agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
+
+            # Execute the task using the original TaskExecutor logic
+            result = executor.execute_task(
+                description=agent["instructions"], # Base instructions
+                expected_output=agent["expectedOutput"],
+                task_name=agent["name"],
+                input=userInput, # Pass user input as kwarg
+                file_path=file_path if file_info else None
+            )
+            print(result)
+
+            response = MessageResponse(type="text", content=TextData(text=result))
+            return response
+            
+        except Exception as e:
             return MessageResponse(
                 type="error",
                 content=ErrorData(
-                    message="Agent not found",
-                    details=f"No agent found with ID: {agentId}"
+                    message="Error processing request",
+                    details=str(e)
                 )
             )
+        
 
-        # Handle file upload if present
-        file_info = None
-        file_path = None
-        if file:
-            # Validate file size (max 10MB)
-            contents = await file.read()
-            file_size = len(contents)
-            if file_size > 10 * 1024 * 1024:  # 10MB
-                return MessageResponse(
-                    type="error",
-                    content=ErrorData(
-                        message="File too large",
-                        details="Maximum file size is 10MB"
-                    )
-                )
+    # --- Multi-Agent Models & Endpoints ---
 
-            # Check file type (case-insensitive MIME type check)
-            if file.content_type not in ALLOWED_FILE_TYPES:
-                return MessageResponse(
-                    type="error",
-                    content=ErrorData(
-                        message="Unsupported file type",
-                        details=f"Only CSV, JSON, TXT, PDF, and image (JPEG, PNG, GIF) files are supported. Got: {file.content_type}"
-                    )
-                )
+    class MultiAgentInferenceRequest(BaseModel):
+        multi_agent_id: str
+        user_input: str
+        # Add file handling if needed later
 
-            # Generate unique filename (preserve original extension case)
-            file_extension = os.path.splitext(file.filename)[1]  # Keeps case, e.g., .JPEG or .jpeg
-            unique_filename = f"{uuid.uuid4()}{file_extension}"
-            file_path = UPLOAD_DIR / unique_filename
 
-            # Save file
-            with open(file_path, "wb") as buffer:
-                buffer.write(contents)
 
-            # Store file info
-            file_info = {
-                "original_name": file.filename,
-                "saved_name": unique_filename,
-                "size": file_size,
-                "type": file.content_type,
-                "path": str(file_path),
-                "uploaded_at": datetime.now().isoformat()
-            }
-            print(f"File saved: {file_path}")
 
-        # Get API keys from environment variables
-        # API_KEYS = {
-        #     "gemini": os.getenv("GEMINI_API_KEY"),
-        #     "openai": os.getenv("OPENAI_API_KEY"),
-        #     "groq": os.getenv("GROQ_API_KEY"),
-        # }
-
-        # Load tool configurations for this agent
-        tools_config = []
-        for tool_id in agent.get("tools", []):
-            schema_path = f"tool_schemas/{tool_id}.json"
-            auth_path = f"tool_auth/{tool_id}.json"
+    @app.post("/api/multi_agent/infer")
+    async def multi_agent_infer(request: MultiAgentInferenceRequest):
+        try:
+            multi_agent_id = request.multi_agent_id
+            user_input = request.user_input
             
-            if os.path.exists(schema_path):
-                tool_config = {"id": tool_id}
-                with open(schema_path, 'r') as f:
-                    tool_config["schema"] = json.load(f)
-                if os.path.exists(auth_path):
-                    with open(auth_path, 'r') as f:
-                        tool_config["auth"] = json.load(f)
-                tools_config.append(tool_config)
+            logger.info(f"Received multi-agent infer request for ID: {multi_agent_id}")
+            logger.debug(f"User input: {user_input}")
 
-        # Pass the single agent configuration dict and tools_config list to TaskExecutor
-        agent_config_dict = {
-            "role": agent["role"],
-            "goal": agent["goal"],
-            "backstory": agent["backstory"],
-            "instructions": agent["instructions"] # Pass instructions here
-        }
-        
-        # Instantiate the single-agent executor
-        executor = TaskExecutor(agent_config=agent_config_dict, tools_config=tools_config)
+            # Validate user input
+            if not user_input or user_input.strip() == "":
+                logger.error("Empty or invalid user input provided.")
+                raise HTTPException(status_code=400, detail="User input cannot be empty.")
 
+            # Load multi-agent configuration
+            multi_agents = load_multi_agents()
+            multi_agent_config = next((ma for ma in multi_agents if ma["id"] == multi_agent_id), None)
+            
+            if not multi_agent_config:
+                logger.error(f"Multi-Agent not found: {multi_agent_id}")
+                raise HTTPException(status_code=404, detail=f"Multi-Agent not found: {multi_agent_id}")
 
-        if userInput:
-            agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
+            # Set default values for manager config
+            multi_agent_config.setdefault("role", "Coordinator")
+            multi_agent_config.setdefault("goal", "Efficiently manage and delegate tasks.")
+            multi_agent_config.setdefault("backstory", "Orchestrator for connected agents.")
+            multi_agent_config.setdefault("description", "Coordinate the processing of the user request by delegating to worker agents.")
 
-        # Execute the task using the original TaskExecutor logic
-        result = executor.execute_task(
-            description=agent["instructions"], # Base instructions
-            expected_output=agent["expectedOutput"],
-            task_name=agent["name"],
-            input=userInput, # Pass user input as kwarg
-            file_path=file_path if file_info else None
-        )
-        print(result)
+            multi_agent_config.setdefault("expected_output", (
+                "Agent Outputs:\n"
+                "<agent_name> Output: <output from agent>\n"
+                "(repeated for each agent in the sequence)\n"
+            ))
+            # Load worker agent configurations
+            all_agents = load_agents()
+            connected_agent_ids = multi_agent_config.get("agent_ids", [])
+            worker_agent_configs = []
 
-        response = MessageResponse(type="text", content=TextData(text=result))
-        return response
-        
-    except Exception as e:
-        return MessageResponse(
-            type="error",
-            content=ErrorData(
-                message="Error processing request",
-                details=str(e)
-            )
-        )
-    
-
-# --- Multi-Agent Models & Endpoints ---
-
-class MultiAgentInferenceRequest(BaseModel):
-    multi_agent_id: str
-    user_input: str
-    # Add file handling if needed later
-
-
-
-
-@app.post("/api/multi_agent/infer")
-async def multi_agent_infer(request: MultiAgentInferenceRequest):
-    try:
-        multi_agent_id = request.multi_agent_id
-        user_input = request.user_input
-        
-        logger.info(f"Received multi-agent infer request for ID: {multi_agent_id}")
-        logger.debug(f"User input: {user_input}")
-
-        # Validate user input
-        if not user_input or user_input.strip() == "":
-            logger.error("Empty or invalid user input provided.")
-            raise HTTPException(status_code=400, detail="User input cannot be empty.")
-
-        # Load multi-agent configuration
-        multi_agents = load_multi_agents()
-        multi_agent_config = next((ma for ma in multi_agents if ma["id"] == multi_agent_id), None)
-        
-        if not multi_agent_config:
-            logger.error(f"Multi-Agent not found: {multi_agent_id}")
-            raise HTTPException(status_code=404, detail=f"Multi-Agent not found: {multi_agent_id}")
-
-        # Set default values for manager config
-        multi_agent_config.setdefault("role", "Coordinator")
-        multi_agent_config.setdefault("goal", "Efficiently manage and delegate tasks.")
-        multi_agent_config.setdefault("backstory", "Orchestrator for connected agents.")
-        multi_agent_config.setdefault("description", "Coordinate the processing of the user request by delegating to worker agents.")
-
-        multi_agent_config.setdefault("expected_output", (
-            "Agent Outputs:\n"
-            "<agent_name> Output: <output from agent>\n"
-            "(repeated for each agent in the sequence)\n"
-        ))
-        # Load worker agent configurations
-        all_agents = load_agents()
-        connected_agent_ids = multi_agent_config.get("agent_ids", [])
-        worker_agent_configs = []
-
-        for agent_id in connected_agent_ids:
-            agent_data = next((a for a in all_agents if a["id"] == agent_id), None)
-            if not agent_data:
-                logger.warning(f"Agent with ID {agent_id} not found, skipping.")
-                continue
-
-            # Load tool configurations
-            worker_tools_config = []
-            for tool_id in agent_data.get("tools", []):
-                schema_path = f"tool_schemas/{tool_id}.json"
-                auth_path = f"tool_auth/{tool_id}.json"
-                tool_cfg = {"id": tool_id}
-
-                if os.path.exists(schema_path):
-                    try:
-                        with open(schema_path, 'r') as f:
-                            tool_cfg["schema"] = json.load(f)
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Invalid JSON in schema file {schema_path} for agent {agent_id}: {e}")
-                        continue
-                else:
-                    logger.warning(f"Schema file not found for tool {tool_id} in agent {agent_id}")
+            for agent_id in connected_agent_ids:
+                agent_data = next((a for a in all_agents if a["id"] == agent_id), None)
+                if not agent_data:
+                    logger.warning(f"Agent with ID {agent_id} not found, skipping.")
                     continue
 
-                if os.path.exists(auth_path):
-                    try:
-                        with open(auth_path, 'r') as f:
-                            tool_cfg["auth"] = json.load(f)
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Invalid JSON in auth file {auth_path} for agent {agent_id}: {e}")
-                        tool_cfg["auth"] = {}
+                # Load tool configurations
+                worker_tools_config = []
+                for tool_id in agent_data.get("tools", []):
+                    schema_path = f"tool_schemas/{tool_id}.json"
+                    auth_path = f"tool_auth/{tool_id}.json"
+                    tool_cfg = {"id": tool_id}
 
-                worker_tools_config.append(tool_cfg)
+                    if os.path.exists(schema_path):
+                        try:
+                            with open(schema_path, 'r') as f:
+                                tool_cfg["schema"] = json.load(f)
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"Invalid JSON in schema file {schema_path} for agent {agent_id}: {e}")
+                            continue
+                    else:
+                        logger.warning(f"Schema file not found for tool {tool_id} in agent {agent_id}")
+                        continue
 
-            # Prepare worker config
-            worker_config = {
-                "id": agent_data["id"],
-                "name": agent_data.get("name", agent_data["role"]),
-                "role": agent_data["role"],
-                "goal": agent_data["goal"],
-                "backstory": agent_data["backstory"],
-                "instructions": agent_data.get("instructions", f"Perform tasks as {agent_data['role']}"),
-                "expectedOutput": agent_data.get("expectedOutput", "A contribution to the overall goal"),
-                "tools": worker_tools_config
+                    if os.path.exists(auth_path):
+                        try:
+                            with open(auth_path, 'r') as f:
+                                tool_cfg["auth"] = json.load(f)
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"Invalid JSON in auth file {auth_path} for agent {agent_id}: {e}")
+                            tool_cfg["auth"] = {}
+
+                    worker_tools_config.append(tool_cfg)
+
+                # Prepare worker config
+                worker_config = {
+                    "id": agent_data["id"],
+                    "name": agent_data.get("name", agent_data["role"]),
+                    "role": agent_data["role"],
+                    "goal": agent_data["goal"],
+                    "backstory": agent_data["backstory"],
+                    "instructions": agent_data.get("instructions", f"Perform tasks as {agent_data['role']}"),
+                    "expectedOutput": agent_data.get("expectedOutput", "A contribution to the overall goal"),
+                    "tools": worker_tools_config
+                }
+                worker_agent_configs.append(worker_config)
+                logger.info(f"Loaded config for worker agent {agent_id} ({worker_config['name']})")
+
+            # Validate minimum worker agents
+            if len(worker_agent_configs) < 2:
+                logger.error("At least two worker agents are required.")
+                raise HTTPException(status_code=400, detail="Multi-agent requires at least two worker agents.")
+
+            # Update manager description with user input
+            if user_input:
+                default_description = multi_agent_config["description"]
+                if "{{input}}" in default_description:
+                    multi_agent_config["description"] = default_description.replace("{{input}}", user_input)
+                else:
+                    multi_agent_config["description"] = f"{default_description}\nInput to process: {user_input}"
+
+            # Instantiate and execute
+            executor = MultiAgentExecutor(
+                multi_agent_config=multi_agent_config,
+                worker_agent_configs=worker_agent_configs
+            )
+
+            result = executor.execute_task(user_input=user_input)
+            logger.info("Multi-agent task completed successfully")
+
+            return {
+                "response": result,
+                "sender_agent_name": "Manager Agent"
             }
-            worker_agent_configs.append(worker_config)
-            logger.info(f"Loaded config for worker agent {agent_id} ({worker_config['name']})")
 
-        # Validate minimum worker agents
-        if len(worker_agent_configs) < 2:
-            logger.error("At least two worker agents are required.")
-            raise HTTPException(status_code=400, detail="Multi-agent requires at least two worker agents.")
-
-        # Update manager description with user input
-        if user_input:
-            default_description = multi_agent_config["description"]
-            if "{{input}}" in default_description:
-                multi_agent_config["description"] = default_description.replace("{{input}}", user_input)
-            else:
-                multi_agent_config["description"] = f"{default_description}\nInput to process: {user_input}"
-
-        # Instantiate and execute
-        executor = MultiAgentExecutor(
-            multi_agent_config=multi_agent_config,
-            worker_agent_configs=worker_agent_configs
-        )
-
-        result = executor.execute_task(user_input=user_input)
-        logger.info("Multi-agent task completed successfully")
-
-        return {
-            "response": result,
-            "sender_agent_name": "Manager Agent"
-        }
-
-    except HTTPException as http_exc:
-        raise http_exc
-    except Exception as e:
-        logger.error(f"Error in multi_agent_infer: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    
+        except HTTPException as http_exc:
+            raise http_exc
+        except Exception as e:
+            logger.error(f"Error in multi_agent_infer: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        
 
     
 
