@@ -629,15 +629,17 @@ async def save_data_connector(connector_config: PostgresConnectionConfig):
     
     # Check if a connector with the same uniqueName already exists
     if any(c.get('uniqueName') == connector_config.uniqueName for c in connectors):
-        # Option 1: Raise error
-         raise HTTPException(status_code=409, detail=f"Connector with name '{connector_config.uniqueName}' already exists.")
-    else:
-        # Add new connector
-        new_connector_dict = connector_config.dict()
-        connectors.append(new_connector_dict)
+        raise HTTPException(status_code=409, detail=f"Connector with name '{connector_config.uniqueName}' already exists.")
+
+    # Create new connector with generated ID and timestamp
+    new_connector_dict = connector_config.dict()
+    new_connector_dict['id'] = str(uuid.uuid4())  # Ensure ID is generated
+    new_connector_dict['createdAt'] = datetime.utcnow().isoformat()  # Add timestamp
     
+    connectors.append(new_connector_dict)
     save_connectors(connectors)
-    return connector_config # Return the Pydantic model which includes the ID
+    
+    return new_connector_dict  # Return the complete connector data including ID
 
 @app.get("/api/data-connectors", response_model=List[PostgresConnectionConfig])
 async def get_data_connectors():
@@ -646,23 +648,47 @@ async def get_data_connectors():
 
 @app.put("/api/data-connectors/{connector_id}", response_model=PostgresConnectionConfig)
 async def update_data_connector(connector_id: str, connector_config: PostgresConnectionConfig):
+    if not connector_id:
+        raise HTTPException(status_code=400, detail="Connector ID is required")
+
     connectors = load_connectors()
     
+    # Find the connector to update
+    connector_index = None
     for i, connector in enumerate(connectors):
-        if connector["id"] == connector_id:
-            if any(c["uniqueName"] == connector_config.uniqueName and c["id"] != connector_id for c in connectors):
-                raise HTTPException(status_code=409, detail=f"Connector with name '{connector_config.uniqueName}' already exists.")
-            
-            # Create a new dictionary for the updated connector, preserving the ID
-            updated_connector_dict = connector_config.dict()
-            updated_connector_dict["id"] = connector_id # Ensure ID is preserved
-            
-            connectors[i] = updated_connector_dict
-            save_connectors(connectors)
-            # Return the updated Pydantic model
-            return PostgresConnectionConfig(**connectors[i])
+        if connector.get('id') == connector_id:
+            connector_index = i
+            break
     
-    raise HTTPException(status_code=404, detail=f"Connector with ID '{connector_id}' not found.")
+    if connector_index is None:
+        raise HTTPException(status_code=404, detail=f"Connector with ID '{connector_id}' not found.")
+
+    # Check for unique name conflict with other connectors
+    name_conflict = any(
+        c['uniqueName'] == connector_config.uniqueName and c['id'] != connector_id 
+        for c in connectors
+    )
+    if name_conflict:
+        raise HTTPException(
+            status_code=409, 
+            detail=f"Connector with name '{connector_config.uniqueName}' already exists."
+        )
+
+    # Preserve existing ID and creation timestamp
+    existing_connector = connectors[connector_index]
+    updated_connector = connector_config.dict()
+    updated_connector['id'] = connector_id
+    updated_connector['createdAt'] = existing_connector.get('createdAt')
+
+    # If password is empty in update, keep the existing password
+    if not updated_connector.get('vectorStorePassword'):
+        updated_connector['vectorStorePassword'] = existing_connector.get('vectorStorePassword', '')
+
+    # Update the connector
+    connectors[connector_index] = updated_connector
+    save_connectors(connectors)
+    
+    return PostgresConnectionConfig(**updated_connector)
 
 @app.delete("/api/data-connectors/{connector_id}")
 async def delete_data_connector(connector_id: str):
