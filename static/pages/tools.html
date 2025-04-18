@@ -104,6 +104,65 @@
         </div>
     </div>
 
+    <!-- Edit Advanced Tool Modal with Futuristic Design -->
+    <div class="modal advanced-tool-modal" id="advancedToolModal">
+        <div class="modal-content futuristic-modal-content">
+            <div class="modal-header">
+                <div class="modal-title-container">
+                    <div class="modal-title-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h2 id="advancedToolModalTitle">Edit Advanced Tool</h2>
+                </div>
+                <button class="btn-close" onclick="closeAdvancedToolModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="advancedToolForm">
+                    <input type="hidden" id="advancedToolId">
+                    <div class="form-group">
+                        <label for="advancedToolName">Tool Name*</label>
+                        <input type="text" id="advancedToolName" class="form-input futuristic-input" placeholder="Enter tool name">
+                        <div class="input-glow"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="advancedToolDescription">Description*</label>
+                        <textarea id="advancedToolDescription" class="form-textarea futuristic-textarea" placeholder="Describe what this tool does"></textarea>
+                        <div class="textarea-glow"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="advancedToolTags">Tags (comma-separated)</label>
+                        <input type="text" id="advancedToolTags" class="form-input futuristic-input" placeholder="e.g., Database, Analytics, AI">
+                        <div class="input-glow"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="advancedToolConnector">Data Connector</label>
+                        <select id="advancedToolConnector" class="form-select futuristic-select">
+                            <option value="">None</option>
+                            <!-- Data connectors will be populated here -->
+                        </select>
+                        <div class="select-glow"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="advancedToolSchema">OpenAPI Schema*</label>
+                        <div class="code-editor-wrap">
+                            <textarea id="advancedToolSchema" class="form-textarea futuristic-code-editor" placeholder="Paste your OpenAPI schema here"></textarea>
+                            <div class="editor-controls">
+                                <span class="badge">JSON</span>
+                                <button type="button" class="editor-button" onclick="formatAdvancedToolJson()">
+                                    <i class="fas fa-code"></i> Format
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary futuristic-button-cancel" onclick="closeAdvancedToolModal()">Cancel</button>
+                <button class="btn-primary futuristic-button-save" onclick="saveAdvancedTool()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Custom Tool Modal -->
     <div class="modal" id="addCustomToolModal">
         <div class="modal-content">
@@ -812,19 +871,37 @@ async function loadDataConnectorsForAdvancedTool() {
     try {
         const response = await fetch('/api/data-connectors');
         const connectors = await response.json();
-        const select = document.getElementById('newAdvancedToolConnector');
+        
+        // Update create modal dropdown
+        const createSelect = document.getElementById('newAdvancedToolConnector');
         
         // Clear existing options except the first one
-        while (select.options.length > 1) {
-            select.options.remove(1);
+        while (createSelect.options.length > 1) {
+            createSelect.options.remove(1);
         }
         
-        // Add new options
+        // Add new options to create modal dropdown
         connectors.forEach(connector => {
             const option = document.createElement('option');
             option.value = connector.id;
             option.textContent = connector.uniqueName;
-            select.appendChild(option);
+            createSelect.appendChild(option);
+        });
+        
+        // Update edit modal dropdown
+        const editSelect = document.getElementById('advancedToolConnector');
+        
+        // Clear existing options except the first one
+        while (editSelect.options.length > 1) {
+            editSelect.options.remove(1);
+        }
+        
+        // Add new options to edit modal dropdown
+        connectors.forEach(connector => {
+            const option = document.createElement('option');
+            option.value = connector.id;
+            option.textContent = connector.uniqueName;
+            editSelect.appendChild(option);
         });
     } catch (error) {
         console.error('Error loading data connectors:', error);
@@ -834,6 +911,16 @@ async function loadDataConnectorsForAdvancedTool() {
 
 function formatJson() {
     const schemaField = document.getElementById('newAdvancedToolSchema');
+    try {
+        const formatted = JSON.stringify(JSON.parse(schemaField.value), null, 2);
+        schemaField.value = formatted;
+    } catch (error) {
+        showNotification('Invalid JSON format', 'error');
+    }
+}
+
+function formatAdvancedToolJson() {
+    const schemaField = document.getElementById('advancedToolSchema');
     try {
         const formatted = JSON.stringify(JSON.parse(schemaField.value), null, 2);
         schemaField.value = formatted;

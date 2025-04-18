@@ -7688,6 +7688,25 @@ async function createNewAdvancedTool() {
     }
 }
 
+// Advanced Tool Modal Functions
+function showAdvancedToolModal(title, tool = null) {
+    currentAdvancedToolId = tool?.id || null;
+    document.getElementById('advancedToolModalTitle').textContent = title;
+    document.getElementById('advancedToolId').value = tool?.id || '';
+    document.getElementById('advancedToolName').value = tool?.name || '';
+    document.getElementById('advancedToolDescription').value = tool?.description || '';
+    document.getElementById('advancedToolTags').value = tool?.tags?.join(', ') || '';
+    document.getElementById('advancedToolConnector').value = tool?.data_connector_id || '';
+    document.getElementById('advancedToolSchema').value = tool?.schema ? JSON.stringify(tool.schema, null, 2) : '';
+    document.getElementById('advancedToolModal').style.display = 'flex';
+}
+
+function closeAdvancedToolModal() {
+    document.getElementById('advancedToolModal').style.display = 'none';
+    document.getElementById('advancedToolForm').reset();
+    currentAdvancedToolId = null;
+}
+
 function editAdvancedTool(toolId) {
     const tool = advancedTools.find(t => t.id === toolId);
     if (tool) {
