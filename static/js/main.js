@@ -6255,6 +6255,745 @@ async function deleteConnector(connectorId) {
         hideLoading();
     }
 }
+// --- End Edit/Delete Functions ---
+
+// ... existing code ...
+// }
+
+
+// --- Helper function to get Connector Icon Class (Reinstated) ---
+function getConnectorIconClass(connectorId) {
+    // Map specific IDs to icons - add more as needed
+    switch (connectorId.toLowerCase()) {
+        case 'qdrant': return 'fas fa-database'; // Example
+        case 'weaviate': return 'fas fa-wave-square'; // Example
+        case 'pgvector': return 'fas fa-database'; // Example
+        case 'postgres': return 'fas fa-database'; // Example for configured type
+        case 'mysql': return 'fas fa-database'; // Example
+        case 'bigquery': return 'fab fa-google'; // Example
+        // Add more mappings based on your actual connector types/IDs
+        default: return 'fas fa-plug'; // Default plug icon
+    }
+}
+
+// --- Function to render AVAILABLE connectors grid (Reinstated) ---
+function renderDataConnectors(connectors) {
+    const connectorsGrid = document.getElementById('dataConnectorsGrid');
+    if (!connectorsGrid) return;
+
+    if (!connectors || connectors.length === 0) {
+        connectorsGrid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <h3>No Data Connectors Available</h3>
+                <p>No connectors have been configured yet.</p>
+            </div>`;
+        return;
+    }
+
+    connectorsGrid.innerHTML = connectors.map(connector => {
+        const iconClass = getConnectorIconClass(connector.id);
+        return `
+            <div class="connector-card">
+                <div class="card-glow"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <div class="connector-icon-wrapper">
+                            <div class="icon-glow"></div>
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <h3 class="connector-name">${connector.name}</h3>
+                        <button class="btn-add-connector" onclick="addConnector('${connector.id}')">
+                            <span class="btn-glow"></span>
+                            <i class="fas fa-plus"></i>
+                            Configure
+                        </button>
+                    </div>
+                    <p class="connector-description">${connector.description}</p>
+                    <div class="card-footer">
+                        
+                        <a href="${connector.docsUrl || '#'}" target="_blank" class="docs-link">
+                            <span>Documentation</span>
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Add enhanced futuristic styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .connectors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            padding: 12px;
+            position: relative;
+        }
+
+        .connector-card {
+            position: relative;
+            background: linear-gradient(165deg, 
+                rgba(30, 41, 59, 0.95),
+                rgba(17, 25, 40, 0.97)
+            );
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 179, 237, 0.1);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .connector-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(
+                circle at center,
+                rgba(99, 179, 237, 0.1),
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connector-card:hover::before {
+            opacity: 1;
+            animation: rotateGradient 3s linear infinite;
+        }
+
+        @keyframes rotateGradient {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .card-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg,
+                rgba(99, 179, 237, 0),
+                rgba(99, 179, 237, 0.5),
+                rgba(99, 179, 237, 0)
+            );
+            box-shadow: 0 0 20px rgba(99, 179, 237, 0.3);
+            z-index: 2;
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 3;
+            padding: 24px;
+        }
+
+        .connector-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
+                        0 0 20px rgba(99, 179, 237, 0.1),
+                        inset 0 0 20px rgba(99, 179, 237, 0.1);
+        }
+
+        .connector-icon-wrapper {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            border-radius: 15px;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.2),
+                rgba(66, 153, 225, 0.3)
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #63b3ed;
+            margin-right: 16px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .icon-glow {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(
+                circle at center,
+                rgba(99, 179, 237, 0.3),
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .connector-card:hover .icon-glow {
+            opacity: 1;
+            animation: pulseGlow 2s infinite;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 0.3; }
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .connector-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0;
+            flex-grow: 1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.5px;
+        }
+
+        .connector-description {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .btn-add-connector {
+            position: relative;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.2),
+                rgba(66, 153, 225, 0.3)
+            );
+            border: 1px solid rgba(99, 179, 237, 0.3);
+            color: #63b3ed;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .btn-glow {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transform: translateX(-100%);
+            transition: transform 0.3s;
+        }
+
+        .btn-add-connector:hover .btn-glow {
+            transform: translateX(100%);
+        }
+
+        .btn-add-connector:hover {
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.3),
+                rgba(66, 153, 225, 0.4)
+            );
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 179, 237, 0.2);
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .connections-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(99, 179, 237, 0.1);
+            border: 1px solid rgba(99, 179, 237, 0.2);
+            border-radius: 20px;
+            color: #63b3ed;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .connector-card:hover .connections-info {
+            background: rgba(99, 179, 237, 0.15);
+            box-shadow: 0 2px 8px rgba(99, 179, 237, 0.15);
+        }
+
+        .docs-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .docs-link:hover {
+            color: #63b3ed;
+            transform: translateX(4px);
+        }
+
+        .docs-link i {
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .docs-link:hover i {
+            transform: translateX(2px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(165deg,
+                rgba(30, 41, 59, 0.95),
+                rgba(17, 25, 40, 0.97)
+            );
+            border-radius: 20px;
+            border: 1px solid rgba(99, 179, 237, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            grid-column: 1 / -1;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.2),
+                rgba(66, 153, 225, 0.3)
+            );
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #63b3ed;
+            position: relative;
+        }
+
+        .empty-state-icon::after {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,
+                rgba(99, 179, 237, 0.1),
+                transparent
+            );
+            animation: rotateGlow 3s linear infinite;
+        }
+
+        @keyframes rotateGlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state h3 {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 20px;
+            margin: 0 0 12px;
+        }
+
+        .empty-state p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            margin: 0;
+             }
+        `;
+        document.head.appendChild(style);
+    }
+
+// --- Function to load AVAILABLE connectors (Ensure it calls renderDataConnectors) ---
+async function loadDataConnectors() {
+    const connectorsGrid = document.getElementById('dataConnectorsGrid');
+    if (!connectorsGrid) {
+        console.error("Available connectors grid container not found!");
+        return;
+    }
+    connectorsGrid.innerHTML = '<div class="loading-placeholder"><i class="fas fa-spinner fa-spin"></i> Loading connectors...</div>';
+
+    // --- MOCK DATA --- 
+    // Replace this with an actual API call later if needed for AVAILABLE connectors
+    // Or potentially just use a static list if these don't change often.
+    const mockConnectors = [
+        { id: 'postgres', name: 'Postgres', description: 'An open source object-relational database system that uses and extends SQL.', icon: '/static/images/connectors/postgres.svg', connections: 0, docsUrl: 'https://www.postgresql.org/docs/' },
+        { id: 'mysql', name: 'My SQL', description: 'An open-source relational database management system, developed by Oracle.', icon: '/static/images/connectors/mysql.svg', connections: 0, docsUrl: 'https://dev.mysql.com/doc/' },
+        { id: 'bigquery', name: 'Big Query', description: 'A serverless and scalable multi-cloud data warehouse service, provided by Google Cloud.', icon: '/static/images/connectors/bigquery.svg', connections: 0, docsUrl: 'https://cloud.google.com/bigquery/docs' },
+    ];
+    
+    try {
+        // Simulate API delay if needed
+        await new Promise(resolve => setTimeout(resolve, 100)); 
+        // Call the reinstated render function
+        renderDataConnectors(mockConnectors);
+    } catch (error) { // This catch block might not be needed if using static data
+        console.error("Error loading available data connectors:", error);
+        connectorsGrid.innerHTML = '<div class="error-message"><i class="fas fa-exclamation-triangle"></i> Failed to load available connectors.</div>';
+    }
+}
+
+
+// --- Search function for AVAILABLE connectors ---
+function searchDataConnectors(query) {
+    const searchQuery = query.toLowerCase().trim();
+    const connectorCards = document.querySelectorAll('#dataConnectorsGrid .connector-card');
+
+    connectorCards.forEach(card => {
+        const name = card.querySelector('.connector-name').textContent.toLowerCase();
+        const description = card.querySelector('.connector-description').textContent.toLowerCase();
+        
+        const matches = name.includes(searchQuery) || description.includes(searchQuery);
+        card.style.display = matches ? '' : 'none';
+    });
+}
+
+// --- Add Connector Action ---
+function addConnector(connectorId) {
+    console.log(`Add connector clicked: ${connectorId}`);
+    
+    // Special handling for Postgres
+    if (connectorId === 'postgres') {
+        showPostgresConnectionModal(); // Show modal for new connection
+        return;
+    }
+    
+    // Generic message for other connectors (can implement others later)
+    showToast(`Configuration for ${connectorId} is not yet implemented.`, 'info');
+}
+
+
+// Ensure styles are loaded/updated
+// ... rest of the file ...
+
+// --- Postgres Connection Modal Functions (Reinstated) ---
+
+// Function to show Postgres connection configuration modal
+function showPostgresConnectionModal(connectorData = null) { // Accept optional data for editing
+    // Create modal if it doesn't exist or get existing one
+    let modal = document.getElementById('connectorConfigModal');
+    if (modal) {
+        modal.remove(); // Remove existing to avoid stacking modals
+    }
+    
+    // Create new modal
+    modal = document.createElement('div');
+    modal.id = 'connectorConfigModal';
+    modal.className = 'modal';
+    
+    const isEditing = connectorData !== null;
+    const title = isEditing ? `Edit Connection: ${connectorData.uniqueName}` : 'Connect Postgres Vector Store'; // Updated title
+    const submitButtonText = isEditing ? 'Save Changes' : 'Submit';
+    
+    // Generate form fields for Postgres connection
+    const modalHtml = `
+        <div class="modal-content connector-config-modal">
+            <div class="modal-header">
+                <h2>${title}</h2>
+                <button class="close-btn" onclick="closeConnectorModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="postgresConnectionForm">
+                    <input type="hidden" id="connectorId" name="id" value="${isEditing ? connectorData.id : ''}">
+                    <div class="form-group">
+                        <label for="uniqueName">Unique Name <span class="required">*</span></label>
+                        <input type="text" id="uniqueName" name="uniqueName" placeholder="Give this connection a name" required value="${isEditing ? connectorData.uniqueName : ''}">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="vectorStoreUser">Vector Store User <span class="required">*</span></label>
+                            <input type="text" id="vectorStoreUser" name="vectorStoreUser" placeholder="Enter Vector Store User" required value="${isEditing ? connectorData.vectorStoreUser : ''}">
+                        </div>
+                        <div class="form-group half">
+                            <label for="vectorStoreHost">Vector Store Host <span class="required">*</span></label>
+                            <input type="text" id="vectorStoreHost" name="vectorStoreHost" placeholder="Enter Vector Store Host" required value="${isEditing ? connectorData.vectorStoreHost : ''}">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="vectorStorePassword">Vector Store Password ${isEditing ? '' : '<span class="required">*</span>'}</label>
+                            <input type="password_text" id="vectorStorePassword" name="vectorStorePassword" placeholder="${isEditing ? 'Enter new password to update' : 'Enter Vector Store Password'}" ${isEditing ? '' : 'required'} value="${isEditing ? connectorData.vectorStorePassword : ''}">
+                        </div>
+                        <div class="form-group half">
+                            <label for="vectorStorePort">Vector Store Port <span class="required">*</span></label>
+                            <input type="text" id="vectorStorePort" name="vectorStorePort" placeholder="Enter Vector Store Port" required value="${isEditing ? connectorData.vectorStorePort : ''}">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vectorStoreDBName">Vector Store DB Name <span class="required">*</span></label>
+                        <input type="text" id="vectorStoreDBName" name="vectorStoreDBName" placeholder="Enter Vector Store DB Name" required value="${isEditing ? connectorData.vectorStoreDBName : ''}">
+                    </div>
+                    
+                    <div class="legal-text">
+                        <p>By using this service, you agree to take full responsibility for your actions and to protect IAgentic Studio and its affiliates, officers, employees, and agents from any claims, losses, damages, liabilities, or legal costs that may arise due to your violation of this policy — including, but not limited to, uploading sensitive personal information without proper authorization.</p>
+                    </div>
+                    
+                    <div class="documentation-link">
+                        <a href="https://www.postgresql.org/docs/" target="_blank">
+                            <i class="fas fa-external-link-alt"></i> View Documentation
+                        </a>
+                    </div>
+                    
+                    <div class="required-note">
+                        <span class="required">*</span> marked as required
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-test-connection" onclick="testPostgresConnection()">
+                    <i class="fas fa-plug"></i> Test Connection
+                </button>
+                <div class="action-buttons">
+                    <button class="btn-cancel" onclick="closeConnectorModal()">Cancel</button>
+                    <button class="btn-submit" onclick="savePostgresConnection(${isEditing})">${submitButtonText}</button> 
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.innerHTML = modalHtml;
+    document.body.appendChild(modal);
+    
+    // Add modal styles if they don't exist
+    ensureConnectorModalStyles();
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 50);
+}
+
+// Function to close connector configuration modal
+function closeConnectorModal() {
+    const modal = document.getElementById('connectorConfigModal');
+    if (modal) {
+        modal.classList.remove('show');
+        // Remove after animation finishes
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+// Function to test PostgreSQL connection
+async function testPostgresConnection() {
+    // Get connection details
+    const form = document.getElementById('postgresConnectionForm');
+    if (!form) return;
+    
+    // Basic form validation
+    const formData = new FormData(form);
+    const connectionConfig = Object.fromEntries(formData.entries());
+    
+    // Check if required fields are filled
+    const requiredFields = ['vectorStoreUser', 'vectorStoreHost', 'vectorStorePort', 'vectorStoreDBName'];
+    const missingFields = requiredFields.filter(field => !connectionConfig[field]);
+    
+    if (missingFields.length > 0) {
+        showToast(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
+            return;
+    }
+    
+    // Show loading state on the test button
+    const testBtn = document.querySelector('#connectorConfigModal .btn-test-connection');
+    const originalBtnText = testBtn.innerHTML;
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    try {
+        const response = await fetch('/api/data-connectors/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'postgres',
+                config: {
+                    host: connectionConfig.vectorStoreHost,
+                    port: connectionConfig.vectorStorePort,
+                    database: connectionConfig.vectorStoreDBName,
+                    user: connectionConfig.vectorStoreUser,
+                    password: connectionConfig.vectorStorePassword || undefined
+                }
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showToast('Connection successful! ✨', 'success');
+            
+            // Add success visual feedback to the form
+            const successIndicator = document.createElement('div');
+            successIndicator.className = 'connection-success-indicator';
+            successIndicator.innerHTML = `
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="success-message">Connection verified</div>
+            `;
+            
+            // Remove any existing indicator
+            const existingIndicator = form.querySelector('.connection-success-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // Add the new indicator
+            form.appendChild(successIndicator);
+            
+            // Add success styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .connection-success-indicator {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px 16px;
+                    background: rgba(72, 187, 120, 0.1);
+                    border: 1px solid rgba(72, 187, 120, 0.2);
+                    border-radius: 8px;
+                    margin-top: 16px;
+                    animation: slideIn 0.3s ease;
+                }
+
+                @keyframes slideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .success-icon {
+                    color: #48bb78;
+                    font-size: 20px;
+                    animation: scaleIn 0.3s ease;
+                }
+
+                @keyframes scaleIn {
+                    from {
+                        transform: scale(0);
+                    }
+                    to {
+                        transform: scale(1);
+                    }
+                }
+
+                .success-message {
+                    color: #48bb78;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+            `;
+            document.head.appendChild(style);
+        } else {
+            throw new Error(result.detail || 'Connection test failed');
+        }
+    } catch (error) {
+        console.error('Connection test error:', error);
+        showToast(`Connection failed: ${error.message}`, 'error');
+        
+        // Add error visual feedback
+        const errorIndicator = document.createElement('div');
+        errorIndicator.className = 'connection-error-indicator';
+        errorIndicator.innerHTML = `
+            <div class="error-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="error-details">
+                <div class="error-message">Connection failed</div>
+                <div class="error-description">${error.message}</div>
+            </div>
+        `;
+        
+        // Remove any existing indicator
+        const existingIndicator = form.querySelector('.connection-error-indicator, .connection-success-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        // Add the new indicator
+        form.appendChild(errorIndicator);
+        
+        // Add error styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .connection-error-indicator {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px 16px;
+                background: rgba(245, 101, 101, 0.1);
+                border: 1px solid rgba(245, 101, 101, 0.2);
+                border-radius: 8px;
+                margin-top: 16px;
+                animation: slideIn 0.3s ease;
+            }
+
+            .error-icon {
+                color: #f56565;
+                font-size: 20px;
+                padding-top: 2px;
+            }
+
+            .error-details {
+                flex: 1;
+            }
+
+            .error-message {
+                color: #f56565;
+                font-size: 14px;
+                font-weight: 500;
+                margin-bottom: 4px;
+            }
+
+            .error-description {
+                color: rgba(245, 101, 101, 0.8);
+                font-size: 12px;
+                line-height: 1.4;
+            }
+        `;
+        document.head.appendChild(style);
+    } finally {
+        // Reset button state
+        testBtn.disabled = false;
+        testBtn.innerHTML = originalBtnText;
+    }
+}
 
 // Function to add modal-specific CSS
 function ensureConnectorModalStyles() {
