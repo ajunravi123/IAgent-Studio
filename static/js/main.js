@@ -158,9 +158,13 @@ function refreshAgents() {
     loadAgents();
 }
 
+// Updated createNewAgent function
 function createNewAgent() {
+    // Clear selected tools before loading the create agent page
+    selectedTools.clear();
+    selectedAdvancedTools.clear();
     loadPage('create-agent');
-}
+} 
 
 function goBack() {
     // Check if we were viewing a multi-agent launch page first
@@ -420,8 +424,17 @@ function launchAgent(agentId) {
                 // Initialize selectedTools with agent's tools
                 selectedTools = new Set(agent.tools || []);
                 
-                // Load agent tools
-                loadAgentTools(agent.tools);
+                // Initialize selectedAdvancedTools with agent's advanced tools (check both naming conventions)
+                selectedAdvancedTools = new Set();
+                if (Array.isArray(agent.advanced_tools)) {
+                    agent.advanced_tools.forEach(toolId => selectedAdvancedTools.add(toolId));
+                } else if (Array.isArray(agent.advancedTools)) {
+                    agent.advancedTools.forEach(toolId => selectedAdvancedTools.add(toolId));
+                }
+                
+                // Load agent tools (combine both normal and advanced tools)
+                const allToolIds = [...selectedTools, ...selectedAdvancedTools];
+                loadAgentTools(allToolIds);
             }, 100); // Keeping the timeout for now, but the checks add safety
         });
 }
