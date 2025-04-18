@@ -109,6 +109,7 @@ class CustomTool(BaseModel):
     tags: List[str]
     schema: Dict[str, Any]
     is_custom: bool = True
+    data_connector_id: Optional[str] = None
 
 # Tool Authentication Models
 class ToolAuth(BaseModel):
@@ -514,11 +515,23 @@ async def create_custom_tool(tool: CustomTool):
         is_custom=True,
         is_added=False
     )
+
+    # Store additional tool properties in metadata
+    metadata = {}
+    if tool.data_connector_id:
+        metadata["data_connector_id"] = tool.data_connector_id
     
     schema_dir = "tool_schemas"
     os.makedirs(schema_dir, exist_ok=True)
     with open(f"{schema_dir}/{new_tool.id}.json", 'w') as f:
         json.dump(tool.schema, f, indent=2)
+    
+    # If there's metadata, save it
+    if metadata:
+        metadata_dir = "tool_metadata"
+        os.makedirs(metadata_dir, exist_ok=True)
+        with open(f"{metadata_dir}/{new_tool.id}.json", 'w') as f:
+            json.dump(metadata, f, indent=2)
     
     custom_tools.append(new_tool)
     save_custom_tools(custom_tools)
@@ -573,6 +586,17 @@ async def update_tool(tool_id: str, updated_tool: CustomTool):
             schema_dir = "tool_schemas"
             with open(f"{schema_dir}/{tool_id}.json", 'w') as f:
                 json.dump(updated_tool.schema, f, indent=2)
+            
+            # Update metadata
+            metadata = {}
+            if updated_tool.data_connector_id:
+                metadata["data_connector_id"] = updated_tool.data_connector_id
+            
+            if metadata:
+                metadata_dir = "tool_metadata"
+                os.makedirs(metadata_dir, exist_ok=True)
+                with open(f"{metadata_dir}/{tool_id}.json", 'w') as f:
+                    json.dump(metadata, f, indent=2)
             
             custom_tools[i] = updated
             save_custom_tools(custom_tools)
@@ -1246,6 +1270,15 @@ async def add_advanced_tool(tool_id: str):
             save_advanced_tools(tools)
             return {"message": "Advanced tool added successfully"}
     raise HTTPException(status_code=404, detail="Advanced tool not found")
+
+@app.get("/api/tools/{tool_id}/metadata")
+async def get_tool_metadata(tool_id: str):
+    metadata_path = f"tool_metadata/{tool_id}.json"
+    if not os.path.exists(metadata_path):
+        return {}  # Return empty metadata if none exists
+    
+    with open(metadata_path, 'r') as f:
+        return json.load(f)
 
 # --- Catch-all Route for SPA (MUST BE LAST) ---
 @app.get("/{full_path:path}")
