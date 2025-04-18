@@ -3,6 +3,10 @@
 // Keep track of loaded stylesheets
 const loadedStylesheets = new Set();
 
+// Global variable for tracking selected tools
+let selectedTools = new Set();
+let selectedAdvancedTools = new Set();
+
 // Function to update the active state of sidebar links
 function updateActiveLink() {
     const currentPath = window.location.pathname;
@@ -79,6 +83,7 @@ function loadPage(pagePath) {
                         initializeMultiAgentLaunchPage(); // Call the initializer from main.js
                     } else if (basePage === 'create-agent') {
                     loadTools();
+                    loadAdvancedTools(); // Ensure advanced tools are loaded
                         // Check if we're editing an agent
                         const isEditing = pagePath.includes('?edit=true');
                         const buttonText = document.getElementById('buttonText');
@@ -183,7 +188,6 @@ function goBack() {
 }
 
 let selectedAgentId = null;
-let selectedTools = new Set();
 
 function loadAgents() {
     // First get multi-agent configurations to check for agent usage
@@ -426,36 +430,39 @@ function loadAgentTools(toolIds) {
     const colorClasses = ['blue', 'green', 'purple', 'yellow', 'red', 'orange'];
     let colorIndex = 0;
 
-    fetch('/api/tools')
-        .then(response => response.json())
-        .then(tools => {
-            const agentTools = tools.filter(tool => toolIds.includes(tool.id));
-            const toolsGrid = document.getElementById('agentTools');
+    // Fetch both normal and advanced tools
+    Promise.all([
+        fetch('/api/tools').then(response => response.json()),
+        fetch('/api/advanced-tools').then(response => response.json())
+    ]).then(([normalTools, advancedTools]) => {
+        const allTools = [...normalTools, ...advancedTools];
+        const agentTools = allTools.filter(tool => toolIds.includes(tool.id));
+        const toolsGrid = document.getElementById('agentTools');
+        
+        toolsGrid.innerHTML = agentTools.map(tool => {
+            const colorClass = colorClasses[colorIndex];
+            colorIndex = (colorIndex + 1) % colorClasses.length;
             
-            toolsGrid.innerHTML = agentTools.map(tool => {
-                const colorClass = colorClasses[colorIndex];
-                colorIndex = (colorIndex + 1) % colorClasses.length;
-                
-                const firstLetter = tool.name.charAt(0).toUpperCase();
-                
-                return `
-                    <div class="tool-card" data-tool="${tool.id}" onclick="viewTool('${tool.id}')" style="cursor: pointer;">
-                        <div class="tool-content">
-                            <div class="tool-icon-wrapper ${colorClass}">
-                                ${firstLetter}
-                            </div>
-                            <div class="tool-info">
-                                <div class="tool-name ltool">${tool.name}</div>
-                                <div class="tool-description">${tool.description || 'No description available'}</div>
-                                <div class="tool-tags">
-                                    ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
-                                </div>
+            const firstLetter = tool.name.charAt(0).toUpperCase();
+            
+            return `
+                <div class="tool-card" data-tool="${tool.id}" onclick="viewTool('${tool.id}')" style="cursor: pointer;">
+                    <div class="tool-content">
+                        <div class="tool-icon-wrapper ${colorClass}">
+                            ${firstLetter}
+                        </div>
+                        <div class="tool-info">
+                            <div class="tool-name ltool">${tool.name}</div>
+                            <div class="tool-description">${tool.description || 'No description available'}</div>
+                            <div class="tool-tags">
+                                ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
                             </div>
                         </div>
                     </div>
-                `;
-            }).join('');
-        });
+                </div>
+            `;
+        }).join('');
+    });
 }
 
 function getRandomColor() {
@@ -1231,51 +1238,336 @@ function refreshTools() {
 
 function loadTools() {
     try {
-        fetch('/api/tools')
-            .then(response => response.json())
-            .then(tools => {
-                const toolsGrid = document.querySelector('.tools-grid');
-                if (!toolsGrid) return;
+        // Fetch both normal and advanced tools
+        Promise.all([
+            fetch('/api/tools').then(response => response.json()),
+            fetch('/api/advanced-tools').then(response => response.json())
+        ]).then(([normalTools, advancedTools]) => {
+            const toolsGrid = document.querySelector('.tools-grid');
+            if (!toolsGrid) return;
 
-                toolsGrid.innerHTML = tools.map(tool => {
-                    const isSelected = selectedTools.has(tool.id);
-                    const firstLetter = tool.name.charAt(0).toUpperCase();
-                    return `
-                        <div class="tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}">
-                            <div class="tool-content">
-                    <div class="tool-header">
-                                    <div class="tool-header-left">
-                                        <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
-                                            ${firstLetter}
+            // First render normal tools
+            let toolsHtml = normalTools.map(tool => {
+                const isSelected = selectedTools.has(tool.id);
+                const firstLetter = tool.name.charAt(0).toUpperCase();
+                return `
+                    <div class="tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}">
+                        <div class="tool-content">
+                            <div class="tool-header">
+                                <div class="tool-header-left">
+                                    <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
+                                        ${firstLetter}
+                                    </div>
+                                    <h3 class="tool-name">${tool.name}</h3>
+                                </div>
                             </div>
-                                        <h3 class="tool-name">${tool.name}</h3>
+                            <div class="tool-description">${tool.description || 'No description available'}</div>
+                            <div class="tool-tags">
+                                ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                            </div>
+                            <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
+                        </div>
+                        <div class="checkbox ${isSelected ? 'checked' : ''}" onclick="toggleTool('${tool.id}', event)">
+                            <i class="fas fa-check"></i>
                         </div>
                     </div>
-                                <div class="tool-description">${tool.description || 'No description available'}</div>
-                    <div class="tool-tags">
-                                    ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>
-                                <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
-                </div>
-                            <div class="checkbox" onclick="toggleTool('${tool.id}', event)">
-                                <i class="fas fa-check"></i>
+                `;
+            }).join('');
+
+            // Add advanced tools section if there are any
+            if (advancedTools.length > 0) {
+                toolsHtml += `
+                    <div class="advanced-tools-section">
+                        <div class="advanced-tools-header ${selectedAdvancedTools.size > 0 ? 'expanded' : ''}" onclick="toggleAdvancedTools()">
+                            <div class="header-left">
+                                <i class="fas fa-rocket"></i>
+                                <h2>Advanced Tools</h2>
+                            </div>
+                            <div class="header-right">
+                                <span class="tool-count">${advancedTools.length} tools</span>
+                                <i class="fas fa-chevron-down expand-icon"></i>
                             </div>
                         </div>
-                    `;
-                }).join('');
+                        <div class="advanced-tools-grid" style="display: ${selectedAdvancedTools.size > 0 ? 'grid' : 'none'};">
+                            ${advancedTools.map(tool => {
+                                const isSelected = selectedAdvancedTools.has(tool.id);
+                                const firstLetter = tool.name.charAt(0).toUpperCase();
+                                console.log(`Advanced tool ${tool.id} (${tool.name}) selected: ${isSelected}`);
+                                return `
+                                    <div class="advanced-tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}" data-is-advanced="true">
+                                        <div class="tool-content">
+                                            <div class="tool-header">
+                                                <div class="tool-header-left">
+                                                    <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
+                                                        ${firstLetter}
+                                                    </div>
+                                                    <div class="tool-title">
+                                                        <h3 class="tool-name">${tool.name}</h3>
+                                                        ${tool.data_connector_id ? `
+                                                            <div class="connector-info">
+                                                                <i class="fas fa-database"></i>
+                                                                <span>Connected to ${tool.connector_uniqueName || 'Database'}</span>
+                                                            </div>
+                                                        ` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="tool-description">${tool.description || 'No description available'}</div>
+                                            <div class="tool-tags">
+                                                ${(tool.tags || ['Advanced']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                            </div>
+                                            <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
+                                        </div>
+                                        <div class="checkbox ${isSelected ? 'checked' : ''}" onclick="toggleAdvancedTool('${tool.id}', event)">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
 
-                // Add click event listeners
-                toolsGrid.querySelectorAll('.tool-card').forEach(card => {
-                    card.addEventListener('click', (event) => {
-                        if (!event.target.closest('.checkbox') && !event.target.closest('.view-btn')) {
-                            const toolId = card.dataset.toolId;
-                            toggleTool(toolId, event);
-                        }
-                    });
+            toolsGrid.innerHTML = toolsHtml;
+
+            // Add click event listeners for normal tools
+            toolsGrid.querySelectorAll('.tool-card').forEach(card => {
+                card.addEventListener('click', (event) => {
+                    if (!event.target.closest('.checkbox') && !event.target.closest('.view-btn')) {
+                        const toolId = card.dataset.toolId;
+                        toggleTool(toolId, event);
+                    }
                 });
             });
+            
+            // Add click event listeners for advanced tools
+            toolsGrid.querySelectorAll('.advanced-tool-card').forEach(card => {
+                const toolId = card.dataset.toolId;
+                
+                // Remove any existing event listeners first
+                card.removeEventListener('click', handleAdvancedToolClick);
+                
+                // Add new click handler for the card itself (excluding buttons and checkboxes)
+                card.addEventListener('click', handleAdvancedToolClick);
+                
+                function handleAdvancedToolClick(event) {
+                    // Only toggle if user didn't click on a button or the checkbox
+                    if (!event.target.closest('.checkbox') && !event.target.closest('.view-btn')) {
+                        toggleAdvancedTool(toolId, event);
+                    }
+                }
+                
+                // Make sure the checkbox click works directly
+                const checkbox = card.querySelector('.checkbox');
+                if (checkbox) {
+                    checkbox.removeEventListener('click', handleCheckboxClick);
+                    checkbox.addEventListener('click', handleCheckboxClick);
+                    
+                    function handleCheckboxClick(event) {
+                        event.stopPropagation();
+                        toggleAdvancedTool(toolId, event);
+                    }
+                }
+            });
+
+            // Add styles for advanced tools section
+            if (!document.getElementById('advanced-tools-styles')) {
+                const style = document.createElement('style');
+                style.id = 'advanced-tools-styles';
+                style.textContent = `
+                    .advanced-tools-section {
+                        grid-column: 1 / -1;
+                        background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(17, 25, 40, 0.97));
+                        border-radius: 16px;
+                        border: 1px solid rgba(99, 179, 237, 0.15);
+                        margin-top: 24px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                    }
+
+                    .advanced-tools-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 20px 24px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        border-bottom: 1px solid rgba(99, 179, 237, 0.1);
+                    }
+
+                    .advanced-tools-header:hover {
+                        background: rgba(99, 179, 237, 0.05);
+                    }
+
+                    .header-left {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    }
+
+                    .header-left i {
+                        font-size: 20px;
+                        color: #3b82f6;
+                        background: rgba(59, 130, 246, 0.1);
+                        padding: 10px;
+                        border-radius: 12px;
+                    }
+
+                    .header-left h2 {
+                        font-size: 18px;
+                        font-weight: 600;
+                        color: #fff;
+                        margin: 0;
+                    }
+
+                    .header-right {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    }
+
+                    .tool-count {
+                        font-size: 14px;
+                        color: rgba(255, 255, 255, 0.6);
+                        background: rgba(99, 179, 237, 0.1);
+                        padding: 4px 12px;
+                        border-radius: 20px;
+                    }
+
+                    .expand-icon {
+                        color: rgba(255, 255, 255, 0.6);
+                        transition: transform 0.3s ease;
+                    }
+
+                    .advanced-tools-header.expanded .expand-icon {
+                        transform: rotate(180deg);
+                    }
+
+                    .advanced-tools-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                        gap: 20px;
+                        padding: 20px;
+                        background: rgba(17, 25, 40, 0.5);
+                    }
+
+                    .advanced-tool-card {
+                        background: rgba(30, 41, 59, 0.7);
+                        border: 1px solid rgba(99, 179, 237, 0.2);
+                        border-radius: 12px;
+                        padding: 16px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        position: relative;
+                        overflow: hidden;
+                    }
+
+                    .advanced-tool-card::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: 3px;
+                        background: linear-gradient(90deg, #3b82f6, #2563eb);
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
+                    }
+
+                    .advanced-tool-card:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+                        border-color: rgba(99, 179, 237, 0.4);
+                    }
+
+                    .advanced-tool-card:hover::before {
+                        opacity: 1;
+                    }
+
+                    .advanced-tool-card.selected {
+                        border-color: #3b82f6;
+                        box-shadow: 0 0 0 1px #3b82f6;
+                    }
+
+                    .advanced-tool-card .tool-title {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                    }
+
+                    .advanced-tool-card .connector-info {
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        font-size: 12px;
+                        color: rgba(255, 255, 255, 0.6);
+                        background: rgba(99, 179, 237, 0.1);
+                        padding: 4px 8px;
+                        border-radius: 6px;
+                        width: fit-content;
+                    }
+
+                    .advanced-tool-card .connector-info i {
+                        font-size: 10px;
+                        color: #63b3ed;
+                    }
+                    
+                    .checkbox.checked i {
+                        opacity: 1;
+                    }
+                    
+                    .checkbox i {
+                        opacity: 0;
+                        transition: opacity 0.2s ease;
+                    }
+                    
+                    .advanced-tool-card .checkbox, 
+                    .tool-card .checkbox {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 24px;
+                        height: 24px;
+                        border-radius: 4px;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        background: rgba(59, 130, 246, 0.1);
+                        cursor: pointer;
+                        position: absolute;
+                        top: 16px;
+                        right: 16px;
+                    }
+                    
+                    .advanced-tool-card .checkbox.checked,
+                    .tool-card .checkbox.checked {
+                        background: #3b82f6;
+                        border-color: #3b82f6;
+                    }
+                    
+                    .checkbox.checked i {
+                        color: white;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        });
     } catch (error) {
         console.error('Error loading tools:', error);
+    }
+}
+
+// Add toggle function for advanced tools section
+function toggleAdvancedTools() {
+    const header = document.querySelector('.advanced-tools-header');
+    const grid = document.querySelector('.advanced-tools-grid');
+    const isExpanded = header.classList.contains('expanded');
+
+    if (isExpanded) {
+        header.classList.remove('expanded');
+        grid.style.display = 'none';
+    } else {
+        header.classList.add('expanded');
+        grid.style.display = 'grid';
     }
 }
 
@@ -1365,11 +1657,14 @@ function saveAgent() {
         instructions: document.getElementById('agentInstructions').value,
         verbose: document.getElementById('managerAgent').checked,
         tools: Array.from(selectedTools),
+        advanced_tools: Array.from(selectedAdvancedTools), // Changed from advancedTools to advanced_tools
         features: {
             knowledgeBase: document.getElementById('knowledgeBase').checked,
             dataQuery: document.getElementById('dataQuery').checked
         }
     };
+
+    console.log("Saving agent data:", JSON.stringify(agentData, null, 2));
 
     const method = selectedAgentId ? 'PUT' : 'POST';
     const url = selectedAgentId ? `/api/agents/${selectedAgentId}` : '/api/agents';
@@ -1388,6 +1683,7 @@ function saveAgent() {
     .then(() => {
         selectedAgentId = null;
         selectedTools.clear();
+        selectedAdvancedTools.clear();
         loadPage('agents'); // Changed from loadPage('/agents') to match argument style
     })
     .catch(error => {
@@ -1403,6 +1699,9 @@ function editAgent(agentId) {
         .then(response => response.json())
         .then(agent => {
             hideLoading();
+            
+            console.log("Agent data received from server:", JSON.stringify(agent, null, 2));
+            
             // Load the create-agent page with edit parameter
             loadPage('create-agent?edit=true');
 
@@ -1441,8 +1740,26 @@ function editAgent(agentId) {
                         document.getElementById('knowledgeBase').checked = agent.features.knowledgeBase;
                         document.getElementById('dataQuery').checked = agent.features.dataQuery;
 
-                        // Set selected tools and load them
-                        selectedTools = new Set(agent.tools || []);
+                        // Clear any existing selected tools
+                        selectedTools.clear();
+                        selectedAdvancedTools.clear();
+                        
+                        // Set selected tools and advanced tools
+                        if (Array.isArray(agent.tools)) {
+                            agent.tools.forEach(toolId => selectedTools.add(toolId));
+                        }
+                        
+                        // Handle both formats (advancedTools or advanced_tools) for backward compatibility
+                        if (Array.isArray(agent.advanced_tools)) {
+                            agent.advanced_tools.forEach(toolId => selectedAdvancedTools.add(toolId));
+                        } else if (Array.isArray(agent.advancedTools)) {
+                            agent.advancedTools.forEach(toolId => selectedAdvancedTools.add(toolId));
+                        }
+                        
+                        console.log("Selected tools:", Array.from(selectedTools));
+                        console.log("Selected advanced tools:", Array.from(selectedAdvancedTools));
+                        
+                        // Load tools with the selections
                         loadTools();
                     } else if (retries > 0) {
                         // Retry with increased delay if elements aren't found
@@ -1540,15 +1857,46 @@ function toggleTool(toolId, event) {
         selectedTools.add(toolId);
     }
     
-    // Update UI - find the specific tool card using data attribute
+    // Update UI - find the tool card using data attribute (either normal or advanced)
     const toolCard = document.querySelector(`.tool-card[data-tool-id="${toolId}"]`);
     if (toolCard) {
         const isSelected = selectedTools.has(toolId);
         toolCard.classList.toggle('selected', isSelected);
-        const checkbox = toolCard.querySelector('input[type="checkbox"]');
+        const checkbox = toolCard.querySelector('.checkbox');
         if (checkbox) {
-            checkbox.checked = isSelected;
+            checkbox.classList.toggle('checked', isSelected);
         }
+    }
+}
+
+function toggleAdvancedTool(toolId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    console.log(`Toggling advanced tool: ${toolId}`);
+    
+    if (selectedAdvancedTools.has(toolId)) {
+        selectedAdvancedTools.delete(toolId);
+        console.log(`Removed tool: ${toolId}`);
+    } else {
+        selectedAdvancedTools.add(toolId);
+        console.log(`Added tool: ${toolId}`);
+    }
+    
+    // Update UI for advanced tools
+    const toolCard = document.querySelector(`.advanced-tool-card[data-tool-id="${toolId}"]`);
+    if (toolCard) {
+        const isSelected = selectedAdvancedTools.has(toolId);
+        console.log(`Setting selected state to: ${isSelected}`);
+        
+        toolCard.classList.toggle('selected', isSelected);
+        const checkbox = toolCard.querySelector('.checkbox');
+        if (checkbox) {
+            checkbox.classList.toggle('checked', isSelected);
+        }
+    } else {
+        console.error(`Could not find advanced tool card for ID: ${toolId}`);
     }
 }
 
@@ -5905,745 +6253,6 @@ async function deleteConnector(connectorId) {
         showToast(error.message, 'error');
     } finally {
         hideLoading();
-    }
-}
-// --- End Edit/Delete Functions ---
-
-// ... existing code ...
-// }
-
-
-// --- Helper function to get Connector Icon Class (Reinstated) ---
-function getConnectorIconClass(connectorId) {
-    // Map specific IDs to icons - add more as needed
-    switch (connectorId.toLowerCase()) {
-        case 'qdrant': return 'fas fa-database'; // Example
-        case 'weaviate': return 'fas fa-wave-square'; // Example
-        case 'pgvector': return 'fas fa-database'; // Example
-        case 'postgres': return 'fas fa-database'; // Example for configured type
-        case 'mysql': return 'fas fa-database'; // Example
-        case 'bigquery': return 'fab fa-google'; // Example
-        // Add more mappings based on your actual connector types/IDs
-        default: return 'fas fa-plug'; // Default plug icon
-    }
-}
-
-// --- Function to render AVAILABLE connectors grid (Reinstated) ---
-function renderDataConnectors(connectors) {
-    const connectorsGrid = document.getElementById('dataConnectorsGrid');
-    if (!connectorsGrid) return;
-
-    if (!connectors || connectors.length === 0) {
-        connectorsGrid.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="fas fa-plug"></i>
-                </div>
-                <h3>No Data Connectors Available</h3>
-                <p>No connectors have been configured yet.</p>
-            </div>`;
-        return;
-    }
-
-    connectorsGrid.innerHTML = connectors.map(connector => {
-        const iconClass = getConnectorIconClass(connector.id);
-        return `
-            <div class="connector-card">
-                <div class="card-glow"></div>
-                <div class="card-content">
-                    <div class="card-header">
-                        <div class="connector-icon-wrapper">
-                            <div class="icon-glow"></div>
-                            <i class="${iconClass}"></i>
-                        </div>
-                        <h3 class="connector-name">${connector.name}</h3>
-                        <button class="btn-add-connector" onclick="addConnector('${connector.id}')">
-                            <span class="btn-glow"></span>
-                            <i class="fas fa-plus"></i>
-                            Configure
-                        </button>
-                    </div>
-                    <p class="connector-description">${connector.description}</p>
-                    <div class="card-footer">
-                        
-                        <a href="${connector.docsUrl || '#'}" target="_blank" class="docs-link">
-                            <span>Documentation</span>
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    // Add enhanced futuristic styles
-    const style = document.createElement('style');
-    style.textContent = `
-        .connectors-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-            padding: 12px;
-            position: relative;
-        }
-
-        .connector-card {
-            position: relative;
-            background: linear-gradient(165deg, 
-                rgba(30, 41, 59, 0.95),
-                rgba(17, 25, 40, 0.97)
-            );
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(99, 179, 237, 0.1);
-            overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-        }
-
-        .connector-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(
-                circle at center,
-                rgba(99, 179, 237, 0.1),
-                transparent 70%
-            );
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .connector-card:hover::before {
-            opacity: 1;
-            animation: rotateGradient 3s linear infinite;
-        }
-
-        @keyframes rotateGradient {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .card-glow {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg,
-                rgba(99, 179, 237, 0),
-                rgba(99, 179, 237, 0.5),
-                rgba(99, 179, 237, 0)
-            );
-            box-shadow: 0 0 20px rgba(99, 179, 237, 0.3);
-            z-index: 2;
-        }
-
-        .card-content {
-            position: relative;
-            z-index: 3;
-            padding: 24px;
-        }
-
-        .connector-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
-                        0 0 20px rgba(99, 179, 237, 0.1),
-                        inset 0 0 20px rgba(99, 179, 237, 0.1);
-        }
-
-        .connector-icon-wrapper {
-            position: relative;
-            width: 52px;
-            height: 52px;
-            border-radius: 15px;
-            background: linear-gradient(135deg,
-                rgba(99, 179, 237, 0.2),
-                rgba(66, 153, 225, 0.3)
-            );
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            color: #63b3ed;
-            margin-right: 16px;
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-
-        .icon-glow {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(
-                circle at center,
-                rgba(99, 179, 237, 0.3),
-                transparent 70%
-            );
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .connector-card:hover .icon-glow {
-            opacity: 1;
-            animation: pulseGlow 2s infinite;
-        }
-
-        @keyframes pulseGlow {
-            0% { transform: scale(1); opacity: 0.3; }
-            50% { transform: scale(1.2); opacity: 0.5; }
-            100% { transform: scale(1); opacity: 0.3; }
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .connector-name {
-            font-size: 20px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.95);
-            margin: 0;
-            flex-grow: 1;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            letter-spacing: 0.5px;
-        }
-
-        .connector-description {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 24px;
-            position: relative;
-        }
-
-        .btn-add-connector {
-            position: relative;
-            background: linear-gradient(135deg,
-                rgba(99, 179, 237, 0.2),
-                rgba(66, 153, 225, 0.3)
-            );
-            border: 1px solid rgba(99, 179, 237, 0.3);
-            color: #63b3ed;
-            padding: 8px 16px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-
-        .btn-glow {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(255, 255, 255, 0.2),
-                transparent
-            );
-            transform: translateX(-100%);
-            transition: transform 0.3s;
-        }
-
-        .btn-add-connector:hover .btn-glow {
-            transform: translateX(100%);
-        }
-
-        .btn-add-connector:hover {
-            background: linear-gradient(135deg,
-                rgba(99, 179, 237, 0.3),
-                rgba(66, 153, 225, 0.4)
-            );
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(99, 179, 237, 0.2);
-        }
-
-        .card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: auto;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .connections-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            background: rgba(99, 179, 237, 0.1);
-            border: 1px solid rgba(99, 179, 237, 0.2);
-            border-radius: 20px;
-            color: #63b3ed;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .connector-card:hover .connections-info {
-            background: rgba(99, 179, 237, 0.15);
-            box-shadow: 0 2px 8px rgba(99, 179, 237, 0.15);
-        }
-
-        .docs-link {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: rgba(255, 255, 255, 0.6);
-            text-decoration: none;
-            font-size: 13px;
-            transition: all 0.3s ease;
-        }
-
-        .docs-link:hover {
-            color: #63b3ed;
-            transform: translateX(4px);
-        }
-
-        .docs-link i {
-            font-size: 12px;
-            transition: transform 0.3s ease;
-        }
-
-        .docs-link:hover i {
-            transform: translateX(2px);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background: linear-gradient(165deg,
-                rgba(30, 41, 59, 0.95),
-                rgba(17, 25, 40, 0.97)
-            );
-            border-radius: 20px;
-            border: 1px solid rgba(99, 179, 237, 0.1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            grid-column: 1 / -1;
-        }
-
-        .empty-state-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 24px;
-            background: linear-gradient(135deg,
-                rgba(99, 179, 237, 0.2),
-                rgba(66, 153, 225, 0.3)
-            );
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            color: #63b3ed;
-            position: relative;
-        }
-
-        .empty-state-icon::after {
-            content: '';
-            position: absolute;
-            inset: -5px;
-            border-radius: 50%;
-            background: linear-gradient(135deg,
-                rgba(99, 179, 237, 0.1),
-                transparent
-            );
-            animation: rotateGlow 3s linear infinite;
-        }
-
-        @keyframes rotateGlow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .empty-state h3 {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 20px;
-            margin: 0 0 12px;
-        }
-
-        .empty-state p {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
-            margin: 0;
-             }
-        `;
-        document.head.appendChild(style);
-    }
-
-// --- Function to load AVAILABLE connectors (Ensure it calls renderDataConnectors) ---
-async function loadDataConnectors() {
-    const connectorsGrid = document.getElementById('dataConnectorsGrid');
-    if (!connectorsGrid) {
-        console.error("Available connectors grid container not found!");
-        return;
-    }
-    connectorsGrid.innerHTML = '<div class="loading-placeholder"><i class="fas fa-spinner fa-spin"></i> Loading connectors...</div>';
-
-    // --- MOCK DATA --- 
-    // Replace this with an actual API call later if needed for AVAILABLE connectors
-    // Or potentially just use a static list if these don't change often.
-    const mockConnectors = [
-        { id: 'postgres', name: 'Postgres', description: 'An open source object-relational database system that uses and extends SQL.', icon: '/static/images/connectors/postgres.svg', connections: 0, docsUrl: 'https://www.postgresql.org/docs/' },
-        { id: 'mysql', name: 'My SQL', description: 'An open-source relational database management system, developed by Oracle.', icon: '/static/images/connectors/mysql.svg', connections: 0, docsUrl: 'https://dev.mysql.com/doc/' },
-        { id: 'bigquery', name: 'Big Query', description: 'A serverless and scalable multi-cloud data warehouse service, provided by Google Cloud.', icon: '/static/images/connectors/bigquery.svg', connections: 0, docsUrl: 'https://cloud.google.com/bigquery/docs' },
-    ];
-    
-    try {
-        // Simulate API delay if needed
-        await new Promise(resolve => setTimeout(resolve, 100)); 
-        // Call the reinstated render function
-        renderDataConnectors(mockConnectors);
-    } catch (error) { // This catch block might not be needed if using static data
-        console.error("Error loading available data connectors:", error);
-        connectorsGrid.innerHTML = '<div class="error-message"><i class="fas fa-exclamation-triangle"></i> Failed to load available connectors.</div>';
-    }
-}
-
-
-// --- Search function for AVAILABLE connectors ---
-function searchDataConnectors(query) {
-    const searchQuery = query.toLowerCase().trim();
-    const connectorCards = document.querySelectorAll('#dataConnectorsGrid .connector-card');
-
-    connectorCards.forEach(card => {
-        const name = card.querySelector('.connector-name').textContent.toLowerCase();
-        const description = card.querySelector('.connector-description').textContent.toLowerCase();
-        
-        const matches = name.includes(searchQuery) || description.includes(searchQuery);
-        card.style.display = matches ? '' : 'none';
-    });
-}
-
-// --- Add Connector Action ---
-function addConnector(connectorId) {
-    console.log(`Add connector clicked: ${connectorId}`);
-    
-    // Special handling for Postgres
-    if (connectorId === 'postgres') {
-        showPostgresConnectionModal(); // Show modal for new connection
-        return;
-    }
-    
-    // Generic message for other connectors (can implement others later)
-    showToast(`Configuration for ${connectorId} is not yet implemented.`, 'info');
-}
-
-
-// Ensure styles are loaded/updated
-// ... rest of the file ...
-
-// --- Postgres Connection Modal Functions (Reinstated) ---
-
-// Function to show Postgres connection configuration modal
-function showPostgresConnectionModal(connectorData = null) { // Accept optional data for editing
-    // Create modal if it doesn't exist or get existing one
-    let modal = document.getElementById('connectorConfigModal');
-    if (modal) {
-        modal.remove(); // Remove existing to avoid stacking modals
-    }
-    
-    // Create new modal
-    modal = document.createElement('div');
-    modal.id = 'connectorConfigModal';
-    modal.className = 'modal';
-    
-    const isEditing = connectorData !== null;
-    const title = isEditing ? `Edit Connection: ${connectorData.uniqueName}` : 'Connect Postgres Vector Store'; // Updated title
-    const submitButtonText = isEditing ? 'Save Changes' : 'Submit';
-    
-    // Generate form fields for Postgres connection
-    const modalHtml = `
-        <div class="modal-content connector-config-modal">
-            <div class="modal-header">
-                <h2>${title}</h2>
-                <button class="close-btn" onclick="closeConnectorModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="postgresConnectionForm">
-                    <input type="hidden" id="connectorId" name="id" value="${isEditing ? connectorData.id : ''}">
-                    <div class="form-group">
-                        <label for="uniqueName">Unique Name <span class="required">*</span></label>
-                        <input type="text" id="uniqueName" name="uniqueName" placeholder="Give this connection a name" required value="${isEditing ? connectorData.uniqueName : ''}">
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group half">
-                            <label for="vectorStoreUser">Vector Store User <span class="required">*</span></label>
-                            <input type="text" id="vectorStoreUser" name="vectorStoreUser" placeholder="Enter Vector Store User" required value="${isEditing ? connectorData.vectorStoreUser : ''}">
-                        </div>
-                        <div class="form-group half">
-                            <label for="vectorStoreHost">Vector Store Host <span class="required">*</span></label>
-                            <input type="text" id="vectorStoreHost" name="vectorStoreHost" placeholder="Enter Vector Store Host" required value="${isEditing ? connectorData.vectorStoreHost : ''}">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group half">
-                            <label for="vectorStorePassword">Vector Store Password ${isEditing ? '' : '<span class="required">*</span>'}</label>
-                            <input type="password_text" id="vectorStorePassword" name="vectorStorePassword" placeholder="${isEditing ? 'Enter new password to update' : 'Enter Vector Store Password'}" ${isEditing ? '' : 'required'} value="${isEditing ? connectorData.vectorStorePassword : ''}">
-                        </div>
-                        <div class="form-group half">
-                            <label for="vectorStorePort">Vector Store Port <span class="required">*</span></label>
-                            <input type="text" id="vectorStorePort" name="vectorStorePort" placeholder="Enter Vector Store Port" required value="${isEditing ? connectorData.vectorStorePort : ''}">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="vectorStoreDBName">Vector Store DB Name <span class="required">*</span></label>
-                        <input type="text" id="vectorStoreDBName" name="vectorStoreDBName" placeholder="Enter Vector Store DB Name" required value="${isEditing ? connectorData.vectorStoreDBName : ''}">
-                    </div>
-                    
-                    <div class="legal-text">
-                        <p>By using this service, you agree to take full responsibility for your actions and to protect IAgentic Studio and its affiliates, officers, employees, and agents from any claims, losses, damages, liabilities, or legal costs that may arise due to your violation of this policy — including, but not limited to, uploading sensitive personal information without proper authorization.</p>
-                    </div>
-                    
-                    <div class="documentation-link">
-                        <a href="https://www.postgresql.org/docs/" target="_blank">
-                            <i class="fas fa-external-link-alt"></i> View Documentation
-                        </a>
-                    </div>
-                    
-                    <div class="required-note">
-                        <span class="required">*</span> marked as required
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-test-connection" onclick="testPostgresConnection()">
-                    <i class="fas fa-plug"></i> Test Connection
-                </button>
-                <div class="action-buttons">
-                    <button class="btn-cancel" onclick="closeConnectorModal()">Cancel</button>
-                    <button class="btn-submit" onclick="savePostgresConnection(${isEditing})">${submitButtonText}</button> 
-                </div>
-            </div>
-        </div>
-    `;
-    
-    modal.innerHTML = modalHtml;
-    document.body.appendChild(modal);
-    
-    // Add modal styles if they don't exist
-    ensureConnectorModalStyles();
-    
-    // Show the modal
-    setTimeout(() => {
-        modal.classList.add('show');
-    }, 50);
-}
-
-// Function to close connector configuration modal
-function closeConnectorModal() {
-    const modal = document.getElementById('connectorConfigModal');
-    if (modal) {
-        modal.classList.remove('show');
-        // Remove after animation finishes
-        setTimeout(() => {
-            modal.remove();
-        }, 300);
-    }
-}
-
-// Function to test PostgreSQL connection
-async function testPostgresConnection() {
-    // Get connection details
-    const form = document.getElementById('postgresConnectionForm');
-    if (!form) return;
-    
-    // Basic form validation
-    const formData = new FormData(form);
-    const connectionConfig = Object.fromEntries(formData.entries());
-    
-    // Check if required fields are filled
-    const requiredFields = ['vectorStoreUser', 'vectorStoreHost', 'vectorStorePort', 'vectorStoreDBName'];
-    const missingFields = requiredFields.filter(field => !connectionConfig[field]);
-    
-    if (missingFields.length > 0) {
-        showToast(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
-            return;
-    }
-    
-    // Show loading state on the test button
-    const testBtn = document.querySelector('#connectorConfigModal .btn-test-connection');
-    const originalBtnText = testBtn.innerHTML;
-    testBtn.disabled = true;
-    testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-    
-    try {
-        const response = await fetch('/api/data-connectors/test', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                type: 'postgres',
-                config: {
-                    host: connectionConfig.vectorStoreHost,
-                    port: connectionConfig.vectorStorePort,
-                    database: connectionConfig.vectorStoreDBName,
-                    user: connectionConfig.vectorStoreUser,
-                    password: connectionConfig.vectorStorePassword || undefined
-                }
-            })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            showToast('Connection successful! ✨', 'success');
-            
-            // Add success visual feedback to the form
-            const successIndicator = document.createElement('div');
-            successIndicator.className = 'connection-success-indicator';
-            successIndicator.innerHTML = `
-                <div class="success-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="success-message">Connection verified</div>
-            `;
-            
-            // Remove any existing indicator
-            const existingIndicator = form.querySelector('.connection-success-indicator');
-            if (existingIndicator) {
-                existingIndicator.remove();
-            }
-            
-            // Add the new indicator
-            form.appendChild(successIndicator);
-            
-            // Add success styles
-            const style = document.createElement('style');
-            style.textContent = `
-                .connection-success-indicator {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 12px 16px;
-                    background: rgba(72, 187, 120, 0.1);
-                    border: 1px solid rgba(72, 187, 120, 0.2);
-                    border-radius: 8px;
-                    margin-top: 16px;
-                    animation: slideIn 0.3s ease;
-                }
-
-                @keyframes slideIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                .success-icon {
-                    color: #48bb78;
-                    font-size: 20px;
-                    animation: scaleIn 0.3s ease;
-                }
-
-                @keyframes scaleIn {
-                    from {
-                        transform: scale(0);
-                    }
-                    to {
-                        transform: scale(1);
-                    }
-                }
-
-                .success-message {
-                    color: #48bb78;
-                    font-size: 14px;
-                    font-weight: 500;
-                }
-            `;
-            document.head.appendChild(style);
-        } else {
-            throw new Error(result.detail || 'Connection test failed');
-        }
-    } catch (error) {
-        console.error('Connection test error:', error);
-        showToast(`Connection failed: ${error.message}`, 'error');
-        
-        // Add error visual feedback
-        const errorIndicator = document.createElement('div');
-        errorIndicator.className = 'connection-error-indicator';
-        errorIndicator.innerHTML = `
-            <div class="error-icon">
-                <i class="fas fa-exclamation-circle"></i>
-            </div>
-            <div class="error-details">
-                <div class="error-message">Connection failed</div>
-                <div class="error-description">${error.message}</div>
-            </div>
-        `;
-        
-        // Remove any existing indicator
-        const existingIndicator = form.querySelector('.connection-error-indicator, .connection-success-indicator');
-        if (existingIndicator) {
-            existingIndicator.remove();
-        }
-        
-        // Add the new indicator
-        form.appendChild(errorIndicator);
-        
-        // Add error styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .connection-error-indicator {
-                display: flex;
-                align-items: flex-start;
-                gap: 12px;
-                padding: 12px 16px;
-                background: rgba(245, 101, 101, 0.1);
-                border: 1px solid rgba(245, 101, 101, 0.2);
-                border-radius: 8px;
-                margin-top: 16px;
-                animation: slideIn 0.3s ease;
-            }
-
-            .error-icon {
-                color: #f56565;
-                font-size: 20px;
-                padding-top: 2px;
-            }
-
-            .error-details {
-                flex: 1;
-            }
-
-            .error-message {
-                color: #f56565;
-                font-size: 14px;
-                font-weight: 500;
-                margin-bottom: 4px;
-            }
-
-            .error-description {
-                color: rgba(245, 101, 101, 0.8);
-                font-size: 12px;
-                line-height: 1.4;
-            }
-        `;
-        document.head.appendChild(style);
-    } finally {
-        // Reset button state
-        testBtn.disabled = false;
-        testBtn.innerHTML = originalBtnText;
     }
 }
 

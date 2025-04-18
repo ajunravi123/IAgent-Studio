@@ -63,6 +63,7 @@ class Agent(BaseModel):
     verbose: bool = False
     features: AgentFeatures
     tools: List[str] = []  # List of tool IDs
+    advanced_tools: List[str] = []  # List of advanced tool IDs
 
 class AgentCreate(BaseModel):
     name: str
@@ -78,6 +79,7 @@ class AgentCreate(BaseModel):
     verbose: bool = False
     features: AgentFeatures
     tools: List[str] = []  # List of tool IDs
+    advanced_tools: List[str] = []
 
 class Tool(BaseModel):
     id: str
@@ -596,6 +598,8 @@ async def delete_tool(tool_id: str):
     for agent in agents:
         if tool_id in agent.get('tools', []):
             agent['tools'].remove(tool_id)
+        if tool_id in agent.get('advanced_tools', []):
+            agent['advanced_tools'].remove(tool_id)
     save_agents(agents)
     
     return {"message": "Tool deleted"}
@@ -1223,6 +1227,13 @@ async def delete_advanced_tool(tool_id: str):
     schema_path = f"tool_schemas/{tool_id}.json"
     if os.path.exists(schema_path):
         os.remove(schema_path)
+    
+    # Remove references from agents
+    agents = load_agents()
+    for agent in agents:
+        if tool_id in agent.get('advanced_tools', []):
+            agent['advanced_tools'].remove(tool_id)
+    save_agents(agents)
     
     return {"message": "Advanced tool deleted"}
 
