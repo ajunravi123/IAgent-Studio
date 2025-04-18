@@ -766,13 +766,9 @@ async function saveCustomTool() {
         // icon: icon || `/static/images/default-tool-icon.svg`,
         tags: tags.length > 0 ? tags : ['Custom'],
         schema: JSON.parse(schema),
-        is_custom: true
+        is_custom: true,
+        data_connector_id: dataConnectorId || null // Explicitly set to null when empty
     };
-    
-    // Add data connector if selected
-    if (dataConnectorId) {
-        toolData.data_connector_id = dataConnectorId;
-    }
     
     try {
         const response = await fetch('/api/tools/custom', {
@@ -932,13 +928,9 @@ function updateTool(toolId) {
         icon: `/static/images/default-tool-icon.svg`,
         tags: tags.length > 0 ? tags : ['Custom'],
         schema: JSON.parse(schema),
-        is_custom: true
+        is_custom: true,
+        data_connector_id: dataConnectorId || null // Explicitly set to null when empty
     };
-    
-    // Add data connector if selected
-    if (dataConnectorId) {
-        toolData.data_connector_id = dataConnectorId;
-    }
 
     showLoading("Please wait..");
     

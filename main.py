@@ -516,22 +516,18 @@ async def create_custom_tool(tool: CustomTool):
         is_added=False
     )
 
-    # Store additional tool properties in metadata
-    metadata = {}
-    if tool.data_connector_id:
-        metadata["data_connector_id"] = tool.data_connector_id
-    
+    # Handle schema
     schema_dir = "tool_schemas"
     os.makedirs(schema_dir, exist_ok=True)
     with open(f"{schema_dir}/{new_tool.id}.json", 'w') as f:
         json.dump(tool.schema, f, indent=2)
     
-    # If there's metadata, save it
-    if metadata:
+    # Handle metadata (data connector)
+    if tool.data_connector_id:
         metadata_dir = "tool_metadata"
         os.makedirs(metadata_dir, exist_ok=True)
         with open(f"{metadata_dir}/{new_tool.id}.json", 'w') as f:
-            json.dump(metadata, f, indent=2)
+            json.dump({"data_connector_id": tool.data_connector_id}, f, indent=2)
     
     custom_tools.append(new_tool)
     save_custom_tools(custom_tools)
@@ -587,16 +583,20 @@ async def update_tool(tool_id: str, updated_tool: CustomTool):
             with open(f"{schema_dir}/{tool_id}.json", 'w') as f:
                 json.dump(updated_tool.schema, f, indent=2)
             
-            # Update metadata
-            metadata = {}
-            if updated_tool.data_connector_id:
-                metadata["data_connector_id"] = updated_tool.data_connector_id
+            # Handle metadata
+            metadata_dir = "tool_metadata"
+            metadata_path = f"{metadata_dir}/{tool_id}.json"
             
-            if metadata:
-                metadata_dir = "tool_metadata"
+            if updated_tool.data_connector_id:
+                # Update metadata with connector
+                metadata = {"data_connector_id": updated_tool.data_connector_id}
                 os.makedirs(metadata_dir, exist_ok=True)
-                with open(f"{metadata_dir}/{tool_id}.json", 'w') as f:
+                with open(metadata_path, 'w') as f:
                     json.dump(metadata, f, indent=2)
+            else:
+                # Remove metadata file if data connector is unselected
+                if os.path.exists(metadata_path):
+                    os.remove(metadata_path)
             
             custom_tools[i] = updated
             save_custom_tools(custom_tools)
