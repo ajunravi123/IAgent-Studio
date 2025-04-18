@@ -1232,34 +1232,137 @@ function closeViewTool() {
 }
 
 function loadExternalTools() {
-    fetch('/api/tools')
+    // First get all data connectors for later lookup
+    fetch('/api/data-connectors')
         .then(response => response.json())
-        .then(tools => {
-            const toolsGrid = document.getElementById('externalToolsGrid');
-            if (!toolsGrid) return;
-
-            toolsGrid.innerHTML = tools.map(tool => {
-                const firstLetter = tool.name.charAt(0).toUpperCase();
-                return `
-                    <div class="tool-integration-card">
-                        <div class="tool-header">
-                            <div class="tool-info tool-tab-title">
-                                <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
-                                    ${firstLetter}
-                        </div>
-                                <h3>${tool.name}</h3>
-                    </div>
-                        <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
-                            <i class="fas fa-ellipsis-v"></i>
-                        </button>
-                        </div>
-                        <p class="tool-description">${tool.description || 'No description available'}</p>
-                        <div class="tool-tags tool-underline">
-                            ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+        .then(connectors => {
+            // Create a map of connector IDs to names for quick lookup
+            const connectorMap = {};
+            connectors.forEach(connector => {
+                connectorMap[connector.id] = {
+                    name: connector.uniqueName,
+                    type: connector.connectorType
+                };
+            });
+            
+            // Now fetch all tools - excluding advanced tools for now
+            return fetch('/api/tools')
+                .then(response => response.json())
+                .then(async tools => {
+                    const toolsGrid = document.getElementById('externalToolsGrid');
+                    if (!toolsGrid) return;
+        
+                    // Create an array to store HTML for each tool card
+                    const toolCards = [];
+                    
+                    // Process each tool one by one to fetch its metadata
+                    for (const tool of tools) {
+                        const firstLetter = tool.name.charAt(0).toUpperCase();
+                        
+                        // Fetch metadata for this tool
+                        let connectorHtml = '';
+                        try {
+                            const metadataResponse = await fetch(`/api/tools/${tool.id}/metadata`);
+                            const metadata = await metadataResponse.json();
+                            
+                            // If the tool has a data connector, add connector info to the card
+                            if (metadata && metadata.data_connector_id) {
+                                const connectorId = metadata.data_connector_id;
+                                const connectorInfo = connectorMap[connectorId] || { name: 'Unknown', type: 'database' };
+                                
+                                connectorHtml = `
+                                    <div class="tool-connector">
+                                        <i class="fas fa-database"></i>
+                                        <span>Connected to ${connectorInfo.name} (${connectorInfo.type})</span>
+                                    </div>
+                                `;
+                            }
+                        } catch (error) {
+                            console.error(`Error fetching metadata for tool ${tool.id}:`, error);
+                        }
+                        
+                        // Create the tool card HTML
+                        const cardHtml = `
+                            <div class="tool-integration-card">
+                                <div class="tool-header">
+                                    <div class="tool-info tool-tab-title">
+                                        <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
+                                            ${firstLetter}
+                                        </div>
+                                        <h3>${tool.name}</h3>
+                                    </div>
+                                    <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                                <p class="tool-description">${tool.description || 'No description available'}</p>
+                                
+                                <div>${connectorHtml}</div>
+                                <div class="tool-tags tool-underline">
+                                    ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                        
+                        toolCards.push(cardHtml);
+                    }
+                    
+                    // Update the grid with all tool cards
+                    toolsGrid.innerHTML = toolCards.join('');
+                    
+                    // Add CSS for connector display if it doesn't exist
+                    if (!document.getElementById('connector-styles')) {
+                        const style = document.createElement('style');
+                        style.id = 'connector-styles';
+                        style.textContent = `
+                            .tool-connector {
+                                display: flex;
+                                align-items: center;
+                                gap: 6px;
+                                margin-bottom: 10px;
+                                font-size: 0.85rem;
+                                color: #4facfe;
+                            }
+                            .tool-connector i {
+                                font-size: 0.9rem;
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                });
+        })
+        .catch(error => {
+            console.error("Error loading data connectors:", error);
+            // Fall back to the regular tool loading without connector info
+            return fetch('/api/tools')
+                .then(response => response.json())
+                .then(tools => {
+                    const toolsGrid = document.getElementById('externalToolsGrid');
+                    if (!toolsGrid) return;
+                    
+                    toolsGrid.innerHTML = tools.map(tool => {
+                        const firstLetter = tool.name.charAt(0).toUpperCase();
+                        return `
+                            <div class="tool-integration-card">
+                                <div class="tool-header">
+                                    <div class="tool-info tool-tab-title">
+                                        <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
+                                            ${firstLetter}
+                                        </div>
+                                        <h3>${tool.name}</h3>
+                                    </div>
+                                    <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
+                                <p class="tool-description">${tool.description || 'No description available'}</p>
+                                <div class="tool-tags tool-underline">
+                                    ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                });
         });
 }
 
@@ -1291,15 +1394,148 @@ function refreshTools() {
 
 function loadTools() {
     try {
-        // Fetch both normal and advanced tools
-        Promise.all([
-            fetch('/api/tools').then(response => response.json()),
-            fetch('/api/advanced-tools').then(response => response.json())
-        ]).then(([normalTools, advancedTools]) => {
+        // First get all data connectors for later lookup
+        fetch('/api/data-connectors')
+            .then(response => response.json())
+            .then(connectors => {
+                // Create a map of connector IDs to names for quick lookup
+                const connectorMap = {};
+                connectors.forEach(connector => {
+                    connectorMap[connector.id] = {
+                        name: connector.uniqueName,
+                        type: connector.connectorType
+                    };
+                });
+                
+                // Fetch only regular tools, skipping advanced tools
+                fetch('/api/tools')
+                    .then(response => response.json())
+                    .then(async (normalTools) => {
+                        const toolsGrid = document.querySelector('.tools-grid');
+                        if (!toolsGrid) return;
+        
+                        // First, fetch metadata for all normal tools
+                        const toolMetadataPromises = normalTools.map(tool =>
+                            fetch(`/api/tools/${tool.id}/metadata`)
+                                .then(response => response.json())
+                                .catch(() => ({})) // Return empty object if metadata fetch fails
+                        );
+                        
+                        const toolMetadataResults = await Promise.all(toolMetadataPromises);
+                        
+                        // Then render normal tools with connector info
+                        let toolsHtml = normalTools.map((tool, index) => {
+                            const isSelected = selectedTools.has(tool.id);
+                            const firstLetter = tool.name.charAt(0).toUpperCase();
+                            const metadata = toolMetadataResults[index];
+                            const hasConnector = metadata && metadata.data_connector_id;
+                            let connectorHtml = '';
+                            
+                            if (hasConnector) {
+                                const connectorId = metadata.data_connector_id;
+                                const connectorInfo = connectorMap[connectorId] || { name: 'Unknown', type: 'database' };
+                                
+                                connectorHtml = `
+                                    <div class="connector-info">
+                                        <i class="fas fa-database"></i>
+                                        <span>Connected to ${connectorInfo.name} (${connectorInfo.type})</span>
+                                    </div>
+                                `;
+                            }
+                            
+                            return `
+                                <div class="tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}">
+                                    <div class="tool-content">
+                                        <div class="tool-header">
+                                            <div class="tool-header-left">
+                                                <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
+                                                    ${firstLetter}
+                                                </div>
+                                                <div class="tool-title">
+                                                    <h3 class="tool-name">${tool.name}</h3>
+                                                    ${hasConnector ? connectorHtml : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="tool-description">${tool.description || 'No description available'}</div>
+                                        <div class="tool-tags">
+                                            ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                        </div>
+                                        <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
+                                    </div>
+                                    <div class="checkbox ${isSelected ? 'checked' : ''}" onclick="toggleTool('${tool.id}', event)">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+        
+                        // Advanced Tools section has been removed
+        
+                        toolsGrid.innerHTML = toolsHtml;
+        
+                        // Add CSS for connector info if it doesn't exist
+                        if (!document.getElementById('connector-info-styles')) {
+                            const style = document.createElement('style');
+                            style.id = 'connector-info-styles';
+                            style.textContent = `
+                                .connector-info {
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                    font-size: 0.85rem;
+                                    color: #4facfe;
+                                    margin-top: 4px;
+                                }
+                                .tool-title {
+                                    display: flex;
+                                    flex-direction: column;
+                                }
+                                .tool-header-left {
+                                    display: flex;
+                                    align-items: flex-start;
+                                    gap: 10px;
+                                }
+                                .connector-info i {
+                                    font-size: 0.9rem;
+                                }
+                            `;
+                            document.head.appendChild(style);
+                        }
+        
+                        // Add click event listeners for normal tools
+                        toolsGrid.querySelectorAll('.tool-card').forEach(card => {
+                            card.addEventListener('click', (event) => {
+                                if (!event.target.closest('.checkbox') && !event.target.closest('.view-btn')) {
+                                    const toolId = card.dataset.toolId;
+                                    toggleTool(toolId, event);
+                                }
+                            });
+                        });
+                    });
+            })
+            .catch(error => {
+                console.error("Error loading data connectors:", error);
+                // Fall back to the original implementation without connector info
+                loadToolsWithoutConnectors();
+            });
+    } catch (error) {
+        console.error("Error in loadTools:", error);
+        // Fall back to the original implementation without connector info
+        loadToolsWithoutConnectors();
+    }
+}
+
+// Fallback function if data connectors can't be loaded
+function loadToolsWithoutConnectors() {
+    // Fetch only regular tools
+    fetch('/api/tools')
+        .then(response => response.json())
+        .then(normalTools => {
             const toolsGrid = document.querySelector('.tools-grid');
             if (!toolsGrid) return;
 
-            // First render normal tools
+            // Render tools without connector info
             let toolsHtml = normalTools.map(tool => {
                 const isSelected = selectedTools.has(tool.id);
                 const firstLetter = tool.name.charAt(0).toUpperCase();
@@ -1327,60 +1563,7 @@ function loadTools() {
                 `;
             }).join('');
 
-            // Add advanced tools section if there are any
-            if (advancedTools.length > 0) {
-                toolsHtml += `
-                    <div class="advanced-tools-section">
-                        <div class="advanced-tools-header ${selectedAdvancedTools.size > 0 ? 'expanded' : ''}" onclick="toggleAdvancedTools()">
-                            <div class="header-left">
-                                <i class="fas fa-rocket"></i>
-                                <h2>Advanced Tools</h2>
-                            </div>
-                            <div class="header-right">
-                                <span class="tool-count">${advancedTools.length} tools</span>
-                                <i class="fas fa-chevron-down expand-icon"></i>
-                            </div>
-                        </div>
-                        <div class="advanced-tools-grid" style="display: ${selectedAdvancedTools.size > 0 ? 'grid' : 'none'};">
-                            ${advancedTools.map(tool => {
-                                const isSelected = selectedAdvancedTools.has(tool.id);
-                                const firstLetter = tool.name.charAt(0).toUpperCase();
-                                console.log(`Advanced tool ${tool.id} (${tool.name}) selected: ${isSelected}`);
-                                return `
-                                    <div class="advanced-tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}" data-is-advanced="true">
-                                        <div class="tool-content">
-                                            <div class="tool-header">
-                                                <div class="tool-header-left">
-                                                    <div class="tool-icon" style="background: ${stringToColor(tool.name)}">
-                                                        ${firstLetter}
-                                                    </div>
-                                                    <div class="tool-title">
-                                                        <h3 class="tool-name">${tool.name}</h3>
-                                                        ${tool.data_connector_id ? `
-                                                            <div class="connector-info">
-                                                                <i class="fas fa-database"></i>
-                                                                <span>Connected to ${tool.connector_uniqueName || 'Database'}</span>
-                                                            </div>
-                                                        ` : ''}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="tool-description">${tool.description || 'No description available'}</div>
-                                            <div class="tool-tags">
-                                                ${(tool.tags || ['Advanced']).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                                            </div>
-                                            <button class="view-btn" onclick="viewTool('${tool.id}')">View</button>
-                                        </div>
-                                        <div class="checkbox ${isSelected ? 'checked' : ''}" onclick="toggleAdvancedTool('${tool.id}', event)">
-                                            <i class="fas fa-check"></i>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
-            }
+            // Advanced Tools section removed
 
             toolsGrid.innerHTML = toolsHtml;
 
@@ -1393,220 +1576,7 @@ function loadTools() {
                     }
                 });
             });
-            
-            // Add click event listeners for advanced tools
-            toolsGrid.querySelectorAll('.advanced-tool-card').forEach(card => {
-                const toolId = card.dataset.toolId;
-                
-                // Remove any existing event listeners first
-                card.removeEventListener('click', handleAdvancedToolClick);
-                
-                // Add new click handler for the card itself (excluding buttons and checkboxes)
-                card.addEventListener('click', handleAdvancedToolClick);
-                
-                function handleAdvancedToolClick(event) {
-                    // Only toggle if user didn't click on a button or the checkbox
-                    if (!event.target.closest('.checkbox') && !event.target.closest('.view-btn')) {
-                        toggleAdvancedTool(toolId, event);
-                    }
-                }
-                
-                // Make sure the checkbox click works directly
-                const checkbox = card.querySelector('.checkbox');
-                if (checkbox) {
-                    checkbox.removeEventListener('click', handleCheckboxClick);
-                    checkbox.addEventListener('click', handleCheckboxClick);
-                    
-                    function handleCheckboxClick(event) {
-                        event.stopPropagation();
-                        toggleAdvancedTool(toolId, event);
-                    }
-                }
-            });
-
-            // Add styles for advanced tools section
-            if (!document.getElementById('advanced-tools-styles')) {
-                const style = document.createElement('style');
-                style.id = 'advanced-tools-styles';
-                style.textContent = `
-                    .advanced-tools-section {
-                        grid-column: 1 / -1;
-                        background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(17, 25, 40, 0.97));
-                        border-radius: 16px;
-                        border: 1px solid rgba(99, 179, 237, 0.15);
-                        margin-top: 24px;
-                        overflow: hidden;
-                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-                    }
-
-                    .advanced-tools-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 20px 24px;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                        border-bottom: 1px solid rgba(99, 179, 237, 0.1);
-                    }
-
-                    .advanced-tools-header:hover {
-                        background: rgba(99, 179, 237, 0.05);
-                    }
-
-                    .header-left {
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                    }
-
-                    .header-left i {
-                        font-size: 20px;
-                        color: #3b82f6;
-                        background: rgba(59, 130, 246, 0.1);
-                        padding: 10px;
-                        border-radius: 12px;
-                    }
-
-                    .header-left h2 {
-                        font-size: 18px;
-                        font-weight: 600;
-                        color: #fff;
-                        margin: 0;
-                    }
-
-                    .header-right {
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                    }
-
-                    .tool-count {
-                        font-size: 14px;
-                        color: rgba(255, 255, 255, 0.6);
-                        background: rgba(99, 179, 237, 0.1);
-                        padding: 4px 12px;
-                        border-radius: 20px;
-                    }
-
-                    .expand-icon {
-                        color: rgba(255, 255, 255, 0.6);
-                        transition: transform 0.3s ease;
-                    }
-
-                    .advanced-tools-header.expanded .expand-icon {
-                        transform: rotate(180deg);
-                    }
-
-                    .advanced-tools-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                        gap: 20px;
-                        padding: 20px;
-                        background: rgba(17, 25, 40, 0.5);
-                    }
-
-                    .advanced-tool-card {
-                        background: rgba(30, 41, 59, 0.7);
-                        border: 1px solid rgba(99, 179, 237, 0.2);
-                        border-radius: 12px;
-                        padding: 16px;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                        position: relative;
-                        overflow: hidden;
-                    }
-
-                    .advanced-tool-card::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        height: 3px;
-                        background: linear-gradient(90deg, #3b82f6, #2563eb);
-                        opacity: 0;
-                        transition: opacity 0.3s ease;
-                    }
-
-                    .advanced-tool-card:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-                        border-color: rgba(99, 179, 237, 0.4);
-                    }
-
-                    .advanced-tool-card:hover::before {
-                        opacity: 1;
-                    }
-
-                    .advanced-tool-card.selected {
-                        border-color: #3b82f6;
-                        box-shadow: 0 0 0 1px #3b82f6;
-                    }
-
-                    .advanced-tool-card .tool-title {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 4px;
-                    }
-
-                    .advanced-tool-card .connector-info {
-                        display: flex;
-                        align-items: center;
-                        gap: 6px;
-                        font-size: 12px;
-                        color: rgba(255, 255, 255, 0.6);
-                        background: rgba(99, 179, 237, 0.1);
-                        padding: 4px 8px;
-                        border-radius: 6px;
-                        width: fit-content;
-                    }
-
-                    .advanced-tool-card .connector-info i {
-                        font-size: 10px;
-                        color: #63b3ed;
-                    }
-                    
-                    .checkbox.checked i {
-                        opacity: 1;
-                    }
-                    
-                    .checkbox i {
-                        opacity: 0;
-                        transition: opacity 0.2s ease;
-                    }
-                    
-                    .advanced-tool-card .checkbox, 
-                    .tool-card .checkbox {
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        width: 24px;
-                        height: 24px;
-                        border-radius: 4px;
-                        border: 1px solid rgba(255, 255, 255, 0.2);
-                        background: rgba(59, 130, 246, 0.1);
-                        cursor: pointer;
-                        position: absolute;
-                        top: 16px;
-                        right: 16px;
-                    }
-                    
-                    .advanced-tool-card .checkbox.checked,
-                    .tool-card .checkbox.checked {
-                        background: #3b82f6;
-                        border-color: #3b82f6;
-                    }
-                    
-                    .checkbox.checked i {
-                        color: white;
-                    }
-                `;
-                document.head.appendChild(style);
-            }
         });
-    } catch (error) {
-        console.error('Error loading tools:', error);
-    }
 }
 
 // Add toggle function for advanced tools section
