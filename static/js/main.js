@@ -7127,37 +7127,7 @@ function ensureConnectorModalStyles() {
 let currentAdvancedToolId = null;
 let advancedTools = [];
 
-// Function to load normal tools (assumed to exist, adjust name if different)
-async function loadTools() {
-    try {
-        const response = await fetch('/api/tools');
-        const tools = await response.json();
-        const toolsList = document.getElementById('toolsList'); // Adjust ID as needed
-        if (!toolsList) return;
 
-        toolsList.innerHTML = '';
-        tools.forEach(tool => {
-            const toolCard = document.createElement('div');
-            toolCard.className = 'tool-card';
-            toolCard.innerHTML = `
-                <h3>${tool.name}</h3>
-                <p>${tool.description}</p>
-                <div class="tool-tags">
-                    ${tool.tags.map(tag => `<span class="tool-tag">${tag}</span>`).join('')}
-                </div>
-                <div class="tool-actions">
-                    <button onclick="addTool('${tool.id}')" class="futuristic-btn">
-                        <i class="fas fa-plus"></i> ${tool.is_added ? 'Added' : 'Add'}
-                    </button>
-                </div>
-            `;
-            toolsList.appendChild(toolCard);
-        });
-    } catch (error) {
-        console.error('Error loading tools:', error);
-        showNotification('Error loading tools', 'error');
-    }
-}
 
 // Your existing loadAdvancedTools function (unchanged)
 async function loadAdvancedTools() {
