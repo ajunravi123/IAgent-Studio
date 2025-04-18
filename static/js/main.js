@@ -7112,3 +7112,270 @@ function ensureConnectorModalStyles() {
 // ... existing functions ...
 
 // ... rest of the file ...
+
+
+
+
+// Existing imports and variables (from your snippet)
+let currentAdvancedToolId = null;
+let advancedTools = [];
+
+// Function to load normal tools (assumed to exist, adjust name if different)
+async function loadTools() {
+    try {
+        const response = await fetch('/api/tools');
+        const tools = await response.json();
+        const toolsList = document.getElementById('toolsList'); // Adjust ID as needed
+        if (!toolsList) return;
+
+        toolsList.innerHTML = '';
+        tools.forEach(tool => {
+            const toolCard = document.createElement('div');
+            toolCard.className = 'tool-card';
+            toolCard.innerHTML = `
+                <h3>${tool.name}</h3>
+                <p>${tool.description}</p>
+                <div class="tool-tags">
+                    ${tool.tags.map(tag => `<span class="tool-tag">${tag}</span>`).join('')}
+                </div>
+                <div class="tool-actions">
+                    <button onclick="addTool('${tool.id}')" class="futuristic-btn">
+                        <i class="fas fa-plus"></i> ${tool.is_added ? 'Added' : 'Add'}
+                    </button>
+                </div>
+            `;
+            toolsList.appendChild(toolCard);
+        });
+    } catch (error) {
+        console.error('Error loading tools:', error);
+        showNotification('Error loading tools', 'error');
+    }
+}
+
+// Your existing loadAdvancedTools function (unchanged)
+async function loadAdvancedTools() {
+    try {
+        const response = await fetch('/api/advanced-tools');
+        const tools = await response.json();
+        advancedTools = tools;
+        const toolsList = document.getElementById('advancedToolsList');
+        if (!toolsList) return;
+        
+        toolsList.innerHTML = '';
+        tools.forEach(tool => {
+            const toolCard = document.createElement('div');
+            toolCard.className = 'advanced-tool-card';
+            toolCard.innerHTML = `
+                <h3>${tool.name}</h3>
+                <p>${tool.description}</p>
+                <div class="advanced-tool-tags">
+                    ${tool.tags.map(tag => `
+                        <span class="advanced-tool-tag">${tag}</span>
+                    `).join('')}
+                </div>
+                ${tool.data_connector_id ? `
+                    <div class="advanced-tool-connector">
+                        <i class="fas fa-database"></i> Connected to: ${tool.data_connector_id}
+                    </div>
+                ` : ''}
+                <div class="advanced-tool-actions">
+                    <button onclick="editAdvancedTool('${tool.id}')" class="futuristic-btn">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button onclick="deleteAdvancedTool('${tool.id}')" class="futuristic-btn" style="background: linear-gradient(90deg, #ff416c, #ff4b2b);">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            `;
+            toolsList.appendChild(toolCard);
+        });
+    } catch (error) {
+        console.error('Error loading advanced tools:', error);
+        showNotification('Error loading advanced tools', 'error');
+    }
+}
+
+// New function to initialize the /tools page
+function initToolsPage() {
+    // Load both normal and advanced tools
+    loadTools();
+    loadAdvancedTools();
+}
+
+// Page load handler
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if we're on the /tools page
+    if (window.location.pathname === '/tools' || window.location.pathname === '/tools/') {
+        initToolsPage();
+    }
+});
+
+// Existing functions (unchanged)
+function showCreateAdvancedTool() {
+    loadDataConnectorsForAdvancedTool();
+    const modal = document.getElementById('createAdvancedToolModal');
+    if (modal) {
+        modal.style.display = 'block';
+        setTimeout(() => {
+            const nameField = document.getElementById('newAdvancedToolName');
+            if (nameField) nameField.focus();
+        }, 300);
+    }
+}
+
+function closeCreateAdvancedTool() {
+    const modal = document.getElementById('createAdvancedToolModal');
+    if (modal) {
+        modal.style.display = 'none';
+        const fields = [
+            'newAdvancedToolName',
+            'newAdvancedToolDescription',
+            'newAdvancedToolTags',
+            'newAdvancedToolConnector',
+            'newAdvancedToolSchema'
+        ];
+        fields.forEach(id => {
+            const field = document.getElementById(id);
+            if (field) field.value = '';
+        });
+    }
+}
+
+async function loadDataConnectorsForAdvancedTool() {
+    try {
+        const response = await fetch('/api/data-connectors');
+        const connectors = await response.json();
+        const select = document.getElementById('newAdvancedToolConnector');
+        if (!select) return;
+        
+        while (select.options.length > 1) {
+            select.options.remove(1);
+        }
+        
+        connectors.forEach(connector => {
+            const option = document.createElement('option');
+            option.value = connector.id;
+            option.textContent = connector.uniqueName;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading data connectors:', error);
+        showNotification('Failed to load data connectors', 'error');
+    }
+}
+
+function formatJson() {
+    const schemaField = document.getElementById('newAdvancedToolSchema');
+    if (!schemaField) return;
+    
+    try {
+        const formatted = JSON.stringify(JSON.parse(schemaField.value), null, 2);
+        schemaField.value = formatted;
+    } catch (error) {
+        showNotification('Invalid JSON format', 'error');
+    }
+}
+
+async function createNewAdvancedTool() {
+    const fields = {
+        name: document.getElementById('newAdvancedToolName'),
+        description: document.getElementById('newAdvancedToolDescription'),
+        tags: document.getElementById('newAdvancedToolTags'),
+        connectorId: document.getElementById('newAdvancedToolConnector'),
+        schema: document.getElementById('newAdvancedToolSchema')
+    };
+
+    if (!fields.name || !fields.description || !fields.schema) {
+        showNotification('Required fields are missing', 'error');
+        return;
+    }
+
+    if (!fields.name.value || !fields.description.value || !fields.schema.value) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    let parsedSchema;
+    try {
+        parsedSchema = JSON.parse(fields.schema.value);
+    } catch (error) {
+        showNotification('Invalid JSON schema format', 'error');
+        return;
+    }
+    
+    const formData = {
+        name: fields.name.value,
+        description: fields.description.value,
+        tags: fields.tags.value.split(',').map(tag => tag.trim()).filter(tag => tag),
+        schema: parsedSchema,
+        data_connector_id: fields.connectorId.value || null
+    };
+    
+    try {
+        const createButton = document.querySelector('.futuristic-button-create');
+        if (createButton) {
+            const originalText = createButton.innerHTML;
+            createButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+            createButton.disabled = true;
+            
+            const response = await fetch('/api/advanced-tools', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            createButton.innerHTML = originalText;
+            createButton.disabled = false;
+            
+            if (response.ok) {
+                closeCreateAdvancedTool();
+                loadAdvancedTools();
+                showNotification('Advanced tool created successfully', 'success');
+            } else {
+                const error = await response.json();
+                showNotification(error.detail || 'Failed to create advanced tool', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error creating advanced tool:', error);
+        showNotification('Failed to create advanced tool', 'error');
+        
+        const createButton = document.querySelector('.futuristic-button-create');
+        if (createButton) {
+            createButton.innerHTML = 'Create Tool';
+            createButton.disabled = false;
+        }
+    }
+}
+
+function editAdvancedTool(toolId) {
+    const tool = advancedTools.find(t => t.id === toolId);
+    if (tool) {
+        showAdvancedToolModal('Edit Advanced Tool', tool);
+    }
+}
+
+async function deleteAdvancedTool(toolId) {
+    if (!confirm('Are you sure you want to delete this advanced tool?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/advanced-tools/${toolId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            loadAdvancedTools();
+            showNotification('Advanced tool deleted successfully', 'success');
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Failed to delete advanced tool', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting advanced tool:', error);
+        showNotification('Failed to delete advanced tool', 'error');
+    }
+}

@@ -7,21 +7,100 @@
         <div class="header-actions">
             <div class="search-bar">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" placeholder="Search tools..." onkeyup="searchExternalTools(this.value)">
+                <input type="text" placeholder="Search tools..." onkeyup="searchTools(this.value)">
             </div>
             <button class="btn-secondary" onclick="refreshTools()">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
-            <button class="btn-primary" onclick="showAddCustomTool()">
-                + Add Custom Tool
-            </button>
         </div>
     </div>
 
+    <!-- Advanced Tools Section -->
+    <div class="advanced-tools-section">
+        <div class="section-header">
+            <div class="header-content">
+                <h2 class="section-title">Advanced Tools</h2>
+                <p class="section-subtitle">Tools with data connector integration and advanced capabilities</p>
+            </div>
+            <button id="createAdvancedToolBtn" class="btn-primary futuristic-btn" onclick="showCreateAdvancedTool()">
+                <i class="fas fa-plus"></i> Create Advanced Tool
+            </button>
+        </div>
+
+        <div class="advanced-tools-grid" id="advancedToolsList">
+            <!-- Advanced tools will be populated here -->
+        </div>
+    </div>
+
+    <!-- Regular Tools Section -->
     <div class="tools-content">
-        <!-- <h2>External Tools</h2> -->
+        <div class="section-header">
+            <div class="header-content">
+                <h2 class="section-title">External Tools</h2>
+                <p class="section-subtitle">Basic tools and integrations</p>
+            </div>
+            <button class="btn-primary" onclick="showAddCustomTool()">
+                <i class="fas fa-plus"></i> Add Custom Tool
+            </button>
+        </div>
         <div class="external-tools-grid" id="externalToolsGrid">
             <!-- Tools will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Create Advanced Tool Modal with Futuristic Design -->
+    <div class="modal advanced-tool-modal" id="createAdvancedToolModal">
+        <div class="modal-content futuristic-modal-content">
+            <div class="modal-header">
+                <div class="modal-title-container">
+                    <div class="modal-title-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h2>Create Advanced Tool</h2>
+                </div>
+                <button class="btn-close" onclick="closeCreateAdvancedTool()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newAdvancedToolName">Tool Name*</label>
+                    <input type="text" id="newAdvancedToolName" class="form-input futuristic-input" placeholder="Enter tool name">
+                    <div class="input-glow"></div>
+                </div>
+                <div class="form-group">
+                    <label for="newAdvancedToolDescription">Description*</label>
+                    <textarea id="newAdvancedToolDescription" class="form-textarea futuristic-textarea" placeholder="Describe what this tool does"></textarea>
+                    <div class="textarea-glow"></div>
+                </div>
+                <div class="form-group">
+                    <label for="newAdvancedToolTags">Tags (comma-separated)</label>
+                    <input type="text" id="newAdvancedToolTags" class="form-input futuristic-input" placeholder="e.g., Database, Analytics, AI">
+                    <div class="input-glow"></div>
+                </div>
+                <div class="form-group">
+                    <label for="newAdvancedToolConnector">Data Connector</label>
+                    <select id="newAdvancedToolConnector" class="form-select futuristic-select">
+                        <option value="">None</option>
+                        <!-- Data connectors will be populated here -->
+                    </select>
+                    <div class="select-glow"></div>
+                </div>
+                <div class="form-group">
+                    <label for="newAdvancedToolSchema">OpenAPI Schema*</label>
+                    <div class="code-editor-wrap">
+                        <textarea id="newAdvancedToolSchema" class="form-textarea futuristic-code-editor" placeholder="Paste your OpenAPI schema here"></textarea>
+                        <div class="editor-controls">
+                            <span class="badge">JSON</span>
+                            <button class="editor-button" onclick="formatJson()">
+                                <i class="fas fa-code"></i> Format
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary futuristic-button-cancel" onclick="closeCreateAdvancedTool()">Cancel</button>
+                <button class="btn-primary futuristic-button-create" onclick="createNewAdvancedTool()">Create Tool</button>
+            </div>
         </div>
     </div>
 
@@ -93,4 +172,744 @@
             </div>
         </div>
     </div>
-</div> 
+</div>
+
+<style>
+/* Futuristic Design Styles */
+.advanced-tools-section {
+    background: linear-gradient(145deg, #1a1a2e, #16213e);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.section-subtitle {
+    color: #a0aec0;
+    margin: 0.25rem 0 0;
+}
+
+.advanced-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.advanced-tool-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.advanced-tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #00f2fe, #4facfe);
+}
+
+.advanced-tool-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.advanced-tool-card h3 {
+    color: #fff;
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+}
+
+.advanced-tool-card p {
+    color: #a0aec0;
+    margin: 0 0 1rem;
+}
+
+.advanced-tool-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.advanced-tool-tag {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+.advanced-tool-connector {
+    color: #4facfe;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.advanced-tool-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.futuristic-btn {
+    background: linear-gradient(90deg, #00f2fe, #4facfe);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.futuristic-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 242, 254, 0.3);
+}
+
+.futuristic-modal {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.futuristic-modal .modal-content {
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+.futuristic-form .form-input,
+.futuristic-form .form-textarea,
+.futuristic-form .form-select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.futuristic-form .form-input:focus,
+.futuristic-form .form-textarea:focus,
+.futuristic-form .form-select:focus {
+    border-color: #4facfe;
+    box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.2);
+}
+
+.code-editor-container {
+    position: relative;
+}
+
+.code-editor-container::after {
+    content: 'JSON';
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: #a0aec0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Futuristic Design for Advanced Tool Modal */
+.advanced-tool-modal {
+    --primary-glow: rgba(0, 242, 254, 0.5);
+    --secondary-glow: rgba(79, 172, 254, 0.5);
+    --accent-color: #4facfe;
+    --background-dark: #0f1123;
+    --background-light: #1a1f3d;
+    --text-color: #ffffff;
+    --text-secondary: #a0aec0;
+    
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 20, 0.85);
+    backdrop-filter: blur(10px);
+}
+
+.futuristic-modal-content {
+    background: linear-gradient(135deg, var(--background-dark), var(--background-light));
+    margin: 5% auto;
+    padding: 0;
+    width: 85%;
+    max-width: 800px;
+    border-radius: 20px;
+    box-shadow: 0 0 30px var(--primary-glow), 0 0 15px var(--secondary-glow);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: modalOpen 0.5s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.futuristic-modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, #00f2fe, #4facfe, #00f2fe);
+    background-size: 200% 100%;
+    animation: gradientFlow 3s linear infinite;
+}
+
+.advanced-tool-modal .modal-header {
+    background: rgba(10, 15, 40, 0.5);
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-title-container {
+    display: flex;
+    align-items: center;
+}
+
+.modal-title-icon {
+    margin-right: 15px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00f2fe, #4facfe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.modal-title-icon i {
+    color: white;
+    font-size: 18px;
+}
+
+.advanced-tool-modal h2 {
+    color: var(--text-color);
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.advanced-tool-modal .btn-close {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.advanced-tool-modal .btn-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.advanced-tool-modal .modal-body {
+    padding: 30px;
+    max-height: 60vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-color) rgba(0, 0, 0, 0.2);
+}
+
+.advanced-tool-modal .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.advanced-tool-modal .modal-body::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.advanced-tool-modal .modal-body::-webkit-scrollbar-thumb {
+    background-color: var(--accent-color);
+    border-radius: 10px;
+}
+
+.advanced-tool-modal .modal-body .form-group {
+    margin-bottom: 25px;
+    position: relative;
+}
+
+.advanced-tool-modal label {
+    display: block;
+    color: var(--text-color);
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+.futuristic-input, .futuristic-textarea, .futuristic-select, .futuristic-code-editor {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border-radius: 8px;
+    padding: 12px 15px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.futuristic-input:focus, .futuristic-textarea:focus, 
+.futuristic-select:focus, .futuristic-code-editor:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.input-glow, .textarea-glow, .select-glow {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 0;
+    background: linear-gradient(90deg, #00f2fe, #4facfe);
+    transition: width 0.3s ease;
+    z-index: 0;
+}
+
+.futuristic-input:focus + .input-glow,
+.futuristic-textarea:focus + .textarea-glow,
+.futuristic-select:focus + .select-glow {
+    width: 100%;
+}
+
+.futuristic-textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.futuristic-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234facfe' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+}
+
+.code-editor-wrap {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.futuristic-code-editor {
+    min-height: 200px;
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+    tab-size: 2;
+    border: none;
+    border-radius: 0;
+    padding: 15px;
+    background: transparent;
+}
+
+.editor-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.badge {
+    background: rgba(79, 172, 254, 0.2);
+    color: var(--accent-color);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-right: 10px;
+}
+
+.editor-button {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s ease;
+}
+
+.editor-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.advanced-tool-modal .modal-footer {
+    padding: 20px 30px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(10, 15, 40, 0.5);
+}
+
+.futuristic-button-cancel, .futuristic-button-create {
+    border: none;
+    padding: 10px 24px;
+    border-radius: 30px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.futuristic-button-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+}
+
+.futuristic-button-cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.futuristic-button-create {
+    background: linear-gradient(90deg, #00f2fe, #4facfe);
+    color: white;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+}
+
+.futuristic-button-create:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.7);
+}
+
+@keyframes modalOpen {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes gradientFlow {
+    0% {
+        background-position: 0% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+</style>
+
+<script>
+// Advanced Tools Management
+let currentAdvancedToolId = null;
+let advancedTools = []; // Add this to store advanced tools
+
+// Advanced Tool Popup Management
+function showCreateAdvancedTool() {
+    // Load data connectors for the dropdown
+    loadDataConnectorsForAdvancedTool();
+    
+    // Show the modal
+    document.getElementById('createAdvancedToolModal').style.display = 'block';
+    
+    // Focus on the first field
+    setTimeout(() => {
+        document.getElementById('newAdvancedToolName').focus();
+    }, 300);
+}
+
+function closeCreateAdvancedTool() {
+    document.getElementById('createAdvancedToolModal').style.display = 'none';
+    // Clear form fields
+    document.getElementById('newAdvancedToolName').value = '';
+    document.getElementById('newAdvancedToolDescription').value = '';
+    document.getElementById('newAdvancedToolTags').value = '';
+    document.getElementById('newAdvancedToolConnector').value = '';
+    document.getElementById('newAdvancedToolSchema').value = '';
+}
+
+async function loadAdvancedTools() {
+    try {
+        const response = await fetch('/api/advanced-tools');
+        const tools = await response.json();
+        advancedTools = tools; // Store the tools
+        const toolsList = document.getElementById('advancedToolsList');
+        toolsList.innerHTML = '';
+
+        tools.forEach(tool => {
+            const toolCard = document.createElement('div');
+            toolCard.className = 'advanced-tool-card';
+            toolCard.innerHTML = `
+                <h3>${tool.name}</h3>
+                <p>${tool.description}</p>
+                <div class="advanced-tool-tags">
+                    ${tool.tags.map(tag => `
+                        <span class="advanced-tool-tag">${tag}</span>
+                    `).join('')}
+                </div>
+                ${tool.data_connector_id ? `
+                    <div class="advanced-tool-connector">
+                        <i class="fas fa-database"></i> Connected to: ${tool.data_connector_id}
+                    </div>
+                ` : ''}
+                <div class="advanced-tool-actions">
+                    <button onclick="editAdvancedTool('${tool.id}')" class="futuristic-btn">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button onclick="deleteAdvancedTool('${tool.id}')" class="futuristic-btn" style="background: linear-gradient(90deg, #ff416c, #ff4b2b);">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            `;
+            toolsList.appendChild(toolCard);
+        });
+    } catch (error) {
+        console.error('Error loading advanced tools:', error);
+        showNotification('Error loading advanced tools', 'error');
+    }
+}
+
+function showAdvancedToolModal(title, tool = null) {
+    currentAdvancedToolId = tool?.id || null;
+    document.getElementById('advancedToolModalTitle').textContent = title;
+    document.getElementById('advancedToolId').value = tool?.id || '';
+    document.getElementById('advancedToolName').value = tool?.name || '';
+    document.getElementById('advancedToolDescription').value = tool?.description || '';
+    document.getElementById('advancedToolTags').value = tool?.tags?.join(', ') || '';
+    document.getElementById('advancedToolConnector').value = tool?.data_connector_id || '';
+    document.getElementById('advancedToolSchema').value = tool?.schema ? JSON.stringify(tool.schema, null, 2) : '';
+    document.getElementById('advancedToolModal').style.display = 'flex';
+}
+
+function closeAdvancedToolModal() {
+    document.getElementById('advancedToolModal').style.display = 'none';
+    document.getElementById('advancedToolForm').reset();
+    currentAdvancedToolId = null;
+}
+
+async function saveAdvancedTool() {
+    const form = document.getElementById('advancedToolForm');
+    const formData = {
+        name: document.getElementById('advancedToolName').value,
+        description: document.getElementById('advancedToolDescription').value,
+        tags: document.getElementById('advancedToolTags').value.split(',').map(tag => tag.trim()),
+        schema: JSON.parse(document.getElementById('advancedToolSchema').value),
+        data_connector_id: document.getElementById('advancedToolConnector').value || null
+    };
+
+    try {
+        const url = currentAdvancedToolId 
+            ? `/api/advanced-tools/${currentAdvancedToolId}`
+            : '/api/advanced-tools';
+        const method = currentAdvancedToolId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+            closeAdvancedToolModal();
+            loadAdvancedTools();
+            showNotification(`Advanced tool ${currentAdvancedToolId ? 'updated' : 'created'} successfully`, 'success');
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Operation failed', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving advanced tool:', error);
+        showNotification('Failed to save advanced tool', 'error');
+    }
+}
+
+function editAdvancedTool(toolId) {
+    const tool = advancedTools.find(t => t.id === toolId);
+    if (tool) {
+        showAdvancedToolModal('Edit Advanced Tool', tool);
+    }
+}
+
+async function deleteAdvancedTool(toolId) {
+    if (!confirm('Are you sure you want to delete this advanced tool?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/advanced-tools/${toolId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            loadAdvancedTools();
+            showNotification('Advanced tool deleted successfully', 'success');
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Failed to delete advanced tool', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting advanced tool:', error);
+        showNotification('Failed to delete advanced tool', 'error');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Implement your notification system here
+    alert(message); // Temporary implementation
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadAdvancedTools();
+    loadDataConnectors();
+});
+
+async function loadDataConnectorsForAdvancedTool() {
+    try {
+        const response = await fetch('/api/data-connectors');
+        const connectors = await response.json();
+        const select = document.getElementById('newAdvancedToolConnector');
+        
+        // Clear existing options except the first one
+        while (select.options.length > 1) {
+            select.options.remove(1);
+        }
+        
+        // Add new options
+        connectors.forEach(connector => {
+            const option = document.createElement('option');
+            option.value = connector.id;
+            option.textContent = connector.uniqueName;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading data connectors:', error);
+        showNotification('Failed to load data connectors', 'error');
+    }
+}
+
+function formatJson() {
+    const schemaField = document.getElementById('newAdvancedToolSchema');
+    try {
+        const formatted = JSON.stringify(JSON.parse(schemaField.value), null, 2);
+        schemaField.value = formatted;
+    } catch (error) {
+        showNotification('Invalid JSON format', 'error');
+    }
+}
+
+async function createNewAdvancedTool() {
+    const name = document.getElementById('newAdvancedToolName').value;
+    const description = document.getElementById('newAdvancedToolDescription').value;
+    const tags = document.getElementById('newAdvancedToolTags').value;
+    const connectorId = document.getElementById('newAdvancedToolConnector').value;
+    const schema = document.getElementById('newAdvancedToolSchema').value;
+    
+    // Validation
+    if (!name || !description || !schema) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    // Parse JSON to validate
+    let parsedSchema;
+    try {
+        parsedSchema = JSON.parse(schema);
+    } catch (error) {
+        showNotification('Invalid JSON schema format', 'error');
+        return;
+    }
+    
+    // Prepare data
+    const formData = {
+        name,
+        description,
+        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag), // Filter out empty tags
+        schema: parsedSchema,
+        data_connector_id: connectorId || null
+    };
+    
+    try {
+        // Show loading state
+        const createButton = document.querySelector('.futuristic-button-create');
+        const originalText = createButton.innerHTML;
+        createButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        createButton.disabled = true;
+        
+        const response = await fetch('/api/advanced-tools', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        // Reset button state
+        createButton.innerHTML = originalText;
+        createButton.disabled = false;
+        
+        if (response.ok) {
+            closeCreateAdvancedTool();
+            loadAdvancedTools();
+            showNotification('Advanced tool created successfully', 'success');
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Failed to create advanced tool', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating advanced tool:', error);
+        showNotification('Failed to create advanced tool', 'error');
+        
+        // Reset button state
+        const createButton = document.querySelector('.futuristic-button-create');
+        createButton.innerHTML = 'Create Tool';
+        createButton.disabled = false;
+    }
+}
+
+// ... rest of your code ...
+</script> 

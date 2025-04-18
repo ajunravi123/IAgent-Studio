@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, List, Union, Any
 import json
@@ -9,9 +10,7 @@ import uuid
 from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
-from langchain.tools import Tool # If tools are needed for manager/agents
-
-
+from langchain.tools import Tool  # If tools are needed for manager/agents
 
 DISABLE_RUN = True
 
@@ -21,14 +20,21 @@ if DISABLE_RUN:
     import psycopg2
     from psycopg2 import Error as PostgresError
 
-
 import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-
 app = FastAPI()
+
+# Add CORS middleware to handle cross-origin requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],  # Adjust for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mount the static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -77,7 +83,6 @@ class Tool(BaseModel):
     id: str
     name: str
     description: str
-    # icon: str
     tags: List[str]
     is_added: bool = False
 
@@ -99,9 +104,8 @@ class OpenAPISchema(BaseModel):
 class CustomTool(BaseModel):
     name: str
     description: str
-    # icon: str
     tags: List[str]
-    schema: Dict[str, Any] #OpenAPISchema
+    schema: Dict[str, Any]
     is_custom: bool = True
 
 # Tool Authentication Models
@@ -143,7 +147,7 @@ def save_notifications(notifications: List[dict]):
 # File to store agents
 AGENTS_FILE = "agents.json"
 MULTIAGENTS_FILE = "data/multiagents.json"
-CONNECTORS_FILE = "data/connectors.json" # New file for connectors
+CONNECTORS_FILE = "data/connectors.json"
 
 def load_agents():
     if os.path.exists(AGENTS_FILE):
@@ -156,22 +160,21 @@ def save_agents(agents):
         json.dump(agents, f)
 
 def load_multi_agents():
-    print(f"Attempting to load multi-agents from: {MULTIAGENTS_FILE}")
+    logger.info(f"Attempting to load multi-agents from: {MULTIAGENTS_FILE}")
     if os.path.exists(MULTIAGENTS_FILE):
-        print(f"File found: {MULTIAGENTS_FILE}")
         try:
             with open(MULTIAGENTS_FILE, 'r') as f:
                 data = json.load(f)
-                print(f"Successfully loaded and parsed JSON data: {data}")
+                logger.info(f"Successfully loaded and parsed JSON data: {data}")
                 return data
         except json.JSONDecodeError as e:
-            print(f"Error decoding JSON from {MULTIAGENTS_FILE}: {e}")
-            return [] # Return empty list on decode error
+            logger.error(f"Error decoding JSON from {MULTIAGENTS_FILE}: {e}")
+            return []
         except Exception as e:
-            print(f"An unexpected error occurred while reading {MULTIAGENTS_FILE}: {e}")
+            logger.error(f"An unexpected error occurred while reading {MULTIAGENTS_FILE}: {e}")
             return []
     else:
-        print(f"File not found: {MULTIAGENTS_FILE}")
+        logger.info(f"File not found: {MULTIAGENTS_FILE}")
         return []
 
 def save_multi_agents(multi_agents):
@@ -204,62 +207,53 @@ def load_tools() -> List[Tool]:
             tools_data = json.load(f)
             return [Tool(**tool) for tool in tools_data]
     except FileNotFoundError:
-        # Return default tools if file doesn't exist
         return [
             Tool(
                 id="github",
                 name="GitHub",
                 description="Connect your GitHub repositories to automate code analysis, PR reviews, and issue management.",
-                # icon="/static/images/github-icon.svg",
                 tags=["Code", "Version Control", "Automation"]
             ),
             Tool(
                 id="slack",
                 name="Slack",
                 description="Integrate with Slack to receive notifications and interact with your workspace through chat commands.",
-                # icon="/static/images/slack-icon.svg",
                 tags=["Communication", "Notifications", "Chat"]
             ),
             Tool(
                 id="discord",
                 name="Discord",
                 description="Connect your Discord server to manage community interactions and automate moderation tasks.",
-                # icon="/static/images/discord-icon.svg",
                 tags=["Community", "Chat", "Gaming"]
             ),
             Tool(
                 id="clickup",
                 name="ClickUp",
                 description="Integrate with ClickUp to manage tasks, track progress, and automate project workflows.",
-                # icon="/static/images/clickup-icon.svg",
                 tags=["Project Management", "Tasks", "Productivity"]
             ),
             Tool(
                 id="spotify",
                 name="Spotify",
                 description="Control Spotify playback and manage playlists through automated commands.",
-                # icon="/static/images/spotify-icon.svg",
                 tags=["Music", "Entertainment", "Media"]
             ),
             Tool(
                 id="twitter",
                 name="Twitter",
                 description="Automate tweet scheduling, monitoring, and engagement with your Twitter audience.",
-                # icon="/static/images/twitter-icon.svg",
                 tags=["Social Media", "Marketing", "Automation"]
             ),
             Tool(
                 id="notion",
                 name="Notion",
                 description="Connect with Notion to manage documents, databases, and knowledge bases automatically.",
-                # icon="/static/images/notion-icon.svg",
                 tags=["Knowledge Base", "Documentation", "Organization"]
             ),
             Tool(
                 id="outlook",
                 name="Outlook",
                 description="Integrate with Outlook to manage emails, calendar events, and contacts programmatically.",
-                # icon="/static/images/outlook-icon.svg",
                 tags=["Email", "Calendar", "Communication"]
             )
         ]
@@ -282,15 +276,14 @@ def save_custom_tools(tools: List[Tool]):
 
 # --- Data Connector Models and APIs ---
 
-# Data Connector Models
 class PostgresConnectionConfig(BaseModel):
     uniqueName: str
     vectorStoreUser: str
     vectorStoreHost: str
-    vectorStorePassword: str # Keep as string for now, consider encryption later
-    vectorStorePort: str # Often string, but could be int
+    vectorStorePassword: str
+    vectorStorePort: str
     vectorStoreDBName: str
-    connectorType: str = 'postgres' # Added in JS, but good to have default
+    connectorType: str = 'postgres'
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 class PostgresConnectionTest(BaseModel):
@@ -299,25 +292,22 @@ class PostgresConnectionTest(BaseModel):
 
 @app.post("/api/data-connectors", status_code=201)
 async def save_data_connector(connector_config: PostgresConnectionConfig):
-    # For now, we only support Postgres, but this could be expanded
     if connector_config.connectorType != 'postgres':
         raise HTTPException(status_code=400, detail="Only postgres connectors are supported currently.")
         
     connectors = load_connectors()
     
-    # Check if a connector with the same uniqueName already exists
     if any(c.get('uniqueName') == connector_config.uniqueName for c in connectors):
         raise HTTPException(status_code=409, detail=f"Connector with name '{connector_config.uniqueName}' already exists.")
 
-    # Create new connector with generated ID and timestamp
     new_connector_dict = connector_config.dict()
-    new_connector_dict['id'] = str(uuid.uuid4())  # Ensure ID is generated
-    new_connector_dict['createdAt'] = datetime.utcnow().isoformat()  # Add timestamp
+    new_connector_dict['id'] = str(uuid.uuid4())
+    new_connector_dict['createdAt'] = datetime.utcnow().isoformat()
     
     connectors.append(new_connector_dict)
     save_connectors(connectors)
     
-    return new_connector_dict  # Return the complete connector data including ID
+    return new_connector_dict
 
 @app.get("/api/data-connectors", response_model=List[PostgresConnectionConfig])
 async def get_data_connectors():
@@ -331,7 +321,6 @@ async def update_data_connector(connector_id: str, connector_config: PostgresCon
 
     connectors = load_connectors()
     
-    # Find the connector to update
     connector_index = None
     for i, connector in enumerate(connectors):
         if connector.get('id') == connector_id:
@@ -341,7 +330,6 @@ async def update_data_connector(connector_id: str, connector_config: PostgresCon
     if connector_index is None:
         raise HTTPException(status_code=404, detail=f"Connector with ID '{connector_id}' not found.")
 
-    # Check for unique name conflict with other connectors
     name_conflict = any(
         c['uniqueName'] == connector_config.uniqueName and c['id'] != connector_id 
         for c in connectors
@@ -352,17 +340,14 @@ async def update_data_connector(connector_id: str, connector_config: PostgresCon
             detail=f"Connector with name '{connector_config.uniqueName}' already exists."
         )
 
-    # Preserve existing ID and creation timestamp
     existing_connector = connectors[connector_index]
     updated_connector = connector_config.dict()
     updated_connector['id'] = connector_id
     updated_connector['createdAt'] = existing_connector.get('createdAt')
 
-    # If password is empty in update, keep the existing password
     if not updated_connector.get('vectorStorePassword'):
         updated_connector['vectorStorePassword'] = existing_connector.get('vectorStorePassword', '')
 
-    # Update the connector
     connectors[connector_index] = updated_connector
     save_connectors(connectors)
     
@@ -375,9 +360,7 @@ async def delete_data_connector(connector_id: str):
     save_connectors(connectors)
     return {"message": "Connector deleted successfully"}
 
-
 if DISABLE_RUN:
-
     @app.post("/api/data-connectors/test")
     async def test_connection(connection_data: PostgresConnectionTest):
         if connection_data.type != "postgres":
@@ -394,30 +377,25 @@ if DISABLE_RUN:
             )
 
         try:
-            # Convert port to integer if it's a string
             try:
                 port = int(config['port'])
             except ValueError:
                 raise HTTPException(status_code=400, detail="Port must be a valid number")
 
-            # Attempt to establish connection
             conn = psycopg2.connect(
                 host=config['host'],
                 port=port,
                 database=config['database'],
                 user=config['user'],
                 password=config.get('password', ''),
-                # Add a shorter timeout for connection testing
                 connect_timeout=10
             )
 
             try:
-                # Test the connection with a simple query
                 with conn.cursor() as cur:
                     cur.execute('SELECT version();')
                     version = cur.fetchone()[0]
                 
-                # Close the connection properly
                 conn.close()
 
                 return {
@@ -438,7 +416,6 @@ if DISABLE_RUN:
                 )
 
         except PostgresError as e:
-            # Handle different PostgreSQL error cases
             error_message = str(e)
             if "timeout expired" in error_message.lower():
                 error_message = "Connection timed out. Please check if the database is accessible and the host/port are correct."
@@ -461,7 +438,6 @@ if DISABLE_RUN:
 
 # --- API Endpoints ---
 
-# Agent Endpoints
 @app.get("/api/agents")
 async def get_agents():
     return load_agents()
@@ -505,10 +481,8 @@ async def delete_agent(agent_id: str):
     save_agents(agents)
     return {"message": "Agent deleted"}
 
-# Tool Endpoints
 @app.get("/api/tools", response_model=List[Tool])
 async def get_tools():
-    # Combine built-in and custom tools
     built_in_tools = load_tools()
     custom_tools = load_custom_tools()
     return built_in_tools + custom_tools
@@ -527,28 +501,23 @@ async def add_tool(tool_id: str):
 async def create_custom_tool(tool: CustomTool):
     custom_tools = load_custom_tools()
     
-    # Check if tool with same name exists
     if any(t.name.lower() == tool.name.lower() for t in custom_tools):
         raise HTTPException(status_code=400, detail="Tool with this name already exists")
     
-    # Create new tool
     new_tool = Tool(
         id=str(uuid.uuid4()),
         name=tool.name,
         description=tool.description,
-        # icon=tool.icon,
         tags=tool.tags,
         is_custom=True,
         is_added=False
     )
     
-    # Save OpenAPI schema separately
     schema_dir = "tool_schemas"
     os.makedirs(schema_dir, exist_ok=True)
     with open(f"{schema_dir}/{new_tool.id}.json", 'w') as f:
         json.dump(tool.schema, f, indent=2)
     
-    # Save tool
     custom_tools.append(new_tool)
     save_custom_tools(custom_tools)
     
@@ -565,7 +534,6 @@ async def get_tool_schema(tool_id: str):
 
 @app.put("/api/tools/{tool_id}/auth")
 async def update_tool_auth(tool_id: str, auth: ToolAuth):
-    """Update authentication for a tool"""
     auth_dir = "tool_auth"
     os.makedirs(auth_dir, exist_ok=True)
     
@@ -596,12 +564,10 @@ async def update_tool(tool_id: str, updated_tool: CustomTool):
                 id=tool_id,
                 name=updated_tool.name,
                 description=updated_tool.description,
-                # icon=updated_tool.icon,
                 tags=updated_tool.tags,
                 is_custom=True
             )
             
-            # Update schema
             schema_dir = "tool_schemas"
             with open(f"{schema_dir}/{tool_id}.json", 'w') as f:
                 json.dump(updated_tool.schema, f, indent=2)
@@ -618,17 +584,14 @@ async def delete_tool(tool_id: str):
     custom_tools = [tool for tool in custom_tools if tool.id != tool_id]
     save_custom_tools(custom_tools)
     
-    # Delete schema file if exists
     schema_path = f"tool_schemas/{tool_id}.json"
     if os.path.exists(schema_path):
         os.remove(schema_path)
     
-    # Delete auth file if exists
     auth_path = f"tool_auth/{tool_id}.json"
     if os.path.exists(auth_path):
         os.remove(auth_path)
     
-    # Remove tool from agents
     agents = load_agents()
     for agent in agents:
         if tool_id in agent.get('tools', []):
@@ -637,15 +600,12 @@ async def delete_tool(tool_id: str):
     
     return {"message": "Tool deleted"}
 
-# Notification Endpoints
 @app.get("/api/notifications")
 async def get_notifications():
-    """Get all notifications"""
     return load_notifications()
 
 @app.post("/api/notifications/{notification_id}/mark-read")
 async def mark_notification_read(notification_id: str):
-    """Mark a single notification as read"""
     notifications = load_notifications()
     for notification in notifications:
         if notification["id"] == notification_id:
@@ -656,23 +616,19 @@ async def mark_notification_read(notification_id: str):
 
 @app.post("/api/notifications/mark-all-read")
 async def mark_all_notifications_read():
-    """Mark all notifications as read"""
     notifications = load_notifications()
     for notification in notifications:
         notification["read"] = True
     save_notifications(notifications)
     return {"message": "All notifications marked as read"}
 
-# HTML Fragment Endpoint
 @app.get("/pages/{page_name}")
 async def read_page_fragment(page_name: str):
     file_path = f"static/pages/{page_name}.html"
-    # Basic security check to prevent path traversal
     if ".." in page_name or page_name.startswith("/"):
          raise HTTPException(status_code=404, detail="Page not found")
     if os.path.exists(file_path) and os.path.isfile(file_path):
         return FileResponse(file_path)
-    # Optionally, try loading index if page_name is empty or 'home'
     if page_name == "" or page_name == "home":
          if os.path.exists("static/pages/home.html"):
               return FileResponse("static/pages/home.html")
@@ -680,7 +636,6 @@ async def read_page_fragment(page_name: str):
 
 # --- Agent Inference Models & Endpoint ---
 
-# Response models for different message types
 class TableData(BaseModel):
     headers: List[str]
     rows: List[List[str]]
@@ -704,16 +659,15 @@ class ErrorData(BaseModel):
     details: Optional[str] = None
 
 class MessageResponse(BaseModel):
-    type: str  # One of: "text", "error", "table", "chart", "code", "list", "image", "file"
+    type: str
     content: Union[TextData, ErrorData, TableData, ChartData, CodeData, ListData, Dict[str, Any]]
 
 class InferenceRequest(BaseModel):
     agentId: str
     userInput: str
 
-# Allowed file types (MIME types mapped to categories)
 ALLOWED_FILE_TYPES = {
-    "image/jpeg": "image",  # Covers both .jpg and .jpeg
+    "image/jpeg": "image",
     "image/png": "image",
     "image/gif": "image",
     "text/csv": "csv",
@@ -722,9 +676,7 @@ ALLOWED_FILE_TYPES = {
     "application/pdf": "pdf"
 }
 
-
 if DISABLE_RUN:
-
     @app.post("/api/agent/infer")
     async def agent_infer(
         agentId: str = Form(...),
@@ -732,7 +684,6 @@ if DISABLE_RUN:
         file: Optional[UploadFile] = File(None)
     ):
         try:
-            # Get the agent from storage
             agents = load_agents()
             agent = next((a for a in agents if a["id"] == agentId), None)
             
@@ -745,14 +696,12 @@ if DISABLE_RUN:
                     )
                 )
 
-            # Handle file upload if present
             file_info = None
             file_path = None
             if file:
-                # Validate file size (max 10MB)
                 contents = await file.read()
                 file_size = len(contents)
-                if file_size > 10 * 1024 * 1024:  # 10MB
+                if file_size > 10 * 1024 * 1024:
                     return MessageResponse(
                         type="error",
                         content=ErrorData(
@@ -761,7 +710,6 @@ if DISABLE_RUN:
                         )
                     )
 
-                # Check file type (case-insensitive MIME type check)
                 if file.content_type not in ALLOWED_FILE_TYPES:
                     return MessageResponse(
                         type="error",
@@ -771,16 +719,13 @@ if DISABLE_RUN:
                         )
                     )
 
-                # Generate unique filename (preserve original extension case)
-                file_extension = os.path.splitext(file.filename)[1]  # Keeps case, e.g., .JPEG or .jpeg
+                file_extension = os.path.splitext(file.filename)[1]
                 unique_filename = f"{uuid.uuid4()}{file_extension}"
                 file_path = UPLOAD_DIR / unique_filename
 
-                # Save file
                 with open(file_path, "wb") as buffer:
                     buffer.write(contents)
 
-                # Store file info
                 file_info = {
                     "original_name": file.filename,
                     "saved_name": unique_filename,
@@ -789,16 +734,8 @@ if DISABLE_RUN:
                     "path": str(file_path),
                     "uploaded_at": datetime.now().isoformat()
                 }
-                print(f"File saved: {file_path}")
+                logger.info(f"File saved: {file_path}")
 
-            # Get API keys from environment variables
-            # API_KEYS = {
-            #     "gemini": os.getenv("GEMINI_API_KEY"),
-            #     "openai": os.getenv("OPENAI_API_KEY"),
-            #     "groq": os.getenv("GROQ_API_KEY"),
-            # }
-
-            # Load tool configurations for this agent
             tools_config = []
             for tool_id in agent.get("tools", []):
                 schema_path = f"tool_schemas/{tool_id}.json"
@@ -813,35 +750,32 @@ if DISABLE_RUN:
                             tool_config["auth"] = json.load(f)
                     tools_config.append(tool_config)
 
-            # Pass the single agent configuration dict and tools_config list to TaskExecutor
             agent_config_dict = {
                 "role": agent["role"],
                 "goal": agent["goal"],
                 "backstory": agent["backstory"],
-                "instructions": agent["instructions"] # Pass instructions here
+                "instructions": agent["instructions"]
             }
             
-            # Instantiate the single-agent executor
             executor = TaskExecutor(agent_config=agent_config_dict, tools_config=tools_config)
-
 
             if userInput:
                 agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
 
-            # Execute the task using the original TaskExecutor logic
             result = executor.execute_task(
-                description=agent["instructions"], # Base instructions
+                description=agent["instructions"],
                 expected_output=agent["expectedOutput"],
                 task_name=agent["name"],
-                input=userInput, # Pass user input as kwarg
+                input=userInput,
                 file_path=file_path if file_info else None
             )
-            print(result)
+            logger.info(f"Agent inference result: {result}")
 
             response = MessageResponse(type="text", content=TextData(text=result))
             return response
             
         except Exception as e:
+            logger.error(f"Error in agent_infer: {str(e)}")
             return MessageResponse(
                 type="error",
                 content=ErrorData(
@@ -849,17 +783,10 @@ if DISABLE_RUN:
                     details=str(e)
                 )
             )
-        
-
-    # --- Multi-Agent Models & Endpoints ---
 
     class MultiAgentInferenceRequest(BaseModel):
         multi_agent_id: str
         user_input: str
-        # Add file handling if needed later
-
-
-
 
     @app.post("/api/multi_agent/infer")
     async def multi_agent_infer(request: MultiAgentInferenceRequest):
@@ -870,12 +797,10 @@ if DISABLE_RUN:
             logger.info(f"Received multi-agent infer request for ID: {multi_agent_id}")
             logger.debug(f"User input: {user_input}")
 
-            # Validate user input
             if not user_input or user_input.strip() == "":
                 logger.error("Empty or invalid user input provided.")
                 raise HTTPException(status_code=400, detail="User input cannot be empty.")
 
-            # Load multi-agent configuration
             multi_agents = load_multi_agents()
             multi_agent_config = next((ma for ma in multi_agents if ma["id"] == multi_agent_id), None)
             
@@ -883,7 +808,6 @@ if DISABLE_RUN:
                 logger.error(f"Multi-Agent not found: {multi_agent_id}")
                 raise HTTPException(status_code=404, detail=f"Multi-Agent not found: {multi_agent_id}")
 
-            # Set default values for manager config
             multi_agent_config.setdefault("role", "Coordinator")
             multi_agent_config.setdefault("goal", "Efficiently manage and delegate tasks.")
             multi_agent_config.setdefault("backstory", "Orchestrator for connected agents.")
@@ -894,7 +818,6 @@ if DISABLE_RUN:
                 "<agent_name> Output: <output from agent>\n"
                 "(repeated for each agent in the sequence)\n"
             ))
-            # Load worker agent configurations
             all_agents = load_agents()
             connected_agent_ids = multi_agent_config.get("agent_ids", [])
             worker_agent_configs = []
@@ -905,7 +828,6 @@ if DISABLE_RUN:
                     logger.warning(f"Agent with ID {agent_id} not found, skipping.")
                     continue
 
-                # Load tool configurations
                 worker_tools_config = []
                 for tool_id in agent_data.get("tools", []):
                     schema_path = f"tool_schemas/{tool_id}.json"
@@ -933,7 +855,6 @@ if DISABLE_RUN:
 
                     worker_tools_config.append(tool_cfg)
 
-                # Prepare worker config
                 worker_config = {
                     "id": agent_data["id"],
                     "name": agent_data.get("name", agent_data["role"]),
@@ -947,12 +868,10 @@ if DISABLE_RUN:
                 worker_agent_configs.append(worker_config)
                 logger.info(f"Loaded config for worker agent {agent_id} ({worker_config['name']})")
 
-            # Validate minimum worker agents
             if len(worker_agent_configs) < 2:
                 logger.error("At least two worker agents are required.")
                 raise HTTPException(status_code=400, detail="Multi-agent requires at least two worker agents.")
 
-            # Update manager description with user input
             if user_input:
                 default_description = multi_agent_config["description"]
                 if "{{input}}" in default_description:
@@ -960,7 +879,6 @@ if DISABLE_RUN:
                 else:
                     multi_agent_config["description"] = f"{default_description}\nInput to process: {user_input}"
 
-            # Instantiate and execute
             executor = MultiAgentExecutor(
                 multi_agent_config=multi_agent_config,
                 worker_agent_configs=worker_agent_configs
@@ -979,26 +897,11 @@ if DISABLE_RUN:
         except Exception as e:
             logger.error(f"Error in multi_agent_infer: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-        
-
-    
 
 def check_in_sentence(sentence="", input_to_check="{{input}}"):
-    """
-    Check if input_to_check exists in the given sentence and modify sentence if not found.
-    
-    Parameters:
-    sentence (str): The sentence to search in
-    input_to_check (str): The word/phrase to look for
-    
-    Returns:
-    str: Original sentence if input found, modified sentence if not found
-    """
-    # Convert both to lowercase for case-insensitive comparison
     sentence_lower = sentence.lower()
     input_lower = input_to_check.lower()
     
-    # Check if input exists in sentence
     if input_lower in sentence_lower:
         return sentence
     else:
@@ -1016,11 +919,10 @@ async def upload_file(file: UploadFile = File(...), agentId: str = None):
                 )
             )
 
-        # Validate file size (max 10MB)
         file_size = 0
         contents = await file.read()
         file_size = len(contents)
-        if file_size > 10 * 1024 * 1024:  # 10MB
+        if file_size > 10 * 1024 * 1024:
             return MessageResponse(
                 type="error",
                 content=ErrorData(
@@ -1029,16 +931,13 @@ async def upload_file(file: UploadFile = File(...), agentId: str = None):
                 )
             )
 
-        # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = UPLOAD_DIR / unique_filename
 
-        # Save file
         with open(file_path, "wb") as buffer:
             buffer.write(contents)
 
-        # Get file info
         file_info = {
             "original_name": file.filename,
             "saved_name": unique_filename,
@@ -1047,7 +946,6 @@ async def upload_file(file: UploadFile = File(...), agentId: str = None):
             "uploaded_at": datetime.now().isoformat()
         }
 
-        # For images, return preview
         if file.content_type.startswith('image/'):
             return MessageResponse(
                 type="image",
@@ -1057,12 +955,11 @@ async def upload_file(file: UploadFile = File(...), agentId: str = None):
                 }
             )
         else:
-            # For other files, return file info
             return MessageResponse(
                 type="file",
                 content={
                     "info": file_info,
-                    "preview": None  # You could add text preview for text files here
+                    "preview": None
                 }
             )
 
@@ -1075,7 +972,6 @@ async def upload_file(file: UploadFile = File(...), agentId: str = None):
             )
         )
 
-# API endpoints for multi-agents
 class MultiAgentCreate(BaseModel):
     name: str
     description: str
@@ -1083,11 +979,10 @@ class MultiAgentCreate(BaseModel):
     role: Optional[str] = "Coordinator"
     goal: Optional[str] = "Efficiently manage and delegate tasks to connected agents based on user requests."
     backstory: Optional[str] = "I am a manager agent responsible for orchestrating multiple specialized agents to achieve complex goals."
-    expected_output: str # Make mandatory
+    expected_output: str
 
 class MultiAgent(MultiAgentCreate):
     id: str
-
 
 @app.get("/api/multi-agents")
 async def get_multi_agents():
@@ -1096,7 +991,6 @@ async def get_multi_agents():
 @app.post("/api/multi-agents")
 async def create_multi_agent(multi_agent: MultiAgentCreate):
     multi_agents = load_multi_agents()
-    # Ensure default values are included if not provided
     agent_data = multi_agent.dict(exclude_unset=False)
     new_multi_agent = MultiAgent(
         id=str(uuid.uuid4()),
@@ -1111,7 +1005,6 @@ async def get_multi_agent(multi_agent_id: str):
     multi_agents = load_multi_agents()
     for ma in multi_agents:
         if ma["id"] == multi_agent_id:
-            # Ensure defaults are present for older entries
             ma.setdefault("role", "Coordinator")
             ma.setdefault("goal", "Efficiently manage and delegate tasks.")
             ma.setdefault("backstory", "Orchestrator for connected agents.")
@@ -1123,7 +1016,6 @@ async def update_multi_agent(multi_agent_id: str, updated_multi_agent: MultiAgen
     multi_agents = load_multi_agents()
     for i, ma in enumerate(multi_agents):
         if ma["id"] == multi_agent_id:
-            # Merge update, keeping the ID and ensuring defaults are included
             updated_data = updated_multi_agent.dict(exclude_unset=False)
             multi_agents[i] = {
                 "id": multi_agent_id,
@@ -1140,50 +1032,11 @@ async def delete_multi_agent(multi_agent_id: str):
     save_multi_agents(multi_agents)
     return {"message": "Multi-Agent deleted"}
 
-# Catch-all route to serve the main index.html for any other path
-# This MUST be defined AFTER all API routes and static file mounts
-@app.get("/{full_path:path}")
-async def serve_frontend(request: Request):
-    full_path = request.path_params.get("full_path", "")
-    # Special handling for multi-agents page
-    if full_path == "multi-agents":
-        return FileResponse("static/index.html")
-
-    # Existing logic to serve index.html for SPA routes
-    # Assuming this logic is needed for other routes
-    # You might need to adjust this based on your exact SPA routing needs
-    potential_file_path = f"static/{full_path}"
-    if not os.path.exists(potential_file_path) or os.path.isdir(potential_file_path):
-        # If the path doesn't correspond to an existing file/directory in static,
-        # assume it's an SPA route and serve index.html
-        if full_path not in ["favicon.ico"]: # Add other static assets if needed
-             return FileResponse("static/index.html")
-
-    # Default: Let StaticFiles handle existing static assets
-    # Or explicitly return index.html if that's the desired fallback
-    return FileResponse("static/index.html")
-
-# --- Other Example Endpoints (Keep after specific APIs) ---
-
-# ... TimeRequest, get_greeting ...
-# ... TextRequest, process_text ...
-
-# --- Catch-all Route for SPA (MUST BE LAST) ---
-
-
-
-
-
-
-
-
-
 class TimeRequest(BaseModel):
-    hour: Optional[int] = None  # Python 3.8 compatible annotation
+    hour: Optional[int] = None
 
 @app.post("/greet", summary="Get a greeting message")
 async def get_greeting(request: TimeRequest):
-    # Get the current UTC time and convert to IST (UTC+5:30)
     now_utc = datetime.utcnow()
     now_bengaluru = now_utc + timedelta(hours=5, minutes=30)
 
@@ -1203,12 +1056,9 @@ async def get_greeting(request: TimeRequest):
 
     return {"greeting": greeting}
 
-
-# Pydantic model for TextRequest (used by /process)
 class TextRequest(BaseModel):
     text: str
 
-# Process text endpoint
 EMOJI_MAP = {
     "morning": "☀️",
     "afternoon": "🌤️",
@@ -1226,10 +1076,165 @@ async def process_text(request: TextRequest):
     if not text:
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
-    # Find a relevant emoji based on keywords in the text
     emoji = next((emoji for keyword, emoji in EMOJI_MAP.items() if keyword in text.lower()), "✨")
     
-    # Append emoji to the processed text
     processed_text = f"{text} {emoji}"
 
     return {"result": processed_text}
+
+# --- Advanced Tool Models ---
+class AdvancedTool(BaseModel):
+    id: str
+    name: str
+    description: str
+    tags: List[str]
+    schema: Dict[str, Any]
+    data_connector_id: Optional[str] = None
+    is_added: bool = False
+
+class AdvancedToolCreate(BaseModel):
+    name: str
+    description: str
+    tags: List[str]
+    schema: Dict[str, Any]
+    data_connector_id: Optional[str] = None
+
+def load_advanced_tools() -> List[AdvancedTool]:
+    try:
+        with open('advanced_tools.json', 'r') as f:
+            tools_data = json.load(f)
+            return [AdvancedTool(**tool) for tool in tools_data]
+    except FileNotFoundError:
+        return []
+
+def save_advanced_tools(tools: List[AdvancedTool]):
+    with open('advanced_tools.json', 'w') as f:
+        json.dump([tool.dict() for tool in tools], f, indent=2)
+
+# --- Advanced Tool Endpoints ---
+@app.get("/api/advanced-tools", response_model=List[AdvancedTool])
+async def get_advanced_tools():
+    logger.info("Fetching advanced tools")
+    tools = load_advanced_tools()
+    logger.info(f"Returning {len(tools)} advanced tools")
+    return tools
+
+@app.post("/api/advanced-tools")
+async def create_advanced_tool(tool: AdvancedToolCreate):
+    if tool.data_connector_id:
+        connectors = load_connectors()
+        if not any(c["id"] == tool.data_connector_id for c in connectors):
+            raise HTTPException(status_code=400, detail="Invalid data connector ID")
+
+    tools = load_advanced_tools()
+    
+    if any(t.name.lower() == tool.name.lower() for t in tools):
+        raise HTTPException(status_code=400, detail="Tool with this name already exists")
+    
+    new_tool = AdvancedTool(
+        id=str(uuid.uuid4()),
+        name=tool.name,
+        description=tool.description,
+        tags=tool.tags,
+        schema=tool.schema,
+        data_connector_id=tool.data_connector_id,
+        is_added=False
+    )
+    
+    schema_dir = "tool_schemas"
+    os.makedirs(schema_dir, exist_ok=True)
+    with open(f"{schema_dir}/{new_tool.id}.json", 'w') as f:
+        json.dump(tool.schema, f, indent=2)
+    
+    tools.append(new_tool)
+    save_advanced_tools(tools)
+    
+    return new_tool
+
+@app.get("/api/advanced-tools/{tool_id}")
+async def get_advanced_tool(tool_id: str):
+    tools = load_advanced_tools()
+    for tool in tools:
+        if tool.id == tool_id:
+            return tool
+    raise HTTPException(status_code=404, detail="Advanced tool not found")
+
+@app.put("/api/advanced-tools/{tool_id}")
+async def update_advanced_tool(tool_id: str, updated_tool: AdvancedToolCreate):
+    tools = load_advanced_tools()
+    
+    if updated_tool.data_connector_id:
+        connectors = load_connectors()
+        if not any(c["id"] == updated_tool.data_connector_id for c in connectors):
+            raise HTTPException(status_code=400, detail="Invalid data connector ID")
+    
+    for i, tool in enumerate(tools):
+        if tool.id == tool_id:
+            if any(t.name.lower() == updated_tool.name.lower() and t.id != tool_id for t in tools):
+                raise HTTPException(status_code=400, detail="Tool with this name already exists")
+            
+            updated = AdvancedTool(
+                id=tool_id,
+                name=updated_tool.name,
+                description=updated_tool.description,
+                tags=updated_tool.tags,
+                schema=updated_tool.schema,
+                data_connector_id=updated_tool.data_connector_id,
+                is_added=tool.is_added
+            )
+            
+            schema_dir = "tool_schemas"
+            with open(f"{schema_dir}/{tool_id}.json", 'w') as f:
+                json.dump(updated_tool.schema, f, indent=2)
+            
+            tools[i] = updated
+            save_advanced_tools(tools)
+            return updated
+            
+    raise HTTPException(status_code=404, detail="Advanced tool not found")
+
+@app.delete("/api/advanced-tools/{tool_id}")
+async def delete_advanced_tool(tool_id: str):
+    tools = load_advanced_tools()
+    tools = [tool for tool in tools if tool.id != tool_id]
+    save_advanced_tools(tools)
+    
+    schema_path = f"tool_schemas/{tool_id}.json"
+    if os.path.exists(schema_path):
+        os.remove(schema_path)
+    
+    return {"message": "Advanced tool deleted"}
+
+@app.post("/api/advanced-tools/{tool_id}/add")
+async def add_advanced_tool(tool_id: str):
+    tools = load_advanced_tools()
+    for tool in tools:
+        if tool.id == tool_id:
+            tool.is_added = True
+            save_advanced_tools(tools)
+            return {"message": "Advanced tool added successfully"}
+    raise HTTPException(status_code=404, detail="Advanced tool not found")
+
+# --- Catch-all Route for SPA (MUST BE LAST) ---
+@app.get("/{full_path:path}")
+async def serve_frontend(request: Request):
+    full_path = request.path_params.get("full_path", "")
+    logger.info(f"Catch-all route matched for path: {full_path}")
+
+    # Exclude API, static, and other reserved paths
+    reserved_prefixes = ["/api/", "/static/", "/pages/"]
+    if any(full_path.startswith(prefix) for prefix in reserved_prefixes):
+        logger.warning(f"Reserved path accessed via catch-all: {full_path}")
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    # Special handling for multi-agents page
+    if full_path == "multi-agents":
+        return FileResponse("static/index.html")
+
+    # Serve index.html for SPA routes
+    potential_file_path = f"static/{full_path}"
+    if not os.path.exists(potential_file_path) or os.path.isdir(potential_file_path):
+        if full_path not in ["favicon.ico"]:
+            return FileResponse("static/index.html")
+
+    return FileResponse("static/index.html")
