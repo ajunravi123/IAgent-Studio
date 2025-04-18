@@ -112,6 +112,7 @@ function loadPage(pagePath) {
                         });
                     } else if (basePage === 'tools') {
                         loadExternalTools();
+                        loadAdvancedTools(); // Always refresh advanced tools when visiting the Tools tab
                         // Initialize search for tools page if needed
                         const searchInput = document.querySelector('.page.tools .search-bar input');
                         if (searchInput && !searchInput.dataset.listenerAttached) {
@@ -2665,10 +2666,16 @@ function init() {
                 event.preventDefault();
                 const pagePath = link.getAttribute('href');
                 
+                // Check if user is navigating to the Tools tab
+                const isNavigatingToTools = pagePath === '/tools';
+                
                 // Check if it's the currently active page to prevent unnecessary reload
                 if (pagePath !== window.location.pathname) {
                     window.history.pushState({ path: pagePath }, '', pagePath);
                     loadPage(pagePath);
+                } else if (isNavigatingToTools) {
+                    // If already on Tools page but clicked again, still refresh advanced tools
+                    loadAdvancedTools();
                 }
             }
         });
@@ -7175,7 +7182,7 @@ async function loadAdvancedTools() {
                 </div>
                 ${tool.data_connector_id ? `
                     <div class="advanced-tool-connector">
-                        <i class="fas fa-database"></i> Connected to: ${tool.data_connector_id}
+                        <i class="fas fa-database"></i> <i>Connected to:</i> <b>${tool.connector_uniqueName} (${tool.connectorType})</b>
                     </div>
                 ` : ''}
                 <div class="advanced-tool-actions">

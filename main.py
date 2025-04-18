@@ -1090,6 +1090,8 @@ class AdvancedTool(BaseModel):
     tags: List[str]
     schema: Dict[str, Any]
     data_connector_id: Optional[str] = None
+    connector_uniqueName: Optional[str] = None
+    connectorType: Optional[str] = None
     is_added: bool = False
 
 class AdvancedToolCreate(BaseModel):
@@ -1116,6 +1118,25 @@ def save_advanced_tools(tools: List[AdvancedTool]):
 async def get_advanced_tools():
     logger.info("Fetching advanced tools")
     tools = load_advanced_tools()
+    connectors = load_connectors()
+    
+    # Create a mapping of connector IDs to their names and types
+    connector_map = {
+        connector['id']: {
+            'uniqueName': connector['uniqueName'],
+            'connectorType': connector['connectorType']
+        } for connector in connectors
+    }
+    
+    # Add connector name and type to each tool
+    for tool in tools:
+        if tool.data_connector_id and tool.data_connector_id in connector_map:
+            tool.connector_uniqueName = connector_map[tool.data_connector_id]['uniqueName']
+            tool.connectorType = connector_map[tool.data_connector_id]['connectorType']
+        else:
+            tool.connector_uniqueName = None
+            tool.connectorType = None
+            
     logger.info(f"Returning {len(tools)} advanced tools")
     return tools
 
