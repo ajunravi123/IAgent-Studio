@@ -89,6 +89,7 @@ class Tool(BaseModel):
     description: str
     tags: List[str]
     is_added: bool = False
+    data_connector_id: Optional[str] = None
 
 class OpenAPIServer(BaseModel):
     url: str
@@ -615,7 +616,8 @@ async def create_custom_tool(tool: CustomTool):
         description=tool.description,
         tags=tool.tags,
         is_custom=True,
-        is_added=False
+        is_added=False,
+        data_connector_id=tool.data_connector_id
     )
 
     # Handle schema
@@ -678,7 +680,8 @@ async def update_tool(tool_id: str, updated_tool: CustomTool):
                 name=updated_tool.name,
                 description=updated_tool.description,
                 tags=updated_tool.tags,
-                is_custom=True
+                is_custom=True,
+                data_connector_id=updated_tool.data_connector_id
             )
             
             schema_dir = "tool_schemas"
