@@ -110,8 +110,9 @@ class TaskExecutor:
                 tool_schema = tool_config["schema"]
                 tool_headers = tool_config.get("auth", {}).get("headers", {})
                 tool_params = tool_config.get("auth", {}).get("params", {})
+                tool_data_connector = tool_config.get("data_connector", None)
 
-                def create_api_caller(tool_schema, tool_headers, tool_params):
+                def create_api_caller(tool_schema, tool_headers, tool_params, tool_data_connector):
                     def api_caller(input_text, **kwargs):
                         try:
                             url = kwargs.get('url')
@@ -129,7 +130,7 @@ class TaskExecutor:
                                 endpoint_url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
                             
                             schema_analysis = self.analyze_schema(tool_schema)
-                            payload = self.generate_payload(input_text, tool_schema, schema_analysis)
+                            payload = self.generate_payload(input_text, tool_schema, schema_analysis, tool_data_connector)
                             if not payload:
                                 return {"error": "Failed to generate valid payload"}
 
@@ -152,7 +153,7 @@ class TaskExecutor:
                     return api_caller
 
                 tool_name = tool_schema["info"]["title"].lower().replace(" ", "_")
-                api_caller = create_api_caller(tool_schema, tool_headers, tool_params)
+                api_caller = create_api_caller(tool_schema, tool_headers, tool_params, tool_data_connector)
                 api_caller_with_config = partial(
                     api_caller,
                     url=tool_schema["paths"],
@@ -201,7 +202,7 @@ class TaskExecutor:
         result = crew.kickoff()
         return str(result)
 
-    def generate_payload(self, user_input: str, schema: dict, schema_analysis: str) -> Optional[dict]:
+    def generate_payload(self, user_input: str, schema: dict, schema_analysis: str, tool_data_connector: Optional[dict] = None) -> Optional[dict]:
         paths = schema.get("paths", {})
         if not paths:
             return None
@@ -212,6 +213,16 @@ class TaskExecutor:
         content = request_body.get("content", {})
         json_content = content.get("application/json", {})
         request_schema = json_content.get("schema", {})
+        
+        # Prepare tool_data_connector information for the prompt
+        connector_info = ""
+        if tool_data_connector:
+            connector_info = f"""
+                Tool Data Connector:
+                {json.dumps(tool_data_connector, indent=2)}
+                
+                Ensure the payload is compatible with the specified data connector's configuration and type.
+            """
         
         payload_task = Task(
             description=f"""
@@ -225,6 +236,8 @@ class TaskExecutor:
                 Request Schema:
                 {json.dumps(request_schema, indent=2)}
                 
+                {connector_info}
+                
                 Generate a valid JSON payload that:
                 1. Satisfies all schema requirements and constraints
                 2. Extracts relevant information from the user input
@@ -235,6 +248,7 @@ class TaskExecutor:
                    - Handle various time formats (morning, afternoon, evening, night)
                    - Use current time as fallback for invalid inputs
                 5. For invalid inputs, use sensible defaults
+                6. If a tool_data_connector is provided, ensure the payload is compatible with its configuration (e.g., database type, schema, or connection details)
                 
                 Return only the JSON payload as a string.
                 If no valid payload can be determined, return an empty JSON object '{{}}'.

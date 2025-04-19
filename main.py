@@ -860,12 +860,24 @@ if DISABLE_RUN:
                 logger.info(f"File saved: {file_path}")
 
             tools_config = []
+            all_tools = load_custom_tools()
+            connectors = load_connectors()  # Load all data connectors
+            
             for tool_id in agent.get("tools", []):
                 schema_path = f"tool_schemas/{tool_id}.json"
                 auth_path = f"tool_auth/{tool_id}.json"
                 
                 if os.path.exists(schema_path):
                     tool_config = {"id": tool_id}
+                    
+                    # Get the tool's data connector ID if it exists
+                    tool = next((t for t in all_tools if t.id == tool_id), None)
+                    if tool and tool.data_connector_id:
+                        # Find the connector configuration
+                        connector = next((c for c in connectors if c["id"] == tool.data_connector_id), None)
+                        if connector:
+                            tool_config["data_connector"] = connector
+                    
                     with open(schema_path, 'r') as f:
                         tool_config["schema"] = json.load(f)
                     if os.path.exists(auth_path):
@@ -945,6 +957,9 @@ if DISABLE_RUN:
             connected_agent_ids = multi_agent_config.get("agent_ids", [])
             worker_agent_configs = []
 
+            all_tools = load_custom_tools()
+            connectors = load_connectors()
+
             for agent_id in connected_agent_ids:
                 agent_data = next((a for a in all_agents if a["id"] == agent_id), None)
                 if not agent_data:
@@ -975,6 +990,14 @@ if DISABLE_RUN:
                         except json.JSONDecodeError as e:
                             logger.warning(f"Invalid JSON in auth file {auth_path} for agent {agent_id}: {e}")
                             tool_cfg["auth"] = {}
+
+                    # Get the tool's data connector ID if it exists
+                    tool = next((t for t in all_tools if t.id == tool_id), None)
+                    if tool and tool.data_connector_id:
+                        # Find the connector configuration
+                        connector = next((c for c in connectors if c["id"] == tool.data_connector_id), None)
+                        if connector:
+                            tool_cfg["data_connector"] = connector
 
                     worker_tools_config.append(tool_cfg)
 
