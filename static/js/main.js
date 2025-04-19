@@ -1290,9 +1290,17 @@ function loadExternalTools() {
                 return;
             }
 
+            // Get the parent section of inBuiltToolsGrid
+            const inBuiltToolsSection = inBuiltToolsGrid.closest('.tools-content');
+
             // Separate internal and external tools
             const internalTools = tools.filter(tool => tool.is_internal === true);
             const externalTools = tools.filter(tool => tool.is_internal !== true);
+
+            // Show/hide the entire In-Built Tools section based on whether there are internal tools
+            if (inBuiltToolsSection) {
+                inBuiltToolsSection.style.display = internalTools.length > 0 ? 'block' : 'none';
+            }
 
             if (internalTools.length === 0 && externalTools.length === 0) {
                 toolsGrid.innerHTML = `
@@ -1302,7 +1310,6 @@ function loadExternalTools() {
                         <button class="btn-primary" onclick="showAddCustomTool()">+ Add new tool</button>
                     </div>
                 `;
-                inBuiltToolsGrid.style.display = 'none';
                 return;
             }
 

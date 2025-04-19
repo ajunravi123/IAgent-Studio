@@ -1261,6 +1261,7 @@ input:checked + .slider:before {
 /* Tools page styles */
 .tools-content {
     margin-top: 24px;
+    padding-bottom: 40px;
 }
 
 .tools-content h2 {
