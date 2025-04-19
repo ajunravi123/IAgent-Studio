@@ -3369,6 +3369,8 @@ async function testPostgresConnection() {
                 color: rgba(245, 101, 101, 0.8);
                 font-size: 12px;
                 line-height: 1.4;
+                text-align: center;
+                padding-top: 9px;
             }
         `;
         document.head.appendChild(style);
