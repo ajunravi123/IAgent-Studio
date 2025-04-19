@@ -1265,7 +1265,7 @@ function loadExternalTools() {
                                 connectorHtml = `
                                     <div class="tool-connector">
                                         <i class="fas fa-database"></i>
-                                        <span>Connected to ${connectorInfo.name} (${connectorInfo.type})</span>
+                                        <span>Connected to: <label class="tool_connector_name_tag">${connectorInfo.name}</label>  <label class="tool_connector_type_tag">(${connectorInfo.type})</label></span>
                                     </div>
                                 `;
                             }
@@ -1289,10 +1289,12 @@ function loadExternalTools() {
                                 </div>
                                 <p class="tool-description">${tool.description || 'No description available'}</p>
                                 
-                                <div>${connectorHtml}</div>
+                                
                                 <div class="tool-tags tool-underline">
                                     ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
                                 </div>
+
+                                <div class="tool_connector_tag">${connectorHtml}</div>
                             </div>
                         `;
                         

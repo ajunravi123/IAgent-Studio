@@ -3579,3 +3579,16 @@ body.light-theme .agent-info h4 {
 .theme-toggle .dark-icon {
     display: block;
 }
+
+
+.tool_connector_name_tag {
+    color: #f4f4f4;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tool_connector_type_tag {
+    color: #b0c2ca;
+    font-weight: 600;
+    font-style: italic;
+}
