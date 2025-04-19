@@ -1852,9 +1852,10 @@ async function loadConfiguredConnectorsDisplay() {
                                             ${connector.connectorType}
                                         </span>
                                     </td>
-                                    <td>${connector.vectorStoreHost}</td>
-                                    <td>${connector.vectorStorePort}</td>
-                                    <td>${connector.vectorStoreDBName}</td>
+                                    <td>${connector.vectorStoreHost || '💠'}</td>
+                                    <td>${connector.vectorStorePort || '💠'}</td>
+                                    <td>${connector.vectorStoreDBName || '💠'}</td>
+
                                     <td class="actions">
                                         <button class="btn-icon btn-edit" onclick="editConnector('${connector.id}', '${connector.connectorType}')" title="Edit">
                                             <i class="fas fa-edit"></i>
