@@ -3113,29 +3113,29 @@ function showPostgresConnectionModal(connectorData = null) { // Accept optional 
                     
                     <div class="form-row">
                         <div class="form-group half">
-                            <label for="vectorStoreUser">Vector Store User <span class="required">*</span></label>
-                            <input type="text" id="vectorStoreUser" name="vectorStoreUser" placeholder="Enter Vector Store User" required value="${isEditing ? connectorData.vectorStoreUser : ''}">
+                            <label for="vectorStoreUser">User <span class="required">*</span></label>
+                            <input type="text" id="vectorStoreUser" name="vectorStoreUser" placeholder="Enter the Username" required value="${isEditing ? connectorData.vectorStoreUser : ''}">
                         </div>
                         <div class="form-group half">
-                            <label for="vectorStoreHost">Vector Store Host <span class="required">*</span></label>
-                            <input type="text" id="vectorStoreHost" name="vectorStoreHost" placeholder="Enter Vector Store Host" required value="${isEditing ? connectorData.vectorStoreHost : ''}">
+                            <label for="vectorStoreHost">Host <span class="required">*</span></label>
+                            <input type="text" id="vectorStoreHost" name="vectorStoreHost" placeholder="Enter Host" required value="${isEditing ? connectorData.vectorStoreHost : ''}">
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group half">
-                            <label for="vectorStorePassword">Vector Store Password ${isEditing ? '' : '<span class="required">*</span>'}</label>
-                            <input type="password_text" id="vectorStorePassword" name="vectorStorePassword" placeholder="${isEditing ? 'Enter new password to update' : 'Enter Vector Store Password'}" ${isEditing ? '' : 'required'} value="${isEditing ? connectorData.vectorStorePassword : ''}">
+                            <label for="vectorStorePassword">Password ${isEditing ? '' : '<span class="required">*</span>'}</label>
+                            <input type="password_text" id="vectorStorePassword" name="vectorStorePassword" placeholder="${isEditing ? 'Enter new password to update' : 'Enter Password'}" ${isEditing ? '' : 'required'} value="${isEditing ? connectorData.vectorStorePassword : ''}">
                         </div>
                         <div class="form-group half">
-                            <label for="vectorStorePort">Vector Store Port <span class="required">*</span></label>
-                            <input type="text" id="vectorStorePort" name="vectorStorePort" placeholder="Enter Vector Store Port" required value="${isEditing ? connectorData.vectorStorePort : ''}">
+                            <label for="vectorStorePort">Port <span class="required">*</span></label>
+                            <input type="text" id="vectorStorePort" name="vectorStorePort" placeholder="Enter Port" required value="${isEditing ? connectorData.vectorStorePort : ''}">
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="vectorStoreDBName">Vector Store DB Name <span class="required">*</span></label>
-                        <input type="text" id="vectorStoreDBName" name="vectorStoreDBName" placeholder="Enter Vector Store DB Name" required value="${isEditing ? connectorData.vectorStoreDBName : ''}">
+                        <label for="vectorStoreDBName">DB Name <span class="required">*</span></label>
+                        <input type="text" id="vectorStoreDBName" name="vectorStoreDBName" placeholder="Enter DB Name" required value="${isEditing ? connectorData.vectorStoreDBName : ''}">
                     </div>
                     
                     <div class="legal-text">
