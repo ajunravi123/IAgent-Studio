@@ -8,6 +8,7 @@ import logging
 from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from crewai import Crew, Process, Task, Agent as CrewAgent, LLM
+from functools import partial
 
 load_dotenv()
 
@@ -37,6 +38,25 @@ class MultiAgentExecutor:
             api_key=self._get_api_key(),
             max_retries=3,
             retry_delay=34
+        )
+
+        # Initialize Schema and(result, "Schema Analyzer", "Analyze OpenAPI schemas and extract key information", "Expert at analyzing OpenAPI schemas", self.llm_client)
+        self.schema_agent = CrewAgent(
+            role="Schema Analyzer",
+            goal="Analyze OpenAPI schemas and extract key information about required fields, data types, and constraints",
+            backstory="I'm an expert at analyzing OpenAPI schemas and extracting key information about API requirements.",
+            verbose=False,
+            allow_delegation=False,
+            llm=self.llm_client
+        )
+
+        self.payload_agent = CrewAgent(
+            role="Payload Generator",
+            goal="Generate accurate payloads for API tools based on user input, task description, and schema analysis",
+            backstory="I'm an expert at creating valid API payloads based on OpenAPI schemas and user requirements.",
+            verbose=False,
+            allow_delegation=False,
+            llm=self.llm_client
         )
 
         # Initialize Manager Agent
@@ -104,6 +124,95 @@ class MultiAgentExecutor:
             raise ValueError("No API keys found in GEMINI_API_KEYS.")
         return random.choice(key_list)
 
+    def analyze_schema(self, schema: dict) -> str:
+        """Analyzes OpenAPI schema to extract key information."""
+        schema_str = json.dumps(schema, indent=2)
+        analysis_task = Task(
+            description=f"""
+                Analyze this OpenAPI schema and extract key information:
+                {schema_str}
+                
+                Focus on:
+                1. Required fields and their types
+                2. Any constraints (min/max values, patterns, etc.)
+                3. Response structure
+                4. Any special requirements or validations
+                
+                Return a clear, concise summary of the schema requirements.
+            """,
+            expected_output="A clear summary of the schema requirements and constraints",
+            agent=self.schema_agent
+        )
+        crew = Crew(agents=[self.schema_agent], tasks=[analysis_task], process=Process.sequential)
+        result = crew.kickoff()
+        return str(result)
+
+    def generate_payload(self, user_input: str, schema: dict, schema_analysis: str, tool_data_connector: Optional[dict] = None) -> Optional[dict]:
+        """Generates a valid JSON payload based on user input, schema, and data connector."""
+        paths = schema.get("paths", {})
+        if not paths:
+            logger.error("No paths found in schema")
+            return None
+        first_path = next(iter(paths))
+        path_info = paths[first_path]
+        post_method = path_info.get("post", {})
+        request_body = post_method.get("requestBody", {})
+        content = request_body.get("content", {})
+        json_content = content.get("application/json", {})
+        request_schema = json_content.get("schema", {})
+
+        # Prepare tool_data_connector information for the prompt
+        connector_info = ""
+        if tool_data_connector:
+            connector_info = f"""
+                Tool Data Connector:
+                {json.dumps(tool_data_connector, indent=2)}
+                
+                Ensure the payload is compatible with the specified data connector's configuration and type.
+            """
+
+        payload_task = Task(
+            description=f"""
+                Given the following information:
+                
+                User Input: '{user_input}'
+                
+                Schema Analysis:
+                {schema_analysis}
+                
+                Request Schema:
+                {json.dumps(request_schema, indent=2)}
+                
+                {connector_info}
+                
+                Generate a valid JSON payload that:
+                1. Satisfies all schema requirements and constraints
+                2. Extracts relevant information from the user input
+                3. Handles any missing or invalid data appropriately
+                4. For time-related inputs:
+                   - Extract time information from natural language (e.g., "evening 6 o'clock" -> 18)
+                   - Convert to 24-hour format (0-23)
+                   - Handle various time formats (morning, afternoon, evening, night)
+                   - Use current time as fallback for invalid inputs
+                5. For invalid inputs, use sensible defaults
+                6. If a tool_data_connector is provided, ensure the payload is compatible with its configuration
+                
+                Return only the JSON payload as a string.
+                If no valid payload can be determined, return an empty JSON object '{{}}'.
+            """,
+            expected_output="A JSON string representing the payload that satisfies all schema requirements",
+            agent=self.payload_agent
+        )
+        crew = Crew(agents=[self.payload_agent], tasks=[payload_task], process=Process.sequential)
+        result = crew.kickoff()
+        try:
+            payload_str = str(result.raw if hasattr(result, 'raw') else result.output if hasattr(result, 'output') else result)
+            payload_str = payload_str.strip('`').strip('json').strip()
+            return json.loads(payload_str)
+        except (json.JSONDecodeError, AttributeError) as e:
+            logger.error(f"Error parsing payload: {e}")
+            return None
+
     def _load_agent_tools(self, agent_config: Dict[str, Any]) -> List:
         """Loads tools for an agent."""
         from langchain.tools import Tool
@@ -123,8 +232,9 @@ class MultiAgentExecutor:
 
             tool_headers = tool_config.get("auth", {}).get("headers", {})
             tool_params = tool_config.get("auth", {}).get("params", {})
+            tool_data_connector = tool_config.get("data_connector", None)
 
-            def create_api_caller(schema: Dict, headers: Dict, params: Dict, agent_id: str):
+            def create_api_caller(schema: Dict, headers: Dict, params: Dict, agent_id: str, tool_data_connector: Optional[dict] = None):
                 def api_caller(input_text: str, **kwargs) -> Dict:
                     try:
                         logger.info(f"Agent {agent_id} api_caller received input_text: '{input_text}'")
@@ -145,9 +255,11 @@ class MultiAgentExecutor:
                             f"{schema.get('servers', [{}])[0].get('url', 'http://localhost:8003').rstrip('/')}/{path.lstrip('/')}"
                         )
 
-                        payload = None
-                        if method in ['post', 'put', 'patch']:
-                            payload = {"input": input_text}
+                        schema_analysis = self.analyze_schema(schema)
+                        payload = self.generate_payload(input_text, schema, schema_analysis, tool_data_connector)
+                        if not payload:
+                            logger.error(f"Failed to generate valid payload for agent {agent_id}")
+                            return {"error": "Failed to generate valid payload"}
 
                         logger.info(f"Agent {agent_id} calling {method.upper()} {endpoint_url} with payload: {json.dumps(payload, ensure_ascii=False)}")
                         response = requests.request(
@@ -178,7 +290,12 @@ class MultiAgentExecutor:
 
             tool_name = tool_schema.get("info", {}).get("title", f"tool_{tool_config.get('id')}")
             tool_name = tool_name.lower().replace(" ", "_")
-            api_caller_instance = create_api_caller(tool_schema, tool_headers, tool_params, agent_id)
+            api_caller_instance = partial(
+                create_api_caller(tool_schema, tool_headers, tool_params, agent_id, tool_data_connector),
+                url=tool_schema["paths"],
+                headers=tool_headers,
+                params=tool_params
+            )
 
             tool_title = tool_schema.get("info", {}).get("title", "Unknown API")
             tool_description = tool_schema.get("info", {}).get("description", "")
@@ -197,7 +314,7 @@ class MultiAgentExecutor:
         return tools
 
     def clean_output(self, output: str) -> str:
-        """Cleans output by removing only UUIDs and specific metadata, preserving content and formatting."""
+        """Cleans output by removing UUIDs and specific metadata, preserving content and formatting."""
         if not output:
             logger.info("Empty output received for cleaning")
             return ""
@@ -209,12 +326,12 @@ class MultiAgentExecutor:
             metadata_phrases = ["output from", "task result", "agent output"]
             for phrase in metadata_phrases:
                 cleaned = cleaned.replace(phrase, "").replace(phrase.title(), "").replace(phrase.upper(), "")
-            # Minimal trimming to preserve newlines and formatting
-            cleaned = cleaned.strip('[]')
+            # Remove excessive whitespace while preserving newlines
+            cleaned = re.sub(r'\s*\n\s*\n\s*', '\n\n', cleaned.strip())
             if not cleaned.strip():
                 logger.warning("Cleaned output is empty")
                 return ""
-            logger.info(f"Cleaned output: '{cleaned}'")
+            logger.info(f"Cleaned output: '{cleaned[:100]}{'...' if len(cleaned) > 100 else ''}'")
             return cleaned
         except Exception as e:
             logger.error(f"Error cleaning output: {e}")
@@ -330,7 +447,7 @@ class MultiAgentExecutor:
             # Clean and return result
             raw_result = str(getattr(result, 'raw', result)).strip()
             final_result = self.clean_output(raw_result)
-            logger.info(f"Final cleaned output: '{final_result}'")
+            logger.info(f"Final cleaned output: '{final_result[:100]}{'...' if len(final_result) > 100 else ''}'")
             if not final_result:
                 logger.warning("Empty result after cleaning")
                 return "No output generated."
