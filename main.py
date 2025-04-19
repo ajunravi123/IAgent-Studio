@@ -358,6 +358,35 @@ async def update_data_connector(connector_id: str, connector_config: PostgresCon
 
 @app.delete("/api/data-connectors/{connector_id}")
 async def delete_data_connector(connector_id: str):
+    # Check if any advanced tools are using this connector
+    advanced_tools = load_advanced_tools()
+    tools_using_connector = [tool.name for tool in advanced_tools if tool.data_connector_id == connector_id]
+    
+    # Check if any custom tools are using this connector
+    custom_tools = load_custom_tools()
+    metadata_dir = "tool_metadata"
+    
+    for tool in custom_tools:
+        metadata_path = f"{metadata_dir}/{tool.id}.json"
+        if os.path.exists(metadata_path):
+            try:
+                with open(metadata_path, 'r') as f:
+                    metadata = json.load(f)
+                    if metadata.get('data_connector_id') == connector_id:
+                        tools_using_connector.append(tool.name)
+            except:
+                # Skip if there's an issue reading metadata
+                pass
+    
+    # If tools are using this connector, prevent deletion
+    if tools_using_connector:
+        tool_names = ", ".join(tools_using_connector)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete connector because it is being used by the following tools: {tool_names}"
+        )
+    
+    # If no tools are using the connector, proceed with deletion
     connectors = load_connectors()
     connectors = [c for c in connectors if c["id"] != connector_id]
     save_connectors(connectors)
