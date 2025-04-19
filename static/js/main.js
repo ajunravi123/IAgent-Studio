@@ -7,6 +7,60 @@ const loadedStylesheets = new Set();
 let selectedTools = new Set();
 let selectedAdvancedTools = new Set();
 
+// Create page loader styles 
+const pageLoaderStyles = document.createElement('style');
+pageLoaderStyles.textContent = `
+    .page-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(15, 23, 42, 0.7);
+        z-index: 9998;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease-in-out;
+    }
+    
+    .page-loader.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+    
+    .page-loader-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(99, 179, 237, 0.3);
+        border-top-color: rgba(99, 179, 237, 0.8);
+        border-radius: 50%;
+        animation: page-loader-spin 1s linear infinite;
+    }
+    
+    @keyframes page-loader-spin {
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(pageLoaderStyles);
+
+// Create page loader element
+const pageLoader = document.createElement('div');
+pageLoader.className = 'page-loader';
+pageLoader.innerHTML = '<div class="page-loader-spinner"></div>';
+document.body.appendChild(pageLoader);
+
+// Function to show/hide page loader
+function togglePageLoader(show) {
+    if (show) {
+        pageLoader.classList.add('active');
+    } else {
+        pageLoader.classList.remove('active');
+    }
+}
+
 // Function to update the active state of sidebar links
 function updateActiveLink() {
     const currentPath = window.location.pathname;
@@ -36,6 +90,9 @@ function loadStylesheet(href) {
 }
 
 function loadPage(pagePath) {
+    // Show loader when starting to load page
+    togglePageLoader(true);
+    
     updateActiveLink();
     const app = document.getElementById('app');
     if (app) {
@@ -63,94 +120,98 @@ function loadPage(pagePath) {
 
                 // Inject the HTML content
                 app.innerHTML = html;
-
-                // Add a small delay to ensure DOM is fully loaded for JS initializations
-                // setTimeout(() => {
-                    // Page specific JS initializations
-                    if (basePage === 'agents') {
+                
+                // Page specific JS initializations
+                if (basePage === 'agents') {
                     loadAgents();
-                        // Initialize search for agents page
-                        const searchInput = document.querySelector('.page.agents .search-bar input'); // Assuming this selector is correct for the agents page search bar
-                        if (searchInput && !searchInput.dataset.listenerAttached) {
-                            searchInput.addEventListener('input', (e) => searchAgents(e.target.value));
-                            searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
-                        }
-                    } else if (basePage === 'multi-agents') {
-                        initializeMultiAgentPage(); // Call the new initializer
-                    } else if (basePage === 'launch-multi-agent') {
-                        // Initialize the multi-agent launch interface
-                        console.log('Initializing Multi-Agent Launch Page...');
-                        initializeMultiAgentLaunchPage(); // Call the initializer from main.js
-                    } else if (basePage === 'create-agent') {
+                    // Initialize search for agents page
+                    const searchInput = document.querySelector('.page.agents .search-bar input'); // Assuming this selector is correct for the agents page search bar
+                    if (searchInput && !searchInput.dataset.listenerAttached) {
+                        searchInput.addEventListener('input', (e) => searchAgents(e.target.value));
+                        searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
+                    }
+                } else if (basePage === 'multi-agents') {
+                    initializeMultiAgentPage(); // Call the new initializer
+                } else if (basePage === 'launch-multi-agent') {
+                    // Initialize the multi-agent launch interface
+                    console.log('Initializing Multi-Agent Launch Page...');
+                    initializeMultiAgentLaunchPage(); // Call the initializer from main.js
+                } else if (basePage === 'create-agent') {
                     loadTools();
                     loadAdvancedTools(); // Ensure advanced tools are loaded
-                        // Check if we're editing an agent
-                        const isEditing = pagePath.includes('?edit=true');
-                        const buttonText = document.getElementById('buttonText');
-                        if (buttonText) {
-                            buttonText.textContent = isEditing ? 'Save' : 'Create Agent';
-                        }
-                        // Initialize search functionality for tools
-                        const searchInput = document.querySelector('.search-bar input[type="text"]');
-                        if (searchInput) {
-                            searchInput.addEventListener('input', (e) => searchAgentTools(e.target.value));
-                        }
-                        // Initialize LLM provider change handler
-                        handleLLMProviderChange();
-                        // Verify form elements are present
-                        const formElements = [
-                            'agentName',
-                            'agentDescription',
-                            'llmProvider',
-                            'llmModel',
-                            'apiKey',
-                            'agentRole',
-                            'agentBackstory',
-                            'agentInstructions',
-                            'managerAgent'
-                        ];
-                        formElements.forEach(id => {
-                            const element = document.getElementById(id);
-                            if (!element) {
-                                console.error(`Form element ${id} not found`);
-                            }
-                        });
-                    } else if (basePage === 'tools') {
-                        loadExternalTools();
-                        loadAdvancedTools(); // Always refresh advanced tools when visiting the Tools tab
-                        // Initialize search for tools page if needed
-                        const searchInput = document.querySelector('.page.tools .search-bar input');
-                        if (searchInput && !searchInput.dataset.listenerAttached) {
-                            searchInput.addEventListener('input', (e) => searchExternalTools(e.target.value));
-                            searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
-                        }
-                    } else if (basePage === 'marketplace') {
-                         // Initialize search for marketplace page if needed
-                         const searchInput = document.querySelector('.page.marketplace .search-bar input');
-                         if (searchInput && !searchInput.dataset.listenerAttached) {
-                            searchInput.addEventListener('input', (e) => searchMarketplaceAgents(e.target.value));
-                            searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
-                         }
-                         // Marketplace JS likely initializes itself via DOMContentLoaded listener in marketplace.js
-                         // If not, explicitly call its init function here: loadMarketplace(); 
+                    // Check if we're editing an agent
+                    const isEditing = pagePath.includes('?edit=true');
+                    const buttonText = document.getElementById('buttonText');
+                    if (buttonText) {
+                        buttonText.textContent = isEditing ? 'Save' : 'Create Agent';
                     }
-                    // Add other page specific initializations here
-                    else if (basePage === 'data-connectors') {
-                        // Ensure the main container for this page exists before initializing
-                        const container = document.getElementById('dataConnectorsGrid');
-                        if (container) {
+                    // Initialize search functionality for tools
+                    const searchInput = document.querySelector('.search-bar input[type="text"]');
+                    if (searchInput) {
+                        searchInput.addEventListener('input', (e) => searchAgentTools(e.target.value));
+                    }
+                    // Initialize LLM provider change handler
+                    handleLLMProviderChange();
+                    // Verify form elements are present
+                    const formElements = [
+                        'agentName',
+                        'agentDescription',
+                        'llmProvider',
+                        'llmModel',
+                        'apiKey',
+                        'agentRole',
+                        'agentBackstory',
+                        'agentInstructions',
+                        'managerAgent'
+                    ];
+                    formElements.forEach(id => {
+                        const element = document.getElementById(id);
+                        if (!element) {
+                            console.error(`Form element ${id} not found`);
+                        }
+                    });
+                } else if (basePage === 'tools') {
+                    loadExternalTools();
+                    loadAdvancedTools(); // Always refresh advanced tools when visiting the Tools tab
+                    // Initialize search for tools page if needed
+                    const searchInput = document.querySelector('.page.tools .search-bar input');
+                    if (searchInput && !searchInput.dataset.listenerAttached) {
+                        searchInput.addEventListener('input', (e) => searchExternalTools(e.target.value));
+                        searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
+                    }
+                } else if (basePage === 'marketplace') {
+                     // Initialize search for marketplace page if needed
+                     const searchInput = document.querySelector('.page.marketplace .search-bar input');
+                     if (searchInput && !searchInput.dataset.listenerAttached) {
+                        searchInput.addEventListener('input', (e) => searchMarketplaceAgents(e.target.value));
+                        searchInput.dataset.listenerAttached = 'true'; // Prevent attaching multiple listeners
+                     }
+                     // Marketplace JS likely initializes itself via DOMContentLoaded listener in marketplace.js
+                     // If not, explicitly call its init function here: loadMarketplace(); 
+                }
+                // Add other page specific initializations here
+                else if (basePage === 'data-connectors') {
+                    // Ensure the main container for this page exists before initializing
+                    const container = document.getElementById('dataConnectorsGrid');
+                    if (container) {
                         initializeDataConnectorsPage();
-                        } else {
-                            console.error('Data Connectors container not found after loading fragment!');
-                        }
+                    } else {
+                        console.error('Data Connectors container not found after loading fragment!');
                     }
-
-                // }, 100); // Removed fixed timeout, initialize directly if container exists
+                }
+                
+                // Hide loader once the page has been fully loaded and initialized
+                togglePageLoader(false);
             })
             .catch(error => {
                 app.innerHTML = '<p>Error loading page content.</p>';
                 console.error('Error loading page fragment:', error);
+                // Hide loader on error as well
+                togglePageLoader(false);
             });
+    } else {
+        // Hide loader if app element doesn't exist
+        togglePageLoader(false);
     }
 }
 
@@ -160,6 +221,9 @@ function refreshAgents() {
 
 // Updated createNewAgent function
 function createNewAgent() {
+    // Show loader
+    togglePageLoader(true);
+    
     // Clear selected tools before loading the create agent page
     selectedTools.clear();
     selectedAdvancedTools.clear();
@@ -167,6 +231,9 @@ function createNewAgent() {
 } 
 
 function goBack() {
+    // Show loader
+    togglePageLoader(true);
+    
     // Check if we were viewing a multi-agent launch page first
     if (document.querySelector('.launch-multi-agent')) {
         // We're on the multi-agent launch page
@@ -349,93 +416,103 @@ function closeAgentMenu() {
 }
 
 function launchAgent(agentId) {
-    selectedAgentId = agentId;
-    loadPage('launch-agent');
+    // Show loader
+    togglePageLoader(true);
     
-    // Fetch agent data and populate the form
-    showLoading();
+    // Store the selected agent ID for the chat interface
+    selectedAgentId = agentId;
+    
+    // Load the agent details from the API
     fetch(`/api/agents/${agentId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch agent details');
+            }
+            return response.json();
+        })
         .then(agent => {
+            // Store the agent details
+            window.selectedAgent = agent;
+            
+            // Create the agent chat interface div
+            const chatContainer = document.createElement('div');
+            chatContainer.id = 'agentChatContainer';
+            chatContainer.className = 'agent-chat-container';
+            document.getElementById('app').innerHTML = '';
+            document.getElementById('app').appendChild(chatContainer);
+            
+            // Generate the chat interface HTML
+            chatContainer.innerHTML = `
+                <div class="chat-header">
+                    <button class="back-button" onclick="goBack()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="agent-info">
+                        <h2>${agent.name}</h2>
+                        <p>${agent.role}</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn-icon" onclick="refreshAgent()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn-icon" onclick="editAgent('${agentId}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- System message introducing the agent -->
+                    <div class="message system-message">
+                        <div class="message-content">
+                            <p>You are now chatting with <strong>${agent.name}</strong>, your ${agent.role.toLowerCase()}.</p>
+                            <p>${agent.description}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <textarea id="userInput" placeholder="Type your message..." rows="1" 
+                        oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+                        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+                    <button class="send-button" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Focus on the input field
             setTimeout(() => {
-
-                hideLoading();
-
-                // Update page title
-                const header = document.querySelector('.page-header h1');
-                if (header) {
-                    header.textContent = ` ${agent.name} ⛳ Playground`;
+                const userInput = document.getElementById('userInput');
+                if (userInput) {
+                    userInput.focus();
                 }
-                
-                // Fill form fields - Check if element exists before setting value
-                const agentNameInput = document.getElementById('agentName');
-                if (agentNameInput) {
-                    agentNameInput.value = agent.name;
-                }
-                
-                const agentDescriptionInput = document.getElementById('agentDescription');
-                if (agentDescriptionInput) {
-                    agentDescriptionInput.value = agent.description;
-                }
-
-                const llmProviderSelect = document.getElementById('llmProvider');
-                if (llmProviderSelect) {
-                    llmProviderSelect.value = agent.llmProvider;
-                }
-
-                const llmModelSelect = document.getElementById('llmModel');
-                if (llmModelSelect) {
-                    llmModelSelect.value = agent.llmModel;
-                }
-
-                const apiKeyInput = document.getElementById('apiKey');
-                if (apiKeyInput) {
-                    apiKeyInput.value = agent.apiKey;
-                }
-
-                const agentRoleInput = document.getElementById('agentRole');
-                if (agentRoleInput) {
-                    agentRoleInput.value = agent.role;
-                }
-
-                const agentGoalInput = document.getElementById('agentGoal');
-                if (agentGoalInput) {
-                    agentGoalInput.value = agent.goal || '';
-                }
-
-                const expectedOutputInput = document.getElementById('expectedOutput');
-                if (expectedOutputInput) {
-                    expectedOutputInput.value = agent.expectedOutput || '';
-                }
-                
-                const agentBackstoryInput = document.getElementById('agentBackstory');
-                if (agentBackstoryInput) {
-                    agentBackstoryInput.value = agent.backstory || '';
-                }
-                
-                const agentInstructionsInput = document.getElementById('agentInstructions');
-                if (agentInstructionsInput) {
-                    agentInstructionsInput.value = agent.instructions;
-                }
-                
-                // Initialize LLM provider change handler
-                handleLLMProviderChange();
-                
-                // Initialize selectedTools with agent's tools
-                selectedTools = new Set(agent.tools || []);
-                
-                // Initialize selectedAdvancedTools with agent's advanced tools (check both naming conventions)
-                selectedAdvancedTools = new Set();
-                if (Array.isArray(agent.advanced_tools)) {
-                    agent.advanced_tools.forEach(toolId => selectedAdvancedTools.add(toolId));
-                } else if (Array.isArray(agent.advancedTools)) {
-                    agent.advancedTools.forEach(toolId => selectedAdvancedTools.add(toolId));
-                }
-                
-                // Load agent tools (combine both normal and advanced tools)
-                const allToolIds = [...selectedTools, ...selectedAdvancedTools];
-                loadAgentTools(allToolIds);
-            }, 100); // Keeping the timeout for now, but the checks add safety
+                // Hide loader after the chat interface is ready
+                togglePageLoader(false);
+            }, 100);
+            
+            // Update URL without reloading (history API)
+            window.history.pushState({ path: '/launch-agent' }, '', '/launch-agent');
+            
+            // Automatically resize the textarea as content is added
+            const textarea = document.getElementById('userInput');
+            if (textarea) {
+                textarea.addEventListener('input', function() {
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error launching agent:', error);
+            // Hide loader on error
+            togglePageLoader(false);
+            // Show error message
+            document.getElementById('app').innerHTML = `
+                <div class="error-message">
+                    <h2>Error launching agent</h2>
+                    <p>${error.message}</p>
+                    <button class="btn-primary" onclick="goBack()">Go Back</button>
+                </div>
+            `;
         });
 }
 
@@ -1379,10 +1456,17 @@ function searchExternalTools(query) {
 }
 
 function refreshTools() {
+    // Show loader
+    togglePageLoader(true);
+    
     if (document.querySelector('.page.tools')) {
         loadExternalTools();
+        loadAdvancedTools();
+        // Hide loader after a short delay to ensure tools have been loaded
+        setTimeout(() => togglePageLoader(false), 500);
     } else {
         loadTools();
+        // Tools loaded via loadPage which handles the loader
     }
 }
 
@@ -3031,6 +3115,9 @@ function init() {
                 event.preventDefault();
                 const pagePath = link.getAttribute('href');
                 
+                // Show loader immediately when clicking a navigation link
+                togglePageLoader(true);
+                
                 // Check if user is navigating to the Tools tab
                 const isNavigatingToTools = pagePath === '/tools';
                 
@@ -3041,6 +3128,11 @@ function init() {
                 } else if (isNavigatingToTools) {
                     // If already on Tools page but clicked again, still refresh advanced tools
                     loadAdvancedTools();
+                    // Hide loader after refreshing tools
+                    setTimeout(() => togglePageLoader(false), 300);
+                } else {
+                    // Hide loader if we're not doing a page change
+                    togglePageLoader(false);
                 }
             }
         });
@@ -3048,6 +3140,8 @@ function init() {
 
     // Handle browser back/forward navigation
     window.addEventListener('popstate', (event) => {
+        // Show loader on browser navigation
+        togglePageLoader(true);
         const path = window.location.pathname;
         loadPage(path);
     });
