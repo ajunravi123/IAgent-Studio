@@ -19,6 +19,8 @@ if DISABLE_RUN:
     from multi_agent_executor import MultiAgentExecutor
     import psycopg2
     from psycopg2 import Error as PostgresError
+    from google.oauth2 import service_account
+    from google.cloud import bigquery
 
 import logging
 # Configure logging
@@ -289,14 +291,22 @@ class PostgresConnectionConfig(BaseModel):
     connectorType: str = 'postgres'
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
+class BigQueryConnectionConfig(BaseModel):
+    uniqueName: str
+    projectId: str
+    datasetId: str
+    serviceAccountKey: str
+    connectorType: str = 'bigquery'
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
 class PostgresConnectionTest(BaseModel):
     type: str
     config: Dict[str, Any]
 
 @app.post("/api/data-connectors", status_code=201)
-async def save_data_connector(connector_config: PostgresConnectionConfig):
-    if connector_config.connectorType != 'postgres':
-        raise HTTPException(status_code=400, detail="Only postgres connectors are supported currently.")
+async def save_data_connector(connector_config: Union[PostgresConnectionConfig, BigQueryConnectionConfig]):
+    if connector_config.connectorType not in ['postgres', 'bigquery']:
+        raise HTTPException(status_code=400, detail="Only postgres and bigquery connectors are supported currently.")
         
     connectors = load_connectors()
     
@@ -312,13 +322,13 @@ async def save_data_connector(connector_config: PostgresConnectionConfig):
     
     return new_connector_dict
 
-@app.get("/api/data-connectors", response_model=List[PostgresConnectionConfig])
+@app.get("/api/data-connectors", response_model=List[Union[PostgresConnectionConfig, BigQueryConnectionConfig]])
 async def get_data_connectors():
     connectors = load_connectors()
     return connectors
 
-@app.put("/api/data-connectors/{connector_id}", response_model=PostgresConnectionConfig)
-async def update_data_connector(connector_id: str, connector_config: PostgresConnectionConfig):
+@app.put("/api/data-connectors/{connector_id}", response_model=Union[PostgresConnectionConfig, BigQueryConnectionConfig])
+async def update_data_connector(connector_id: str, connector_config: Union[PostgresConnectionConfig, BigQueryConnectionConfig]):
     if not connector_id:
         raise HTTPException(status_code=400, detail="Connector ID is required")
 
@@ -348,13 +358,20 @@ async def update_data_connector(connector_id: str, connector_config: PostgresCon
     updated_connector['id'] = connector_id
     updated_connector['createdAt'] = existing_connector.get('createdAt')
 
-    if not updated_connector.get('vectorStorePassword'):
+    # For Postgres, preserve password if not provided
+    if connector_config.connectorType == 'postgres' and not updated_connector.get('vectorStorePassword'):
         updated_connector['vectorStorePassword'] = existing_connector.get('vectorStorePassword', '')
+    # For BigQuery, preserve service account key if not provided
+    elif connector_config.connectorType == 'bigquery' and not updated_connector.get('serviceAccountKey'):
+        updated_connector['serviceAccountKey'] = existing_connector.get('serviceAccountKey', '')
 
     connectors[connector_index] = updated_connector
     save_connectors(connectors)
     
-    return PostgresConnectionConfig(**updated_connector)
+    if connector_config.connectorType == 'postgres':
+        return PostgresConnectionConfig(**updated_connector)
+    else:
+        return BigQueryConnectionConfig(**updated_connector)
 
 @app.delete("/api/data-connectors/{connector_id}")
 async def delete_data_connector(connector_id: str):
@@ -395,78 +412,134 @@ async def delete_data_connector(connector_id: str):
 if DISABLE_RUN:
     @app.post("/api/data-connectors/test")
     async def test_connection(connection_data: PostgresConnectionTest):
-        if connection_data.type != "postgres":
-            raise HTTPException(status_code=400, detail="Only PostgreSQL connections are supported")
-        
-        config = connection_data.config
-        required_fields = ['host', 'port', 'database', 'user']
-        missing_fields = [field for field in required_fields if not config.get(field)]
-        
-        if missing_fields:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Missing required fields: {', '.join(missing_fields)}"
-            )
-
-        try:
-            try:
-                port = int(config['port'])
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Port must be a valid number")
-
-            conn = psycopg2.connect(
-                host=config['host'],
-                port=port,
-                database=config['database'],
-                user=config['user'],
-                password=config.get('password', ''),
-                connect_timeout=10
-            )
-
-            try:
-                with conn.cursor() as cur:
-                    cur.execute('SELECT version();')
-                    version = cur.fetchone()[0]
-                
-                conn.close()
-
-                return {
-                    "status": "success",
-                    "message": "Connection successful",
-                    "details": {
-                        "version": version,
-                        "connected_to": f"{config['host']}:{config['port']}/{config['database']}"
-                    }
-                }
-
-            except PostgresError as e:
-                if not conn.closed:
-                    conn.close()
+        if connection_data.type == "postgres":
+            config = connection_data.config
+            required_fields = ['host', 'port', 'database', 'user']
+            missing_fields = [field for field in required_fields if not config.get(field)]
+            
+            if missing_fields:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Database query failed: {str(e)}"
+                    detail=f"Missing required fields: {', '.join(missing_fields)}"
                 )
 
-        except PostgresError as e:
-            error_message = str(e)
-            if "timeout expired" in error_message.lower():
-                error_message = "Connection timed out. Please check if the database is accessible and the host/port are correct."
-            elif "password authentication failed" in error_message.lower():
-                error_message = "Authentication failed. Please check your username and password."
-            elif "database" in error_message.lower() and "does not exist" in error_message.lower():
-                error_message = f"Database '{config['database']}' does not exist."
-            elif "could not connect to server" in error_message.lower():
-                error_message = "Could not connect to server. Please check if the host and port are correct and the server is running."
+            try:
+                try:
+                    port = int(config['port'])
+                except ValueError:
+                    raise HTTPException(status_code=400, detail="Port must be a valid number")
 
-            raise HTTPException(
-                status_code=400,
-                detail=error_message
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"An unexpected error occurred: {str(e)}"
-            )
+                conn = psycopg2.connect(
+                    host=config['host'],
+                    port=port,
+                    database=config['database'],
+                    user=config['user'],
+                    password=config.get('password', ''),
+                    connect_timeout=10
+                )
+
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute('SELECT version();')
+                        version = cur.fetchone()[0]
+                
+                    conn.close()
+
+                    return {
+                        "status": "success",
+                        "message": "Connection successful",
+                        "details": {
+                            "version": version,
+                            "connected_to": f"{config['host']}:{config['port']}/{config['database']}"
+                        }
+                    }
+
+                except PostgresError as e:
+                    if not conn.closed:
+                        conn.close()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Database query failed: {str(e)}"
+                    )
+
+            except PostgresError as e:
+                error_message = str(e)
+                if "timeout expired" in error_message.lower():
+                    error_message = "Connection timed out. Please check if the database is accessible and the host/port are correct."
+                elif "password authentication failed" in error_message.lower():
+                    error_message = "Authentication failed. Please check your username and password."
+                elif "database" in error_message.lower() and "does not exist" in error_message.lower():
+                    error_message = f"Database '{config['database']}' does not exist."
+                elif "could not connect to server" in error_message.lower():
+                    error_message = "Could not connect to server. Please check if the host and port are correct and the server is running."
+
+                raise HTTPException(
+                    status_code=400,
+                    detail=error_message
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"An unexpected error occurred: {str(e)}"
+                )
+        elif connection_data.type == "bigquery":
+            config = connection_data.config
+            required_fields = ['projectId', 'datasetId', 'serviceAccountKey']
+            missing_fields = [field for field in required_fields if not config.get(field)]
+            
+            if missing_fields:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing required fields: {', '.join(missing_fields)}"
+                )
+
+            try:
+                # Parse service account key JSON
+                try:
+                    service_account_info = json.loads(config['serviceAccountKey'])
+                except json.JSONDecodeError:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid service account key JSON format"
+                    )
+
+                # Initialize BigQuery client
+                try:
+                    credentials = service_account.Credentials.from_service_account_info(service_account_info)
+                    client = bigquery.Client(credentials=credentials, project=config['projectId'])
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Failed to initialize BigQuery client: {str(e)}"
+                    )
+
+                # Test dataset access
+                try:
+                    dataset_ref = client.dataset(config['datasetId'])
+                    client.get_dataset(dataset_ref)
+                    return {
+                        "status": "success",
+                        "message": "Connection successful",
+                        "details": {
+                            "project": config['projectId'],
+                            "dataset": config['datasetId']
+                        }
+                    }
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Failed to access dataset: {str(e)}"
+                    )
+                finally:
+                    client.close()
+
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"An unexpected error occurred: {str(e)}"
+                )
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported connector type")
 
 # --- API Endpoints ---
 

@@ -2582,7 +2582,7 @@ async function savePostgresConnection(isEditing = false) {
 async function editConnector(connectorId, connectorType) {
     console.log(`Editing connector: ${connectorId}, Type: ${connectorType}`);
     
-    if (connectorType === 'postgres') {
+    if (connectorType === 'postgres' || connectorType === 'bigquery') {
         showLoading('Loading connection details...');
         try {
             // Fetch ALL connectors first to find the one we need
@@ -2595,7 +2595,11 @@ async function editConnector(connectorId, connectorType) {
             hideLoading();
             
             if (connectorToEdit) {
-                showPostgresConnectionModal(connectorToEdit); // Open modal with pre-filled data
+                if (connectorType === 'postgres') {
+                    showPostgresConnectionModal(connectorToEdit); // Open modal with pre-filled data
+                } else {
+                    showBigQueryConnectionModal(connectorToEdit); // Open modal with pre-filled data
+                }
             } else {
                 showToast('Error: Connector not found.', 'error');
             }
@@ -3066,6 +3070,12 @@ function addConnector(connectorId) {
     // Special handling for Postgres
     if (connectorId === 'postgres') {
         showPostgresConnectionModal(); // Show modal for new connection
+        return;
+    }
+    
+    // Special handling for BigQuery
+    if (connectorId === 'bigquery') {
+        showBigQueryConnectionModal(); // Show modal for new connection
         return;
     }
     
@@ -4107,5 +4117,319 @@ async function deleteAdvancedTool(toolId) {
     } catch (error) {
         console.error('Error deleting advanced tool:', error);
         showNotification('Failed to delete advanced tool', 'error');
+    }
+}
+
+// --- BigQuery Connection Modal Functions ---
+
+// Function to show BigQuery connection configuration modal
+function showBigQueryConnectionModal(connectorData = null) {
+    // Create modal if it doesn't exist or get existing one
+    let modal = document.getElementById('connectorConfigModal');
+    if (modal) {
+        modal.remove(); // Remove existing to avoid stacking modals
+    }
+    
+    // Create new modal
+    modal = document.createElement('div');
+    modal.id = 'connectorConfigModal';
+    modal.className = 'modal';
+    
+    const isEditing = connectorData !== null;
+    const title = isEditing ? `Edit Connection: ${connectorData.uniqueName}` : 'Connect BigQuery';
+    const submitButtonText = isEditing ? 'Save Changes' : 'Submit';
+    
+    // Generate form fields for BigQuery connection
+    const modalHtml = `
+        <div class="modal-content connector-config-modal">
+            <div class="modal-header">
+                <h2>${title}</h2>
+                <button class="close-btn" onclick="closeConnectorModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="bigqueryConnectionForm">
+                    <input type="hidden" id="connectorId" name="id" value="${isEditing ? connectorData.id : ''}">
+                    <div class="form-group">
+                        <label for="uniqueName">Unique Name <span class="required">*</span></label>
+                        <input type="text" id="uniqueName" name="uniqueName" placeholder="Give this connection a name" required value="${isEditing ? connectorData.uniqueName : ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="projectId">Project ID <span class="required">*</span></label>
+                        <input type="text" id="projectId" name="projectId" placeholder="Enter your Google Cloud Project ID" required value="${isEditing ? connectorData.projectId : ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="datasetId">Dataset ID <span class="required">*</span></label>
+                        <input type="text" id="datasetId" name="datasetId" placeholder="Enter your BigQuery Dataset ID" required value="${isEditing ? connectorData.datasetId : ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="serviceAccountKey">Service Account Key ${isEditing ? '' : '<span class="required">*</span>'}</label>
+                        <textarea id="serviceAccountKey" name="serviceAccountKey" placeholder="Paste your service account key JSON" rows="8" ${isEditing ? '' : 'required'}>${isEditing ? connectorData.serviceAccountKey : ''}</textarea>
+                        <div class="field-help">
+                            <i class="fas fa-info-circle"></i>
+                            Paste the entire JSON content of your service account key file
+                        </div>
+                    </div>
+                    
+                    <div class="legal-text">
+                        <p>By using this service, you agree to take full responsibility for your actions and to protect IAgentic Studio and its affiliates, officers, employees, and agents from any claims, losses, damages, liabilities, or legal costs that may arise due to your violation of this policy — including, but not limited to, uploading sensitive personal information without proper authorization.</p>
+                    </div>
+                    
+                    <div class="documentation-link">
+                        <a href="https://cloud.google.com/bigquery/docs" target="_blank">
+                            <i class="fas fa-external-link-alt"></i> View Documentation
+                        </a>
+                    </div>
+                    
+                    <div class="required-note">
+                        <span class="required">*</span> marked as required
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-test-connection" onclick="testBigQueryConnection()">
+                    <i class="fas fa-plug"></i> Test Connection
+                </button>
+                <div class="action-buttons">
+                    <button class="btn-cancel" onclick="closeConnectorModal()">Cancel</button>
+                    <button class="btn-submit" onclick="saveBigQueryConnection(${isEditing})">${submitButtonText}</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.innerHTML = modalHtml;
+    document.body.appendChild(modal);
+    
+    // Add modal styles if they don't exist
+    ensureConnectorModalStyles();
+    
+    // Add BigQuery specific styles
+    ensureBigQueryModalStyles();
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+        
+        // If editing, set the service account key value after modal is shown
+        if (isEditing && connectorData.serviceAccountKey) {
+            const serviceAccountKeyField = document.getElementById('serviceAccountKey');
+            if (serviceAccountKeyField) {
+                serviceAccountKeyField.value = connectorData.serviceAccountKey;
+            }
+        }
+    }, 50);
+}
+
+// Function to add BigQuery-specific modal styles
+function ensureBigQueryModalStyles() {
+    if (!document.getElementById('bigquery-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'bigquery-modal-styles';
+        style.textContent = `
+            #connectorConfigModal #bigqueryConnectionForm textarea {
+                box-sizing: border-box;
+                width: 100%;
+                padding: 12px 16px;
+                border: 1px solid rgba(99, 179, 237, 0.3);
+                border-radius: 8px;
+                background-color: rgba(20, 30, 60, 0.5);
+                color: rgba(255, 255, 255, 0.95);
+                font-size: 14px;
+                font-family: monospace;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                transition: all 0.2s;
+                margin: 0;
+                caret-color: #63b3ed;
+                resize: vertical;
+            }
+            
+            #connectorConfigModal #bigqueryConnectionForm textarea::placeholder {
+                color: rgba(255, 255, 255, 0.4);
+            }
+            
+            #connectorConfigModal #bigqueryConnectionForm textarea:focus {
+                border-color: rgba(99, 179, 237, 0.7);
+                outline: none;
+                background-color: rgba(30, 40, 70, 0.6);
+                box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.25),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            }
+            
+            #connectorConfigModal .field-help {
+                margin-top: 8px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.6);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            
+            #connectorConfigModal .field-help i {
+                color: #63b3ed;
+                font-size: 14px;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Function to test BigQuery connection
+async function testBigQueryConnection() {
+    // Get connection details
+    const form = document.getElementById('bigqueryConnectionForm');
+    if (!form) return;
+    
+    // Basic form validation
+    const formData = new FormData(form);
+    const connectionConfig = Object.fromEntries(formData.entries());
+    
+    // Check if required fields are filled
+    const requiredFields = ['projectId', 'datasetId', 'serviceAccountKey'];
+    const missingFields = requiredFields.filter(field => !connectionConfig[field]);
+    
+    if (missingFields.length > 0) {
+        showToast(`Please fill in required fields: ${missingFields.join(', ')}`, 'error');
+        return;
+    }
+    
+    // Show loading state on the test button
+    const testBtn = document.querySelector('#connectorConfigModal .btn-test-connection');
+    const originalBtnText = testBtn.innerHTML;
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    try {
+        const response = await fetch('/api/data-connectors/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'bigquery',
+                config: {
+                    projectId: connectionConfig.projectId,
+                    datasetId: connectionConfig.datasetId,
+                    serviceAccountKey: connectionConfig.serviceAccountKey
+                }
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showToast('Connection successful! ✨', 'success');
+            
+            // Add success visual feedback to the form
+            const successIndicator = document.createElement('div');
+            successIndicator.className = 'connection-success-indicator';
+            successIndicator.innerHTML = `
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="success-message">Connection verified</div>
+            `;
+            
+            // Remove any existing indicator
+            const existingIndicator = form.querySelector('.connection-success-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // Add the new indicator
+            form.appendChild(successIndicator);
+        } else {
+            throw new Error(result.detail || 'Connection test failed');
+        }
+    } catch (error) {
+        console.error('Connection test error:', error);
+        showToast(`Connection failed: ${error.message}`, 'error');
+        
+        // Add error visual feedback
+        const errorIndicator = document.createElement('div');
+        errorIndicator.className = 'connection-error-indicator';
+        errorIndicator.innerHTML = `
+            <div class="error-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="error-details">
+                <div class="error-message">Connection failed</div>
+                <div class="error-description">${error.message}</div>
+            </div>
+        `;
+        
+        // Remove any existing indicator
+        const existingIndicator = form.querySelector('.connection-error-indicator, .connection-success-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        // Add the new indicator
+        form.appendChild(errorIndicator);
+    } finally {
+        // Reset button state
+        testBtn.disabled = false;
+        testBtn.innerHTML = originalBtnText;
+    }
+}
+
+// Function to save BigQuery connection
+async function saveBigQueryConnection(isEditing = false) {
+    const form = document.getElementById('bigqueryConnectionForm');
+    if (!form) return;
+
+    // Basic form validation
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Validate required fields
+    const requiredFields = ['uniqueName', 'projectId', 'datasetId'];
+    if (!isEditing) {
+        requiredFields.push('serviceAccountKey');
+    }
+    const missingFields = requiredFields.filter(field => !data[field]);
+    
+    if (missingFields.length > 0) {
+        showToast(`Please fill in all required fields: ${missingFields.join(', ')}`, 'error');
+        return;
+    }
+
+    // Add connector type
+    data.connectorType = 'bigquery';
+
+    showLoading('Saving connection...');
+    
+    try {
+        const url = isEditing ? `/api/data-connectors/${data.id}` : '/api/data-connectors';
+        const method = isEditing ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to save connection');
+        }
+
+        // Close modal and show success message
+        closeConnectorModal();
+        showToast(isEditing ? 'Connection updated successfully!' : 'Connection saved successfully!', 'success');
+        
+        // Reload the configured connectors display
+        await loadConfiguredConnectorsDisplay();
+
+    } catch (error) {
+        console.error('Error saving connection:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
     }
 }
