@@ -416,103 +416,84 @@ function closeAgentMenu() {
 }
 
 function launchAgent(agentId) {
-    // Show loader
-    togglePageLoader(true);
-    
-    // Store the selected agent ID for the chat interface
     selectedAgentId = agentId;
+    loadPage('launch-agent');
     
-    // Load the agent details from the API
+    // Fetch agent data and populate the form
+    showLoading();
     fetch(`/api/agents/${agentId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch agent details');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(agent => {
-            // Store the agent details
-            window.selectedAgent = agent;
-            
-            // Create the agent chat interface div
-            const chatContainer = document.createElement('div');
-            chatContainer.id = 'agentChatContainer';
-            chatContainer.className = 'agent-chat-container';
-            document.getElementById('app').innerHTML = '';
-            document.getElementById('app').appendChild(chatContainer);
-            
-            // Generate the chat interface HTML
-            chatContainer.innerHTML = `
-                <div class="chat-header">
-                    <button class="back-button" onclick="goBack()">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <div class="agent-info">
-                        <h2>${agent.name}</h2>
-                        <p>${agent.role}</p>
-                    </div>
-                    <div class="header-actions">
-                        <button class="btn-icon" onclick="refreshAgent()">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <button class="btn-icon" onclick="editAgent('${agentId}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <!-- System message introducing the agent -->
-                    <div class="message system-message">
-                        <div class="message-content">
-                            <p>You are now chatting with <strong>${agent.name}</strong>, your ${agent.role.toLowerCase()}.</p>
-                            <p>${agent.description}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="chat-input">
-                    <textarea id="userInput" placeholder="Type your message..." rows="1" 
-                        oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
-                        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
-                    <button class="send-button" onclick="sendMessage()">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-            `;
-            
-            // Focus on the input field
             setTimeout(() => {
-                const userInput = document.getElementById('userInput');
-                if (userInput) {
-                    userInput.focus();
+
+                hideLoading();
+
+                // Update page title
+                const header = document.querySelector('.page-header h1');
+                if (header) {
+                    header.textContent = ` ${agent.name} ⛳ Playground`;
                 }
-                // Hide loader after the chat interface is ready
-                togglePageLoader(false);
-            }, 100);
-            
-            // Update URL without reloading (history API)
-            window.history.pushState({ path: '/launch-agent' }, '', '/launch-agent');
-            
-            // Automatically resize the textarea as content is added
-            const textarea = document.getElementById('userInput');
-            if (textarea) {
-                textarea.addEventListener('input', function() {
-                    this.style.height = '';
-                    this.style.height = this.scrollHeight + 'px';
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error launching agent:', error);
-            // Hide loader on error
-            togglePageLoader(false);
-            // Show error message
-            document.getElementById('app').innerHTML = `
-                <div class="error-message">
-                    <h2>Error launching agent</h2>
-                    <p>${error.message}</p>
-                    <button class="btn-primary" onclick="goBack()">Go Back</button>
-                </div>
-            `;
+                
+                // Fill form fields - Check if element exists before setting value
+                const agentNameInput = document.getElementById('agentName');
+                if (agentNameInput) {
+                    agentNameInput.value = agent.name;
+                }
+                
+                const agentDescriptionInput = document.getElementById('agentDescription');
+                if (agentDescriptionInput) {
+                    agentDescriptionInput.value = agent.description;
+                }
+
+                const llmProviderSelect = document.getElementById('llmProvider');
+                if (llmProviderSelect) {
+                    llmProviderSelect.value = agent.llmProvider;
+                }
+
+                const llmModelSelect = document.getElementById('llmModel');
+                if (llmModelSelect) {
+                    llmModelSelect.value = agent.llmModel;
+                }
+
+                const apiKeyInput = document.getElementById('apiKey');
+                if (apiKeyInput) {
+                    apiKeyInput.value = agent.apiKey;
+                }
+
+                const agentRoleInput = document.getElementById('agentRole');
+                if (agentRoleInput) {
+                    agentRoleInput.value = agent.role;
+                }
+
+                const agentGoalInput = document.getElementById('agentGoal');
+                if (agentGoalInput) {
+                    agentGoalInput.value = agent.goal || '';
+                }
+
+                const expectedOutputInput = document.getElementById('expectedOutput');
+                if (expectedOutputInput) {
+                    expectedOutputInput.value = agent.expectedOutput || '';
+                }
+                
+                const agentBackstoryInput = document.getElementById('agentBackstory');
+                if (agentBackstoryInput) {
+                    agentBackstoryInput.value = agent.backstory || '';
+                }
+                
+                const agentInstructionsInput = document.getElementById('agentInstructions');
+                if (agentInstructionsInput) {
+                    agentInstructionsInput.value = agent.instructions;
+                }
+                
+                // Initialize LLM provider change handler
+                handleLLMProviderChange();
+                
+                // Initialize selectedTools with agent's tools
+                selectedTools = new Set(agent.tools || []);
+                
+                // Load agent tools
+                loadAgentTools(agent.tools);
+            }, 100); // Keeping the timeout for now, but the checks add safety
         });
 }
 
@@ -520,39 +501,36 @@ function loadAgentTools(toolIds) {
     const colorClasses = ['blue', 'green', 'purple', 'yellow', 'red', 'orange'];
     let colorIndex = 0;
 
-    // Fetch both normal and advanced tools
-    Promise.all([
-        fetch('/api/tools').then(response => response.json()),
-        fetch('/api/advanced-tools').then(response => response.json())
-    ]).then(([normalTools, advancedTools]) => {
-        const allTools = [...normalTools, ...advancedTools];
-        const agentTools = allTools.filter(tool => toolIds.includes(tool.id));
-        const toolsGrid = document.getElementById('agentTools');
-        
-        toolsGrid.innerHTML = agentTools.map(tool => {
-            const colorClass = colorClasses[colorIndex];
-            colorIndex = (colorIndex + 1) % colorClasses.length;
+    fetch('/api/tools')
+        .then(response => response.json())
+        .then(tools => {
+            const agentTools = tools.filter(tool => toolIds.includes(tool.id));
+            const toolsGrid = document.getElementById('agentTools');
             
-            const firstLetter = tool.name.charAt(0).toUpperCase();
-            
-            return `
-                <div class="tool-card" data-tool="${tool.id}" onclick="viewTool('${tool.id}')" style="cursor: pointer;">
-                    <div class="tool-content">
-                        <div class="tool-icon-wrapper ${colorClass}">
-                            ${firstLetter}
-                        </div>
-                        <div class="tool-info">
-                            <div class="tool-name ltool">${tool.name}</div>
-                            <div class="tool-description">${tool.description || 'No description available'}</div>
-                            <div class="tool-tags">
-                                ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
+            toolsGrid.innerHTML = agentTools.map(tool => {
+                const colorClass = colorClasses[colorIndex];
+                colorIndex = (colorIndex + 1) % colorClasses.length;
+                
+                const firstLetter = tool.name.charAt(0).toUpperCase();
+                
+                return `
+                    <div class="tool-card" data-tool="${tool.id}" onclick="viewTool('${tool.id}')" style="cursor: pointer;">
+                        <div class="tool-content">
+                            <div class="tool-icon-wrapper ${colorClass}">
+                                ${firstLetter}
+                            </div>
+                            <div class="tool-info">
+                                <div class="tool-name ltool">${tool.name}</div>
+                                <div class="tool-description">${tool.description || 'No description available'}</div>
+                                <div class="tool-tags">
+                                    ${tool.tags ? tool.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : ''}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        }).join('');
-    });
+                `;
+            }).join('');
+        });
 }
 
 function getRandomColor() {

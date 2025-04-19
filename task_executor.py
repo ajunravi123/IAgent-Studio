@@ -163,7 +163,7 @@ class TaskExecutor:
                     Tool(
                         name=tool_name,
                         func=api_caller_with_config,
-                        description=f"""Calls API: {tool_schema['info']['title']}. {tool_schema['info']['description']}
+                        description=f"""Calls API: {tool_schema['info']['title']}. {tool_schema['info'].get('description', '')}
                         Input: {{input}}
                         Important: Use the complete input text as provided.""",
                         result_as_answer=True
