@@ -915,57 +915,46 @@ function editTool(toolId) {
     if (document.getElementById('toolActionsMenu')) {
         closeToolMenu();
     }
-    showLoading("Please wait..");
+    showLoading("Loading tool data...");
     
-    // First load data connectors
-    loadDataConnectorsForCustomTool().then(() => {
-        fetch(`/api/tools/${toolId}`)
-            .then(response => response.json())
-            .then(tool => {
-                // Get tool metadata to check for data connector
-                return fetch(`/api/tools/${toolId}/metadata`)
-                    .then(metaResponse => metaResponse.json())
-                    .then(metadata => {
-                        hideLoading();
-                        const modal = document.getElementById('addCustomToolModal');
-                        // Update modal title and button
-                        modal.querySelector('.modal-header h2').textContent = 'Edit Tool';
-                        modal.querySelector('.modal-footer .btn-primary').textContent = 'Save';
-                        
-                        // Fill form with tool data
-                        document.getElementById('toolName').value = tool.name;
-                        document.getElementById('toolDescription').value = tool.description;
-                        document.getElementById('toolTags').value = tool.tags.join(', ');
-                        
-                        // Set data connector if present in metadata
+    fetch(`/api/tools/${toolId}`)
+        .then(response => response.json())
+        .then(tool => {
+            // Fetch schema
+            return fetch(`/api/tools/${toolId}/schema`)
+                .then(response => response.json())
+                .then(schema => {
+                    hideLoading();
+                    const modal = document.getElementById('addCustomToolModal');
+                    // Update modal title and button
+                    modal.querySelector('.modal-header h2').textContent = 'Edit Tool';
+                    modal.querySelector('.modal-footer .btn-primary').textContent = 'Save';
+                    
+                    // Fill form with tool data
+                    document.getElementById('toolName').value = tool.name;
+                    document.getElementById('toolDescription').value = tool.description;
+                    document.getElementById('toolTags').value = tool.tags.join(', ');
+                    document.getElementById('toolSchema').value = JSON.stringify(schema, null, 2);
+                    
+                    // Load data connectors and select the current one
+                    loadDataConnectorsForCustomTool().then(() => {
                         const dataConnectorSelect = document.getElementById('toolDataConnector');
-                        if (metadata && metadata.data_connector_id) {
-                            dataConnectorSelect.value = metadata.data_connector_id;
-                        } else {
-                            dataConnectorSelect.value = '';
-                        }
-                        
-                        // Get and set schema
-                        return fetch(`/api/tools/${toolId}/schema`)
-                            .then(response => response.json())
-                            .then(schema => {
-                                document.getElementById('toolSchema').value = JSON.stringify(schema, null, 2);
-                                
-                                // Update save button to handle edit
-                                const saveButton = modal.querySelector('.modal-footer .btn-primary');
-                                saveButton.onclick = () => updateTool(toolId);
-                                
-                                // Show the modal
-                                modal.classList.add('show');
-                            });
+                        dataConnectorSelect.value = tool.data_connector_id || '';
                     });
-            })
-            .catch(error => {
-                hideLoading();
-                console.error("Error fetching tool data:", error);
-                alert("Failed to load tool data. Please try again.");
-            });
-    });
+                    
+                    // Update save button to handle edit
+                    const saveButton = modal.querySelector('.modal-footer .btn-primary');
+                    saveButton.onclick = () => updateTool(toolId);
+                    
+                    // Show the modal
+                    modal.classList.add('show');
+                });
+        })
+        .catch(error => {
+            hideLoading();
+            console.error("Error fetching tool data:", error);
+            alert("Failed to load tool data. Please try again.");
+        });
 }
 
 function updateTool(toolId) {
@@ -987,7 +976,7 @@ function updateTool(toolId) {
         data_connector_id: dataConnectorId || null // Explicitly set to null when empty
     };
 
-    showLoading("Please wait..");
+    showLoading("Saving changes...");
     
     fetch(`/api/tools/${toolId}`, {
         method: 'PUT',
@@ -1014,30 +1003,23 @@ function cloneTool(toolId) {
     closeToolMenu();
     let toolData; // Store the original tool data
 
-    showLoading("Please wait..");
+    showLoading("Cloning tool...");
     fetch(`/api/tools/${toolId}`)
         .then(response => response.json())
         .then(tool => {
             toolData = tool; // Store the tool data for later use
-            // Get the schema and metadata for the tool
-            return Promise.all([
-                fetch(`/api/tools/${toolId}/schema`).then(response => response.json()),
-                fetch(`/api/tools/${toolId}/metadata`).then(response => response.json())
-            ]);
+            // Get the schema
+            return fetch(`/api/tools/${toolId}/schema`).then(response => response.json());
         })
-        .then(([schema, metadata]) => {
+        .then(schema => {
             const clonedTool = {
                 name: `${toolData.name} (Copy)`,
                 description: toolData.description,
                 tags: toolData.tags,
                 schema: schema,
-                is_custom: true
+                is_custom: true,
+                data_connector_id: toolData.data_connector_id || null
             };
-            
-            // Include data connector if present in original
-            if (metadata && metadata.data_connector_id) {
-                clonedTool.data_connector_id = metadata.data_connector_id;
-            }
             
             return fetch('/api/tools/custom', {
                 method: 'POST',
@@ -1077,7 +1059,7 @@ function deleteTool(toolId) {
             }
             
             if (confirm('Are you sure you want to delete this tool?')) {
-                showLoading("Please wait..");
+                showLoading("Deleting tool...");
                 fetch(`/api/tools/${toolId}`, {
                     method: 'DELETE'
                 })
@@ -1101,7 +1083,7 @@ function viewTool(toolId) {
     
     if (isToolsPage) {
         // If we're on the tools page, show view-only popup
-        showLoading("Please wait..");
+        showLoading("Loading tool details...");
         fetch(`/api/tools/${toolId}`)
             .then(response => response.json())
             .then(tool => {
@@ -1158,7 +1140,7 @@ function viewTool(toolId) {
             });
     } else {
         // If we're on any other page (like agent test), open in new window
-        showLoading("Please wait..");
+        showLoading("Opening tool details...");
         fetch(`/api/tools/${toolId}`)
             .then(response => response.json())
             .then(tool => {
@@ -1279,57 +1261,48 @@ function closeViewTool() {
 }
 
 function loadExternalTools() {
-    // First get all data connectors for later lookup
-    fetch('/api/data-connectors')
+    fetch('/api/tools')
         .then(response => response.json())
-        .then(connectors => {
-            // Create a map of connector IDs to names for quick lookup
-            const connectorMap = {};
-            connectors.forEach(connector => {
-                connectorMap[connector.id] = {
-                    name: connector.uniqueName,
-                    type: connector.connectorType
-                };
-            });
-            
-            // Now fetch all tools - excluding advanced tools for now
-            return fetch('/api/tools')
+        .then(tools => {
+            const toolsGrid = document.getElementById('externalToolsGrid');
+            if (!toolsGrid) {
+                console.error('Tools grid element not found');
+                return;
+            }
+
+            if (tools.length === 0) {
+                toolsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <img src="/static/images/tools-illustration.svg" alt="No tools found" class="empty-illustration">
+                        <h2>No Tools found</h2>
+                        <button class="btn-primary" onclick="showAddCustomTool()">+ Add new tool</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Fetch data connectors to map IDs to names
+            fetch('/api/data-connectors')
                 .then(response => response.json())
-                .then(async tools => {
-                    const toolsGrid = document.getElementById('externalToolsGrid');
-                    if (!toolsGrid) return;
-        
-                    // Create an array to store HTML for each tool card
-                    const toolCards = [];
-                    
-                    // Process each tool one by one to fetch its metadata
-                    for (const tool of tools) {
+                .then(dataConnectors => {
+                    const connectorMap = new Map(dataConnectors.map(dc => [dc.id, { name: dc.uniqueName, type: dc.connectorType }]));
+
+                    toolsGrid.innerHTML = tools.map(tool => {
                         const firstLetter = tool.name.charAt(0).toUpperCase();
-                        
-                        // Fetch metadata for this tool
-                        let connectorHtml = '';
-                        try {
-                            const metadataResponse = await fetch(`/api/tools/${tool.id}/metadata`);
-                            const metadata = await metadataResponse.json();
-                            
-                            // If the tool has a data connector, add connector info to the card
-                            if (metadata && metadata.data_connector_id) {
-                                const connectorId = metadata.data_connector_id;
-                                const connectorInfo = connectorMap[connectorId] || { name: 'Unknown', type: 'database' };
-                                
-                                connectorHtml = `
-                                    <div class="tool-connector">
-                                        <i class="fas fa-database"></i>
-                                        <span>Connected to: <label class="tool_connector_name_tag">${connectorInfo.name}</label>  <label class="tool_connector_type_tag">(${connectorInfo.type})</label></span>
-                                    </div>
-                                `;
-                            }
-                        } catch (error) {
-                            console.error(`Error fetching metadata for tool ${tool.id}:`, error);
-                        }
-                        
-                        // Create the tool card HTML
-                        const cardHtml = `
+                        // Use data_connector_id directly from tool object, handle null case
+                        const dataConnectorInfo = tool.data_connector_id
+                            ? connectorMap.get(tool.data_connector_id) || { name: 'Unknown', type: 'database' }
+                            : null;
+                        const connectorHtml = dataConnectorInfo
+                            ? `
+                                <div class="tool-connector">
+                                    <i class="fas fa-database"></i>
+                                    <span>Connected to: <label class="tool_connector_name_tag">${dataConnectorInfo.name}</label> <label class="tool_connector_type_tag">(${dataConnectorInfo.type})</label></span>
+                                </div>
+                            `
+                            : '';
+
+                        return `
                             <div class="tool-integration-card">
                                 <div class="tool-header">
                                     <div class="tool-info tool-tab-title">
@@ -1343,22 +1316,14 @@ function loadExternalTools() {
                                     </button>
                                 </div>
                                 <p class="tool-description">${tool.description || 'No description available'}</p>
-                                
-                                
                                 <div class="tool-tags tool-underline">
                                     ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
                                 </div>
-
                                 <div class="tool_connector_tag">${connectorHtml}</div>
                             </div>
                         `;
-                        
-                        toolCards.push(cardHtml);
-                    }
-                    
-                    // Update the grid with all tool cards
-                    toolsGrid.innerHTML = toolCards.join('');
-                    
+                    }).join('');
+
                     // Add CSS for connector display if it doesn't exist
                     if (!document.getElementById('connector-styles')) {
                         const style = document.createElement('style');
@@ -1378,40 +1343,18 @@ function loadExternalTools() {
                         `;
                         document.head.appendChild(style);
                     }
+                })
+                .catch(error => {
+                    console.error('Error loading data connectors:', error);
+                    toolsGrid.innerHTML = '<p>Error loading tools: Unable to fetch data connectors.</p>';
                 });
         })
         .catch(error => {
-            console.error("Error loading data connectors:", error);
-            // Fall back to the regular tool loading without connector info
-            return fetch('/api/tools')
-                .then(response => response.json())
-                .then(tools => {
-                    const toolsGrid = document.getElementById('externalToolsGrid');
-                    if (!toolsGrid) return;
-                    
-                    toolsGrid.innerHTML = tools.map(tool => {
-                        const firstLetter = tool.name.charAt(0).toUpperCase();
-                        return `
-                            <div class="tool-integration-card">
-                                <div class="tool-header">
-                                    <div class="tool-info tool-tab-title">
-                                        <div class="tool-logo" style="background: ${stringToColor(tool.name)}">
-                                            ${firstLetter}
-                                        </div>
-                                        <h3>${tool.name}</h3>
-                                    </div>
-                                    <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                </div>
-                                <p class="tool-description">${tool.description || 'No description available'}</p>
-                                <div class="tool-tags tool-underline">
-                                    ${(tool.tags || ['Dev-Tools']).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                });
+            console.error('Error loading tools:', error);
+            const toolsGrid = document.getElementById('externalToolsGrid');
+            if (toolsGrid) {
+                toolsGrid.innerHTML = '<p>Error loading tools.</p>';
+            }
         });
 }
 
@@ -1450,55 +1393,35 @@ function refreshTools() {
 
 function loadTools() {
     try {
-        // First get all data connectors for later lookup
+        // Fetch data connectors to map IDs to names
         fetch('/api/data-connectors')
             .then(response => response.json())
             .then(connectors => {
                 // Create a map of connector IDs to names for quick lookup
-                const connectorMap = {};
-                connectors.forEach(connector => {
-                    connectorMap[connector.id] = {
-                        name: connector.uniqueName,
-                        type: connector.connectorType
-                    };
-                });
+                const connectorMap = new Map(connectors.map(dc => [dc.id, { name: dc.uniqueName, type: dc.connectorType }]));
                 
                 // Fetch only regular tools, skipping advanced tools
                 fetch('/api/tools')
                     .then(response => response.json())
-                    .then(async (normalTools) => {
+                    .then(tools => {
                         const toolsGrid = document.querySelector('.tools-grid');
                         if (!toolsGrid) return;
-        
-                        // First, fetch metadata for all normal tools
-                        const toolMetadataPromises = normalTools.map(tool =>
-                            fetch(`/api/tools/${tool.id}/metadata`)
-                                .then(response => response.json())
-                                .catch(() => ({})) // Return empty object if metadata fetch fails
-                        );
-                        
-                        const toolMetadataResults = await Promise.all(toolMetadataPromises);
-                        
-                        // Then render normal tools with connector info
-                        let toolsHtml = normalTools.map((tool, index) => {
+
+                        let toolsHtml = tools.map(tool => {
                             const isSelected = selectedTools.has(tool.id);
                             const firstLetter = tool.name.charAt(0).toUpperCase();
-                            const metadata = toolMetadataResults[index];
-                            const hasConnector = metadata && metadata.data_connector_id;
-                            let connectorHtml = '';
-                            
-                            if (hasConnector) {
-                                const connectorId = metadata.data_connector_id;
-                                const connectorInfo = connectorMap[connectorId] || { name: 'Unknown', type: 'database' };
-                                
-                                connectorHtml = `
+                            const dataConnectorInfo = tool.data_connector_id
+                                ? connectorMap.get(tool.data_connector_id) || { name: 'Unknown', type: 'database' }
+                                : null;
+                            const connectorHtml = dataConnectorInfo
+                                ? `
                                     <div class="connector-info">
                                         <i class="fas fa-database"></i>
-                                        <span>Connected to ${connectorInfo.name} (${connectorInfo.type})</span>
+                                        <span>Connected to ${dataConnectorInfo.name} (${dataConnectorInfo.type})</span>
                                     </div>
-                                `;
-                            }
-                            
+                                `
+                                : '';
+
                             return `
                                 <div class="tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}">
                                     <div class="tool-content">
@@ -1509,7 +1432,7 @@ function loadTools() {
                                                 </div>
                                                 <div class="tool-title">
                                                     <h3 class="tool-name">${tool.name}</h3>
-                                                    ${hasConnector ? connectorHtml : ''}
+                                                    ${connectorHtml}
                                                 </div>
                                             </div>
                                         </div>
@@ -1525,11 +1448,9 @@ function loadTools() {
                                 </div>
                             `;
                         }).join('');
-        
-                        // Advanced Tools section has been removed
-        
+
                         toolsGrid.innerHTML = toolsHtml;
-        
+
                         // Add CSS for connector info if it doesn't exist
                         if (!document.getElementById('connector-info-styles')) {
                             const style = document.createElement('style');
@@ -1558,7 +1479,7 @@ function loadTools() {
                             `;
                             document.head.appendChild(style);
                         }
-        
+
                         // Add click event listeners for normal tools
                         toolsGrid.querySelectorAll('.tool-card').forEach(card => {
                             card.addEventListener('click', (event) => {
@@ -1568,6 +1489,9 @@ function loadTools() {
                                 }
                             });
                         });
+
+                        // Update selected tools count
+                        updateSelectedToolsCount();
                     });
             })
             .catch(error => {
@@ -1619,8 +1543,6 @@ function loadToolsWithoutConnectors() {
                 `;
             }).join('');
 
-            // Advanced Tools section removed
-
             toolsGrid.innerHTML = toolsHtml;
 
             // Add click event listeners for normal tools
@@ -1632,7 +1554,19 @@ function loadToolsWithoutConnectors() {
                     }
                 });
             });
+
+            // Update selected tools count
+            updateSelectedToolsCount();
         });
+}
+
+// Function to update the selected tools count in the UI
+function updateSelectedToolsCount() {
+    const toolsCountElement = document.getElementById('selectedToolsCount');
+    if (toolsCountElement) {
+        const totalSelected = selectedTools.size + selectedAdvancedTools.size;
+        toolsCountElement.textContent = `${totalSelected} tool${totalSelected !== 1 ? 's' : ''} selected`;
+    }
 }
 
 // Add toggle function for advanced tools section
@@ -1946,6 +1880,9 @@ function toggleTool(toolId, event) {
             checkbox.classList.toggle('checked', isSelected);
         }
     }
+
+    // Update selected tools count
+    updateSelectedToolsCount();
 }
 
 function toggleAdvancedTool(toolId, event) {
@@ -1977,6 +1914,9 @@ function toggleAdvancedTool(toolId, event) {
     } else {
         console.error(`Could not find advanced tool card for ID: ${toolId}`);
     }
+
+    // Update selected tools count
+    updateSelectedToolsCount();
 }
 
 // Profile dropdown functionality
@@ -2138,6 +2078,7 @@ function formatNotificationTime(timestamp) {
     // More than 24 hours
     return date.toLocaleDateString();
 }
+
 
 function initializeNotifications() {
     const notificationBtn = document.querySelector('.notification-btn');
