@@ -90,6 +90,7 @@ class Tool(BaseModel):
     tags: List[str]
     is_added: bool = False
     data_connector_id: Optional[str] = None
+    is_internal: Optional[bool] = False
 
 class OpenAPIServer(BaseModel):
     url: str

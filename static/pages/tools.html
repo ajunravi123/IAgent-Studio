@@ -32,6 +32,19 @@
         </div>
     </div>
 
+    <!-- In-Built Tools Section -->
+    <div class="tools-content">
+        <div class="section-header">
+            <div class="header-content">
+                <h2 class="section-title">In-Built Tools</h2>
+                <p class="section-subtitle">Pre-configured tools with special capabilities</p>
+            </div>
+        </div>
+        <div class="external-tools-grid" id="inBuiltToolsGrid">
+            <!-- In-built tools will be populated here -->
+        </div>
+    </div>
+
     <!-- Regular Tools Section -->
     <div class="tools-content">
         <div class="section-header">
@@ -212,11 +225,11 @@
             <i class="fas fa-edit"></i>
             Edit
         </div>
-        <div class="menu-item" onclick="cloneTool(selectedToolId)">
+        <div class="menu-item minimenu" onclick="cloneTool(selectedToolId)">
             <i class="fas fa-copy"></i>
             Clone
         </div>
-        <div class="menu-item delete" onclick="deleteTool(selectedToolId)">
+        <div class="menu-item delete minimenu" onclick="deleteTool(selectedToolId)">
             <i class="fas fa-trash"></i>
             Delete
         </div>

@@ -886,7 +886,7 @@ function validateToolData(name, description, schema) {
     return true;
 }
 
-function showToolMenu(event, toolId) {
+function showToolMenu(event, toolId, isInternal) {
     event.stopPropagation();
     const menu = document.getElementById('toolActionsMenu');
     const button = event.currentTarget;
@@ -900,6 +900,25 @@ function showToolMenu(event, toolId) {
     
     // Close menu when clicking outside
     document.addEventListener('click', closeToolMenu);
+
+    // if (isInternal == "true") {
+    //     toggleElementsByClass("minimenu", "hide")
+    // }else{
+    //     toggleElementsByClass("minimenu", "show")
+    // }
+}
+
+
+function toggleElementsByClass(className, action) {
+    const elements = document.getElementsByClassName(className);
+    
+    for (let element of elements) {
+      if (action === 'hide') {
+        element.style.display = 'none';
+      } else if (action === 'show') {
+        element.style.display = '';
+      }
+    }
 }
 
 function closeToolMenu() {
@@ -1264,13 +1283,18 @@ function loadExternalTools() {
     fetch('/api/tools')
         .then(response => response.json())
         .then(tools => {
+            const inBuiltToolsGrid = document.getElementById('inBuiltToolsGrid');
             const toolsGrid = document.getElementById('externalToolsGrid');
-            if (!toolsGrid) {
-                console.error('Tools grid element not found');
+            if (!toolsGrid || !inBuiltToolsGrid) {
+                console.error('Tools grid elements not found');
                 return;
             }
 
-            if (tools.length === 0) {
+            // Separate internal and external tools
+            const internalTools = tools.filter(tool => tool.is_internal === true);
+            const externalTools = tools.filter(tool => tool.is_internal !== true);
+
+            if (internalTools.length === 0 && externalTools.length === 0) {
                 toolsGrid.innerHTML = `
                     <div class="empty-state">
                         <img src="/static/images/tools-illustration.svg" alt="No tools found" class="empty-illustration">
@@ -1278,6 +1302,7 @@ function loadExternalTools() {
                         <button class="btn-primary" onclick="showAddCustomTool()">+ Add new tool</button>
                     </div>
                 `;
+                inBuiltToolsGrid.style.display = 'none';
                 return;
             }
 
@@ -1287,9 +1312,9 @@ function loadExternalTools() {
                 .then(dataConnectors => {
                     const connectorMap = new Map(dataConnectors.map(dc => [dc.id, { name: dc.uniqueName, type: dc.connectorType }]));
 
-                    toolsGrid.innerHTML = tools.map(tool => {
+                    // Function to generate tool HTML
+                    const generateToolHtml = (tool) => {
                         const firstLetter = tool.name.charAt(0).toUpperCase();
-                        // Use data_connector_id directly from tool object, handle null case
                         const dataConnectorInfo = tool.data_connector_id
                             ? connectorMap.get(tool.data_connector_id) || { name: 'Unknown', type: 'database' }
                             : null;
@@ -1311,9 +1336,15 @@ function loadExternalTools() {
                                         </div>
                                         <h3>${tool.name}</h3>
                                     </div>
-                                    <button class="btn-more" onclick="showToolMenu(event, '${tool.id}')">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
+                                    ${tool.is_internal ? `
+                                        <button class="btn-more" onclick="showToolMenu(event, '${tool.id}', '${tool.is_internal}')">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    ` : `
+                                        <button class="btn-more" onclick="showToolMenu(event, '${tool.id}', '${tool.is_internal}')">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    `}
                                 </div>
                                 <p class="tool-description">${tool.description || 'No description available'}</p>
                                 <div class="tool-tags tool-underline">
@@ -1322,7 +1353,18 @@ function loadExternalTools() {
                                 <div class="tool_connector_tag">${connectorHtml}</div>
                             </div>
                         `;
-                    }).join('');
+                    };
+
+                    // Render internal tools
+                    if (internalTools.length > 0) {
+                        inBuiltToolsGrid.style.display = 'grid';
+                        inBuiltToolsGrid.innerHTML = internalTools.map(tool => generateToolHtml(tool)).join('');
+                    } else {
+                        inBuiltToolsGrid.style.display = 'none';
+                    }
+
+                    // Render external tools
+                    toolsGrid.innerHTML = externalTools.map(tool => generateToolHtml(tool)).join('');
 
                     // Add CSS for connector display if it doesn't exist
                     if (!document.getElementById('connector-styles')) {
