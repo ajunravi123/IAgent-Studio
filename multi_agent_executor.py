@@ -40,7 +40,7 @@ class MultiAgentExecutor:
             retry_delay=34
         )
 
-        # Initialize Schema and(result, "Schema Analyzer", "Analyze OpenAPI schemas and extract key information", "Expert at analyzing OpenAPI schemas", self.llm_client)
+        # Initialize Schema Agent
         self.schema_agent = CrewAgent(
             role="Schema Analyzer",
             goal="Analyze OpenAPI schemas and extract key information about required fields, data types, and constraints",
@@ -213,6 +213,43 @@ class MultiAgentExecutor:
             logger.error(f"Error parsing payload: {e}")
             return None
 
+    def extract_agent_names(self, manager_description: str, available_agents: List[str]) -> List[str]:
+        """Extracts agent names from the manager's description using the LLM."""
+        task_description = f"""
+            Given the following manager description:
+            '{manager_description}'
+            
+            And the list of available agent names:
+            {json.dumps(available_agents, indent=2)}
+            
+            Extract the names of the agents mentioned in the manager description. The agent names may appear in natural language, within quotes, or without quotes. Return a JSON array containing only the agent names that match the available agents, in the order they appear in the description. If no valid agent names are found, return an empty array.
+            
+            Example:
+            Description: 'Use agent Tom Agent to process, then pass to Translator Agent.'
+            Available agents: ["Tom Agent", "Translator Agent", "Other Agent"]
+            Output: ["Tom Agent", "Translator Agent"]
+            
+            Return only the JSON array as a string.
+        """
+        extract_task = Task(
+            description=task_description,
+            expected_output="A JSON array containing the extracted agent names",
+            agent=self.payload_agent
+        )
+        crew = Crew(agents=[self.payload_agent], tasks=[extract_task], process=Process.sequential)
+        result = crew.kickoff()
+        try:
+            result_str = str(result.raw if hasattr(result, 'raw') else result.output if hasattr(result, 'output') else result)
+            result_str = result_str.strip('`').strip('json').strip()
+            agent_names = json.loads(result_str)
+            if not isinstance(agent_names, list):
+                logger.error(f"LLM returned invalid agent names format: {result_str}")
+                return []
+            return agent_names
+        except (json.JSONDecodeError, AttributeError) as e:
+            logger.error(f"Error parsing agent names: {e}")
+            return []
+
     def _load_agent_tools(self, agent_config: Dict[str, Any]) -> List:
         """Loads tools for an agent."""
         from langchain.tools import Tool
@@ -363,25 +400,25 @@ class MultiAgentExecutor:
             ]
             logger.info(f"Worker metadata prepared: {json.dumps([{'id': w['id'], 'name': w['name']} for w in worker_metadata], indent=2)}")
 
-            # Parse agent names from manager description
+            # Extract agent names using LLM
             manager_description = self.multi_agent_config.get(
                 "description",
                 "Coordinate the processing of the user request by delegating to worker agents."
             )
-            # Extract quoted agent names (e.g., "Tom Agent", "Translator")
-            agent_names = re.findall(r'"([^"]+)"', manager_description)
+            available_agent_names = [w["name"] for w in worker_metadata]
+            agent_names = self.extract_agent_names(manager_description, available_agent_names)
+            
             if not agent_names:
-                logger.error("No agent names found in manager description.")
-                return "Error: No agent names specified in manager description."
+                logger.error("No agent names specified in manager description")
+                return "Error: No agent names specified in manager description"
 
             # Validate agent names
-            available_agent_names = [w["name"] for w in worker_metadata]
             missing_agents = [name for name in agent_names if name not in available_agent_names]
             if missing_agents:
                 logger.error(f"Missing required agents: {missing_agents}")
                 return f"Error: Missing required agents: {', '.join(missing_agents)}"
 
-            # Order agents based on appearance in description
+            # Order agents based on extracted names
             agent_sequence = []
             for name in agent_names:
                 for meta in worker_metadata:

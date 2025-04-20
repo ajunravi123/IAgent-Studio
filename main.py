@@ -12,9 +12,10 @@ import shutil
 from pathlib import Path
 from langchain.tools import Tool  # If tools are needed for manager/agents
 
-DISABLE_RUN = True
+ENABLE_AGENT_RUN = True
+MIN_AGENTSFOR_MULTI = 1
 
-if DISABLE_RUN:
+if ENABLE_AGENT_RUN:
     from task_executor import TaskExecutor
     from multi_agent_executor import MultiAgentExecutor
     import psycopg2
@@ -401,7 +402,7 @@ async def delete_data_connector(connector_id: str):
     save_connectors(connectors)
     return {"message": "Connector deleted successfully"}
 
-if DISABLE_RUN:
+if ENABLE_AGENT_RUN:
     @app.post("/api/data-connectors/test")
     async def test_connection(connection_data: PostgresConnectionTest):
         if connection_data.type == "postgres":
@@ -800,7 +801,7 @@ ALLOWED_FILE_TYPES = {
     "application/pdf": "pdf"
 }
 
-if DISABLE_RUN:
+if ENABLE_AGENT_RUN:
     @app.post("/api/agent/infer")
     async def agent_infer(
         agentId: str = Form(...),
@@ -1015,7 +1016,7 @@ if DISABLE_RUN:
                 worker_agent_configs.append(worker_config)
                 logger.info(f"Loaded config for worker agent {agent_id} ({worker_config['name']})")
 
-            if len(worker_agent_configs) < 2:
+            if len(worker_agent_configs) < MIN_AGENTSFOR_MULTI:
                 logger.error("At least two worker agents are required.")
                 raise HTTPException(status_code=400, detail="Multi-agent requires at least two worker agents.")
 
