@@ -3593,3 +3593,71 @@ body.light-theme .agent-info h4 {
     font-weight: 600;
     font-style: italic;
 }
+
+
+.tool_universe {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    color: #e0f7ff; /* Light cyan text for readability */
+    background: #1c1c1c; /* Dark polished background */
+    border: 2px solid transparent;
+    border-image: linear-gradient(45deg, #00f2ff, #ff00ff) 1; /* Neon gradient border */
+    border-radius: 10px;
+    box-shadow: 0 0 12px rgba(0, 242, 255, 0.5), inset 0 0 8px rgba(0, 242, 255, 0.3);
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    max-width: 220px;
+    margin: 20px auto;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.tool_universe:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.8), inset 0 0 12px rgba(0, 242, 255, 0.5);
+    border-image: linear-gradient(45deg, #ff00ff, #00f2ff) 1; /* Reverse gradient on hover */
+}
+
+/* Subtle shimmer animation */
+@keyframes shimmer {
+    0% { box-shadow: 0 0 12px rgba(0, 242, 255, 0.5), inset 0 0 8px rgba(0, 242, 255, 0.3); }
+    50% { box-shadow: 0 0 18px rgba(0, 242, 255, 0.7), inset 0 0 10px rgba(0, 242, 255, 0.4); }
+    100% { box-shadow: 0 0 12px rgba(0, 242, 255, 0.5), inset 0 0 8px rgba(0, 242, 255, 0.3); }
+}
+
+.tool_universe {
+    animation: shimmer 3s infinite ease-in-out;
+}
+
+.universe-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    fill: none;
+    stroke: #00f2ff; /* Neon cyan stroke */
+    stroke-width: 1.5;
+}
+
+.universe-icon .glow {
+    stroke: #ff00ff; /* Neon purple glow */
+    stroke-width: 2;
+    filter: drop-shadow(0 0 5px #ff00ff);
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .tool_universe {
+        font-size: 13px;
+        padding: 8px 16px;
+        max-width: 90%;
+    }
+    .universe-icon {
+        width: 16px;
+        height: 16px;
+    }
+}

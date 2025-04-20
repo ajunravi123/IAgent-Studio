@@ -4434,3 +4434,8 @@ async function saveBigQueryConnection(isEditing = false) {
         hideLoading();
     }
 }
+
+
+function showToolUniverse() {
+    window.open('http://ajunsmachine.theworkpc.com:8004', '_blank');
+}
