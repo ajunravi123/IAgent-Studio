@@ -234,26 +234,30 @@ function goBack() {
     // Show loader
     togglePageLoader(true);
     
-    // Check if we were viewing a multi-agent launch page first
+    // Check if we were viewing a multi-agent launch page
     if (document.querySelector('.launch-multi-agent')) {
-        // We're on the multi-agent launch page
         sessionStorage.removeItem('selectedMultiAgentId');
         window.selectedMultiAgentId = null;
         loadPage('multi-agents');
         return;
     }
     
-    // Otherwise handle other back scenarios
-    if (window.location.pathname === '/launch-agent') {
-        selectedAgentId = null;
+    // Handle based on current pathname
+    const currentPath = window.location.pathname;
+    if (currentPath === '/launch-agent' || currentPath.startsWith('/agents/') || currentPath.includes('/agents/')) {
+        window.selectedAgentId = null; // Clear selected agent ID
+        loadPage('agents'); // Navigate to main agents page
+    } else if (currentPath === '/agents') {
+        // Already on the main agents page, no navigation needed
         loadPage('agents');
-    } else if (window.selectedMultiAgentId || sessionStorage.getItem('selectedMultiAgentId')) {
-        // If we have a multi-agent ID in memory or session storage, we came from multi-agent launch
+        togglePageLoader(false); // Hide loader since no navigation occurs
+    } else if (currentPath === '/launch-multi-agent') {
+        // Coming from multi-agent launch page
         sessionStorage.removeItem('selectedMultiAgentId');
         window.selectedMultiAgentId = null;
         loadPage('multi-agents');
     } else {
-        // Default to agents page if we can't determine the source
+        // Default to agents page for other cases
         loadPage('agents');
     }
 }
