@@ -1829,9 +1829,9 @@ async function loadConfiguredConnectorsDisplay() {
                             <tr>
                                 <th>Name</th>
                                 <th>Type</th>
-                                <th>Host</th>
+                                <th>Host/Project</th>
                                 <th>Port</th>
-                                <th>Database</th>
+                                <th>Database/Dataset</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -1852,9 +1852,9 @@ async function loadConfiguredConnectorsDisplay() {
                                             ${connector.connectorType}
                                         </span>
                                     </td>
-                                    <td>${connector.vectorStoreHost || '💠'}</td>
+                                    <td>${connector.vectorStoreHost || connector.projectId || '💠'}</td>
                                     <td>${connector.vectorStorePort || '💠'}</td>
-                                    <td>${connector.vectorStoreDBName || '💠'}</td>
+                                    <td>${connector.vectorStoreDBName || connector.datasetId || '💠'}</td>
 
                                     <td class="actions">
                                         <button class="btn-icon btn-edit" onclick="editConnector('${connector.id}', '${connector.connectorType}')" title="Edit">
