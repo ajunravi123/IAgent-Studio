@@ -4218,7 +4218,12 @@ function showBigQueryConnectionModal(connectorData = null) {
         if (isEditing && connectorData.serviceAccountKey) {
             const serviceAccountKeyField = document.getElementById('serviceAccountKey');
             if (serviceAccountKeyField) {
-                serviceAccountKeyField.value = connectorData.serviceAccountKey;
+                // Convert object to string for editing if it's an object
+                if (typeof connectorData.serviceAccountKey === 'object') {
+                    serviceAccountKeyField.value = JSON.stringify(connectorData.serviceAccountKey, null, 2);
+                } else {
+                    serviceAccountKeyField.value = connectorData.serviceAccountKey;
+                }
             }
         }
     }, 50);
@@ -4297,6 +4302,15 @@ async function testBigQueryConnection() {
         return;
     }
     
+    // Parse service account key
+    let serviceAccountKey;
+    try {
+        serviceAccountKey = JSON.parse(connectionConfig.serviceAccountKey);
+    } catch (error) {
+        showToast("Service Account Key must be a valid JSON", "error");
+        return;
+    }
+    
     // Show loading state on the test button
     const testBtn = document.querySelector('#connectorConfigModal .btn-test-connection');
     const originalBtnText = testBtn.innerHTML;
@@ -4314,7 +4328,7 @@ async function testBigQueryConnection() {
                 config: {
                     projectId: connectionConfig.projectId,
                     datasetId: connectionConfig.datasetId,
-                    serviceAccountKey: connectionConfig.serviceAccountKey
+                    serviceAccountKey: serviceAccountKey
                 }
             })
         });
@@ -4400,6 +4414,17 @@ async function saveBigQueryConnection(isEditing = false) {
 
     // Add connector type
     data.connectorType = 'bigquery';
+
+    // Parse the service account key from JSON string to object
+    try {
+        if (data.serviceAccountKey) {
+            data.serviceAccountKey = JSON.parse(data.serviceAccountKey);
+        }
+    } catch (error) {
+        showToast("Service Account Key must be a valid JSON", "error");
+        hideLoading();
+        return;
+    }
 
     showLoading('Saving connection...');
     

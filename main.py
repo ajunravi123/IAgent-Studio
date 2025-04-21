@@ -298,7 +298,7 @@ class BigQueryConnectionConfig(BaseModel):
     uniqueName: str
     projectId: str
     datasetId: str
-    serviceAccountKey: str
+    serviceAccountKey: Dict[str, Any]
     connectorType: str = 'bigquery'
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
@@ -489,11 +489,14 @@ if ENABLE_AGENT_RUN:
             try:
                 # Parse service account key JSON
                 try:
-                    service_account_info = json.loads(config['serviceAccountKey'])
-                except json.JSONDecodeError:
+                    service_account_info = config['serviceAccountKey']
+                    if isinstance(service_account_info, str):
+                        # Handle backward compatibility with string format
+                        service_account_info = json.loads(service_account_info)
+                except (json.JSONDecodeError, TypeError) as e:
                     raise HTTPException(
                         status_code=400,
-                        detail="Invalid service account key JSON format"
+                        detail=f"Invalid service account key format: {str(e)}"
                     )
 
                 # Initialize BigQuery client
