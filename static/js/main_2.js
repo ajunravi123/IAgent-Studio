@@ -1549,7 +1549,33 @@ function appendMessage(messageData, sender) {
     // Handle different message types
     switch (messageData.type) {
         case 'text':
-            contentDiv.textContent = messageData.content.text;
+            // Escape HTML characters to prevent injection
+            let text = messageData.content.text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            
+            // Replace newlines with <br> tags
+            text = text.replace(/\n/g, '<br>');
+            
+            // Regular expression to match URLs
+            const urlRegex = /(https?:\/\/[^\s<]+)/g;
+            contentDiv.innerHTML = text.replace(urlRegex, (match) => {
+                // Check if the URL contains a file extension
+                const isFilePath = /\.[a-zA-Z0-9]{1,4}$/.test(match);
+                let displayText = match;
+                
+                if (isFilePath) {
+                    // Extract filename from URL
+                    const parts = match.split('/');
+                    displayText = parts[parts.length - 1];
+                }
+                
+                // Create anchor tag
+                return `<a href="${match}" target="_blank" rel="noopener noreferrer">${displayText}</a>`;
+            });
             break;
         case 'error':
             contentDiv.innerHTML = `
