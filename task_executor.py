@@ -80,6 +80,8 @@ class TaskExecutor:
 
         self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEY)
 
+        self.internal_llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=os.getenv("INTERNAL_GEMINI_API_KEY"))
+
         # self.llm_client = LLM(
         #     model="deepseek-chat",
         #     api_key='sk-5936f2f8151847fb8374d1111fe2c00a',
@@ -92,7 +94,7 @@ class TaskExecutor:
             backstory="I'm an expert at analyzing OpenAPI schemas and extracting key information about API requirements.",
             verbose=False,
             allow_delegation=False,
-            llm=self.llm_client
+            llm=self.internal_llm_client
         )
 
         self.payload_agent = CrewAgent(
@@ -101,7 +103,7 @@ class TaskExecutor:
             backstory="I'm an expert at creating valid API payloads based on OpenAPI schemas and user requirements.",
             verbose=False,
             allow_delegation=False,
-            llm=self.llm_client
+            llm=self.internal_llm_client
         )
 
         self.tools = []
