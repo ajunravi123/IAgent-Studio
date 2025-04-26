@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, List, Union, Any
@@ -11,6 +11,13 @@ from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
 from langchain.tools import Tool  # If tools are needed for manager/agents
+
+
+
+import logging
+import os
+from datetime import datetime
+import pytz
 
 ENABLE_AGENT_RUN = True
 MIN_AGENTSFOR_MULTI = 1
@@ -29,6 +36,22 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+
+
+# Mount logs directory for static file serving (optional)
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+app.mount("/logs", StaticFiles(directory=LOG_DIR), name="logs")
+
+# Mount uploads directory
+UPLOAD_DIR = Path("uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Load base URL from environment variable
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+
+
 
 # Add CORS middleware to handle cross-origin requests
 app.add_middleware(
@@ -789,6 +812,8 @@ class ErrorData(BaseModel):
 class MessageResponse(BaseModel):
     type: str
     content: Union[TextData, ErrorData, TableData, ChartData, CodeData, ListData, Dict[str, Any]]
+    execution_id: Optional[str] = None
+    log_url: Optional[str] = None
 
 class InferenceRequest(BaseModel):
     agentId: str
@@ -805,46 +830,98 @@ ALLOWED_FILE_TYPES = {
 }
 
 if ENABLE_AGENT_RUN:
+    # Utility to sanitize strings for logging, preserving emojis
+    def sanitize_for_logging(text: Any) -> str:
+        try:
+            # Convert to string and ensure UTF-8 encoding, preserving valid Unicode (e.g., emojis)
+            text_str = str(text)
+            return text_str.encode("utf-8", errors="replace").decode("utf-8")
+        except Exception:
+            # Fallback for problematic inputs
+            return str(text).encode("utf-8", errors="replace").decode("utf-8")
+
     @app.post("/api/agent/infer")
     async def agent_infer(
         agentId: str = Form(...),
         userInput: str = Form(...),
         file: Optional[UploadFile] = File(None)
     ):
+        # Generate execution ID
+        execution_uuid = str(uuid.uuid4())
+        timestamp = datetime.now(pytz.UTC).strftime("%Y%m%d_%H%M%S")
+        execution_id = f"{execution_uuid}_{timestamp}"
+        log_filename = f"agent_execution_{execution_id}.log"
+        log_file = os.path.join(LOG_DIR, log_filename)
+        
+        # Generate log URL
+        log_url = f"{BASE_URL}/api/logs/{execution_id}"
+        
+        # Configure logger
+        logger = logging.getLogger(f"agent_infer_{execution_id}")
+        logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+        try:
+            file_handler = logging.FileHandler(log_file, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        except Exception as e:
+            logger.error(f"Failed to create log file handler: {sanitize_for_logging(e)}")
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        # Sanitize inputs for logging
+        sanitized_user_input = sanitize_for_logging(userInput)
+        sanitized_file_name = sanitize_for_logging(file.filename if file else "None")
+        logger.info(f"Received request: agentId={agentId}, userInput={sanitized_user_input}, file={sanitized_file_name}")
+        logger.debug(f"Execution ID: {execution_id}")
+        logger.debug(f"Log URL: {log_url}")
+
         try:
             agents = load_agents()
             agent = next((a for a in agents if a["id"] == agentId), None)
             
             if not agent:
+                logger.error(f"Agent not found: {agentId}")
                 return MessageResponse(
                     type="error",
                     content=ErrorData(
                         message="Agent not found",
                         details=f"No agent found with ID: {agentId}"
-                    )
+                    ),
+                    execution_id=execution_id,
+                    log_url=log_url
                 )
 
             file_info = None
             file_path = None
+            file_type = None
             if file:
                 contents = await file.read()
                 file_size = len(contents)
+                logger.debug(f"Processing file: {sanitized_file_name}, size: {file_size} bytes")
                 if file_size > 10 * 1024 * 1024:
+                    logger.error("File too large: exceeds 10MB")
                     return MessageResponse(
                         type="error",
                         content=ErrorData(
                             message="File too large",
                             details="Maximum file size is 10MB"
-                        )
+                        ),
+                        execution_id=execution_id,
+                        log_url=log_url
                     )
 
                 if file.content_type not in ALLOWED_FILE_TYPES:
+                    logger.error(f"Unsupported file type: {file.content_type}")
                     return MessageResponse(
                         type="error",
                         content=ErrorData(
                             message="Unsupported file type",
-                            details=f"Only CSV, JSON, TXT, PDF, and image (JPEG, PNG, GIF) files are supported. Got: {file.content_type}"
-                        )
+                            details=f"Only CSV, JSON, TXT, PDF, and image files supported. Got: {file.content_type}"
+                        ),
+                        execution_id=execution_id,
+                        log_url=log_url
                     )
 
                 file_extension = os.path.splitext(file.filename)[1]
@@ -855,18 +932,19 @@ if ENABLE_AGENT_RUN:
                     buffer.write(contents)
 
                 file_info = {
-                    "original_name": file.filename,
-                    "saved_name": unique_filename,
+                    "original_name": sanitized_file_name,
+                    "saved_name": sanitize_for_logging(unique_filename),
                     "size": file_size,
                     "type": file.content_type,
                     "path": str(file_path),
                     "uploaded_at": datetime.now().isoformat()
                 }
+                file_type = file.content_type
                 logger.info(f"File saved: {file_path}")
 
             tools_config = []
             all_tools = load_custom_tools()
-            connectors = load_connectors()  # Load all data connectors
+            connectors = load_connectors()
             
             for tool_id in agent.get("tools", []):
                 schema_path = f"tool_schemas/{tool_id}.json"
@@ -874,21 +952,19 @@ if ENABLE_AGENT_RUN:
                 
                 if os.path.exists(schema_path):
                     tool_config = {"id": tool_id}
-                    
-                    # Get the tool's data connector ID if it exists
                     tool = next((t for t in all_tools if t.id == tool_id), None)
                     if tool and tool.data_connector_id:
-                        # Find the connector configuration
                         connector = next((c for c in connectors if c["id"] == tool.data_connector_id), None)
                         if connector:
                             tool_config["data_connector"] = connector
                     
-                    with open(schema_path, 'r') as f:
+                    with open(schema_path, "r", encoding="utf-8") as f:
                         tool_config["schema"] = json.load(f)
                     if os.path.exists(auth_path):
-                        with open(auth_path, 'r') as f:
+                        with open(auth_path, "r", encoding="utf-8") as f:
                             tool_config["auth"] = json.load(f)
                     tools_config.append(tool_config)
+                    logger.debug(f"Loaded tool: {tool_id}")
 
             agent_config_dict = {
                 "role": agent["role"],
@@ -897,32 +973,93 @@ if ENABLE_AGENT_RUN:
                 "instructions": agent["instructions"]
             }
             
-            executor = TaskExecutor(agent_config=agent_config_dict, tools_config=tools_config)
+            logger.info("Initializing TaskExecutor")
+            executor = TaskExecutor(
+                agent_config=agent_config_dict,
+                tools_config=tools_config,
+                log_file=log_file
+            )
 
             if userInput:
                 agent["instructions"] = check_in_sentence(agent["instructions"], "{{input}}")
 
+            logger.info("Executing task")
             result = executor.execute_task(
                 description=agent["instructions"],
                 expected_output=agent["expectedOutput"],
                 task_name=agent["name"],
-                input=userInput,
-                file_path=file_path if file_info else None
+                file_path=file_path,
+                file_type=file_type,
+                input=userInput
             )
-            logger.info(f"Agent inference result: {result}")
+            logger.info(f"Agent inference result: {sanitize_for_logging(result)}")
 
-            response = MessageResponse(type="text", content=TextData(text=result))
-            return response
+            return MessageResponse(
+                type="text",
+                content=TextData(text=result),
+                execution_id=execution_id,
+                log_url=log_url
+            )
             
         except Exception as e:
-            logger.error(f"Error in agent_infer: {str(e)}")
+            logger.error(f"Error in agent_infer: {sanitize_for_logging(str(e))}", exc_info=True)
             return MessageResponse(
                 type="error",
                 content=ErrorData(
                     message="Error processing request",
                     details=str(e)
-                )
+                ),
+                execution_id=execution_id,
+                log_url=log_url
             )
+
+    @app.get("/api/logs/{execution_id}", response_class=HTMLResponse)
+    async def get_log_file(execution_id: str):
+        log_file = os.path.join(LOG_DIR, f"agent_execution_{execution_id}.log")
+        
+        if not os.path.exists(log_file):
+            raise HTTPException(status_code=404, detail="Log file not found")
+        
+        log_content = ""
+        warning = ""
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                log_content = f.read()
+        except UnicodeDecodeError as e:
+            warning = f"Warning: Some characters in the log file could not be decoded and were replaced. Error: {sanitize_for_logging(str(e))}"
+            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                log_content = f.read()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error reading log file: {sanitize_for_logging(str(e))}")
+        
+        # Escape log content for safe HTML rendering
+        log_content = log_content.replace("<", "<").replace(">", ">").replace("\n", "<br>")
+        
+        # HTML template with Tailwind CSS
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Agent Execution Log</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-100 font-sans">
+            <div class="container mx-auto p-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-4">Agent Execution Log</h1>
+                <p class="text-gray-600 mb-4">Execution ID: {execution_id}</p>
+                {"<p class='text-yellow-600 mb-4'>" + warning + "</p>" if warning else ""}
+                <div class="bg-white shadow-md rounded-lg p-6">
+                    <pre class="text-sm text-gray-700 whitespace-pre-wrap">{log_content}</pre>
+                </div>
+                <a href="/api/logs/{execution_id}" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Refresh</a>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(content=html_content)
 
     class MultiAgentInferenceRequest(BaseModel):
         multi_agent_id: str
