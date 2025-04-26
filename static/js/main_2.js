@@ -1573,7 +1573,6 @@ function appendMessage(messageData, sender) {
                     displayText = parts[parts.length - 1];
                 }
                 
-                // Create anchor tag
                 return `<a href="${match}" target="_blank" rel="noopener noreferrer">${displayText}</a>`;
             });
             break;
@@ -1617,12 +1616,29 @@ function appendMessage(messageData, sender) {
         default:
             contentDiv.textContent = JSON.stringify(messageData.content);
     }
-
+    
     messageDiv.appendChild(avatarDiv);
     messageDiv.appendChild(contentDiv);
+    
+    // Add log link if available from API response
+    if (sender === 'agent' && messageData.log_url) {
+        // Create a separate container for the logs link
+        const logLinkDiv = document.createElement('div');
+        logLinkDiv.className = 'log-link';
+        
+        const logLink = document.createElement('a');
+        logLink.href = messageData.log_url;
+        logLink.target = '_blank';
+        logLink.innerHTML = '<i title="View Execution Logs" class="fas fa-clipboard-list"></i>';
+        logLink.className = 'logs-button';
+        
+        logLinkDiv.appendChild(logLink);
+        
+        // Add the log link after the message content but still inside the message div
+        messageDiv.appendChild(logLinkDiv);
+    }
+    
     chatContainer.appendChild(messageDiv);
-
-    // Scroll to bottom
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 

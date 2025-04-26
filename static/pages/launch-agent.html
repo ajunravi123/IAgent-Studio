@@ -172,6 +172,38 @@
     </div>
 </div>
 
+<style>
+    /* Styles for log link button */
+    .log-link {
+        margin-top: 8px;
+        text-align: right;
+    }
+    
+    .logs-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        background: rgba(0, 136, 255, 0.1);
+        color: #0088ff;
+        border: 1px solid #0088ff;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    
+    .logs-button:hover {
+        background: rgba(0, 136, 255, 0.2);
+        box-shadow: 0 0 8px rgba(0, 136, 255, 0.3);
+    }
+    
+    .logs-button i {
+        font-size: 11px;
+    }
+</style>
+
 <script>
     // Function to handle sending messages
     function handleSendMessage() {
@@ -227,7 +259,12 @@
         })
         .then(data => {
             console.log('Response received:', data);
-            appendMessage(data.response, 'agent');
+            // Check if the response contains content with text
+            if (data.content && data.content.text) {
+                appendMessage(data.content.text, 'agent', data.log_url);
+            } else {
+                appendMessage(data.response || 'No response received', 'agent', data.log_url);
+            }
         })
         .catch(error => {
             console.error('Error:', error);
@@ -236,7 +273,7 @@
     }
 
     // Helper function to append messages to the chat
-    function appendMessage(message, sender) {
+    function appendMessage(message, sender, logUrl = null) {
         const chatContainer = document.getElementById('chatContainer');
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
@@ -253,6 +290,25 @@
 
         messageDiv.appendChild(avatarDiv);
         messageDiv.appendChild(contentDiv);
+        
+        // Add log link if available
+        if (logUrl && sender === 'agent') {
+            // Create a separate container for the logs link
+            const logLinkDiv = document.createElement('div');
+            logLinkDiv.className = 'log-link';
+            
+            const logLink = document.createElement('a');
+            logLink.href = logUrl;
+            logLink.target = '_blank';
+            logLink.innerHTML = '';
+            logLink.className = 'logs-button';
+            
+            logLinkDiv.appendChild(logLink);
+            
+            // Add the log link after the message content but still inside the message div
+            messageDiv.appendChild(logLinkDiv);
+        }
+        
         chatContainer.appendChild(messageDiv);
 
         // Scroll to bottom
