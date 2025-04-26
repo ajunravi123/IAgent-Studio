@@ -1148,25 +1148,68 @@ if ENABLE_AGENT_RUN:
         multi_agent_id: str
         user_input: str
 
+    
     @app.post("/api/multi_agent/infer")
     async def multi_agent_infer(request: MultiAgentInferenceRequest):
+        # Generate execution ID
+        execution_uuid = str(uuid.uuid4())
+        timestamp = datetime.now(pytz.UTC).strftime("%Y%m%d_%H%M%S")
+        execution_id = f"{execution_uuid}_{timestamp}"
+        log_filename = f"multi_agent_execution_{execution_id}.log"
+        log_file = os.path.join(LOG_DIR, log_filename)
+        
+        # Generate log URL
+        log_url = f"{BASE_URL}/api/multi_agent/logs/{execution_id}"
+        
+        # Configure logger
+        logger = logging.getLogger(f"multi_agent_infer_{execution_id}")
+        logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+        try:
+            file_handler = logging.FileHandler(log_file, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        except Exception as e:
+            logger.error(f"Failed to create log file handler: {sanitize_for_logging(e)}")
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
         try:
             multi_agent_id = request.multi_agent_id
             user_input = request.user_input
             
-            logger.info(f"Received multi-agent infer request for ID: {multi_agent_id}")
-            logger.debug(f"User input: {user_input}")
+            sanitized_user_input = sanitize_for_logging(user_input)
+            logger.info(f"Received multi-agent infer request for ID: {multi_agent_id}, userInput={sanitized_user_input}")
+            logger.debug(f"Execution ID: {execution_id}")
+            logger.debug(f"Log URL: {log_url}")
 
             if not user_input or user_input.strip() == "":
                 logger.error("Empty or invalid user input provided.")
-                raise HTTPException(status_code=400, detail="User input cannot be empty.")
+                return {
+                    "type": "error",
+                    "content": {
+                        "message": "User input cannot be empty",
+                        "details": "Please provide valid user input"
+                    },
+                    "execution_id": execution_id,
+                    "log_url": log_url
+                }
 
             multi_agents = load_multi_agents()
             multi_agent_config = next((ma for ma in multi_agents if ma["id"] == multi_agent_id), None)
             
             if not multi_agent_config:
                 logger.error(f"Multi-Agent not found: {multi_agent_id}")
-                raise HTTPException(status_code=404, detail=f"Multi-Agent not found: {multi_agent_id}")
+                return {
+                    "type": "error",
+                    "content": {
+                        "message": "Multi-Agent not found",
+                        "details": f"No multi-agent found with ID: {multi_agent_id}"
+                    },
+                    "execution_id": execution_id,
+                    "log_url": log_url
+                }
 
             multi_agent_config.setdefault("role", "Coordinator")
             multi_agent_config.setdefault("goal", "Efficiently manage and delegate tasks.")
@@ -1216,10 +1259,8 @@ if ENABLE_AGENT_RUN:
                             logger.warning(f"Invalid JSON in auth file {auth_path} for agent {agent_id}: {e}")
                             tool_cfg["auth"] = {}
 
-                    # Get the tool's data connector ID if it exists
                     tool = next((t for t in all_tools if t.id == tool_id), None)
                     if tool and tool.data_connector_id:
-                        # Find the connector configuration
                         connector = next((c for c in connectors if c["id"] == tool.data_connector_id), None)
                         if connector:
                             tool_cfg["data_connector"] = connector
@@ -1239,9 +1280,18 @@ if ENABLE_AGENT_RUN:
                 worker_agent_configs.append(worker_config)
                 logger.info(f"Loaded config for worker agent {agent_id} ({worker_config['name']})")
 
+            MIN_AGENTSFOR_MULTI = 2
             if len(worker_agent_configs) < MIN_AGENTSFOR_MULTI:
                 logger.error("At least two worker agents are required.")
-                raise HTTPException(status_code=400, detail="Multi-agent requires at least two worker agents.")
+                return {
+                    "type": "error",
+                    "content": {
+                        "message": "Insufficient worker agents",
+                        "details": "Multi-agent requires at least two worker agents"
+                    },
+                    "execution_id": execution_id,
+                    "log_url": log_url
+                }
 
             if user_input:
                 default_description = multi_agent_config["description"]
@@ -1259,15 +1309,113 @@ if ENABLE_AGENT_RUN:
             logger.info("Multi-agent task completed successfully")
 
             return {
-                "response": result,
-                "sender_agent_name": "Manager Agent"
+                "type": "text",
+                "content": {
+                    "response": result,
+                    "sender_agent_name": "Manager Agent"
+                },
+                "execution_id": execution_id,
+                "log_url": log_url
             }
 
         except HTTPException as http_exc:
-            raise http_exc
+            logger.error(f"HTTP error in multi_agent_infer: {http_exc.detail}")
+            return {
+                "type": "error",
+                "content": {
+                    "message": http_exc.detail,
+                    "details": str(http_exc)
+                },
+                "execution_id": execution_id,
+                "log_url": log_url
+            }
         except Exception as e:
             logger.error(f"Error in multi_agent_infer: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+            return {
+                "type": "error",
+                "content": {
+                    "message": "Internal server error",
+                    "details": str(e)
+                },
+                "execution_id": execution_id,
+                "log_url": log_url
+            }
+        
+
+
+
+    
+    # Shared log reading and masking function
+    async def read_and_mask_log_file(execution_id: str, log_prefix: str) -> tuple[str, str, str]:
+        log_file = os.path.join(LOG_DIR, f"{log_prefix}_{execution_id}.log")
+        
+        if not os.path.exists(log_file):
+            raise HTTPException(status_code=404, detail="Log file not found")
+        
+        log_lines = []
+        warning = ""
+        logger = logging.getLogger(f"log_reader_{execution_id}")
+        
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                log_lines = f.readlines()
+        except UnicodeDecodeError as e:
+            warning = f"Warning: Some characters in the log file could not be decoded and were replaced. Error: {sanitize_for_logging(str(e))}"
+            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                log_lines = f.readlines()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error reading log file: {sanitize_for_logging(str(e))}")
+
+        processed_lines = []
+        json_regex = r'\{(?:[^"{}]+|"(?:\\.|[^"\\])*"|\{[^{}]*\}|\[[^\[\]]*\])*\}'
+        
+        for line in log_lines:
+            processed_line = line
+            json_matches = re.finditer(json_regex, line, re.DOTALL)
+            for match in json_matches:
+                json_str = match.group(0)
+                logger.debug(f"Detected JSON in line: {sanitize_for_logging(json_str[:100])}...")
+                try:
+                    json_obj = json.loads(json_str)
+                    def has_sensitive_keys(obj):
+                        if isinstance(obj, dict):
+                            return any(
+                                key.lower() in [k.lower() for k in MASKED_KEYS] or has_sensitive_keys(value)
+                                for key, value in obj.items()
+                            )
+                        elif isinstance(obj, list):
+                            return any(has_sensitive_keys(item) for item in obj)
+                        return False
+
+                    if has_sensitive_keys(json_obj):
+                        logger.debug(f"Found sensitive keys in JSON: {sanitize_for_logging(json_str[:100])}...")
+                    masked_json_obj = mask_sensitive_data(json_obj, MASKED_KEYS)
+                    masked_json_str = json.dumps(masked_json_obj, ensure_ascii=False)
+                    processed_line = processed_line.replace(json_str, masked_json_str, 1)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse JSON in line: {sanitize_for_logging(json_str[:100])}... Error: {sanitize_for_logging(str(e))}")
+                    continue
+            processed_lines.append(processed_line)
+        
+        log_content = "".join(processed_lines)
+        log_content = log_content.replace("<", "<").replace(">", ">").replace("\n", "<br>")
+        
+        return log_content, warning, log_file
+
+    @app.get("/api/multi_agent/logs/{execution_id}", response_class=HTMLResponse)
+    async def get_multi_agent_log_file(execution_id: str, request: Request):
+        log_content, warning, log_file = await read_and_mask_log_file(execution_id, "multi_agent_execution")
+        
+        # Render the template with dynamic data
+        return templates.TemplateResponse(
+            "multiagent_logs.html",
+            {
+                "request": request,
+                "execution_id": execution_id,
+                "warning": warning,
+                "log_content": log_content
+            }
+        )
 
 def check_in_sentence(sentence="", input_to_check="{{input}}"):
     sentence_lower = sentence.lower()

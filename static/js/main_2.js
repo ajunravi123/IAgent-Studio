@@ -967,15 +967,43 @@ function handleMultiAgentSendMessage() {
     })
     .then(data => {
         console.log('Multi-agent API response:', data);
-        // Assuming the response has a structure like { response: "...", sender_agent_name: "..." } or similar
-        // Adjust parsing based on the actual API response format
-        const responseText = data.response || 'No response text received.';
-        const senderName = data.sender_agent_name || 'Manager Agent'; // Default to Manager if no specific agent name
         
-        // Determine sender type based on name or default
-        const senderType = senderName === 'Manager Agent' ? 'manager' : 'agent'; 
+        // Handle the new structured response format
+        let responseText = '';
+        let senderName = 'Manager Agent';
+        let logUrl = null;
         
-        appendMultiAgentMessage(responseText, senderType, senderName);
+        // Extract data from the new response structure
+        if (data.type === 'text' && data.content) {
+            // Extract response text from content
+            if (data.content.response) {
+                responseText = data.content.response;
+            } else if (typeof data.content === 'object' && data.content.text) {
+                responseText = data.content.text;
+            } else if (typeof data.content === 'string') {
+                responseText = data.content;
+            }
+            
+            // Extract sender name if present
+            if (data.content.sender_agent_name) {
+                senderName = data.content.sender_agent_name;
+            }
+        } else {
+            // Fallback for old format
+            responseText = data.response || 'No response text received.';
+            senderName = data.sender_agent_name || 'Manager Agent';
+        }
+        
+        // Extract execution_id and log_url
+        if (data.execution_id) {
+            logUrl = data.log_url || `/api/multi_agent/logs/${data.execution_id}`;
+        }
+        
+        // Determine sender type based on name
+        const senderType = senderName.includes('Manager') ? 'manager' : 'agent';
+        
+        // Pass the extracted data to the append function
+        appendMultiAgentMessage(responseText, senderType, senderName, logUrl);
     })
     .catch(error => {
         hideTypingIndicator();
@@ -985,7 +1013,7 @@ function handleMultiAgentSendMessage() {
 }
 
 // Append message to the multi-agent chat
-function appendMultiAgentMessage(message, sender, senderName = null) {
+function appendMultiAgentMessage(message, sender, senderName = null, logUrl = null) {
     const chatContainer = document.getElementById('multiAgentChatContainer');
      if (!chatContainer) {
          console.error("Chat container (#multiAgentChatContainer) not found!");
@@ -1014,11 +1042,49 @@ function appendMultiAgentMessage(message, sender, senderName = null) {
     
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
-    textDiv.textContent = message;
+
+    // Handle code blocks and formatted text
+    if (message.includes('```')) {
+        // Format code blocks with syntax highlighting
+        const formattedMessage = message.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, language, code) {
+            return `<pre class="code-block ${language}"><code>${
+                code.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            }</code></pre>`;
+        });
+        textDiv.innerHTML = formattedMessage;
+    } else {
+        // Basic text formatting (newlines to <br>, escape HTML)
+        const escapedText = message
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+        textDiv.innerHTML = escapedText;
+    }
+
     contentDiv.appendChild(textDiv);
     
     messageDiv.appendChild(avatarDiv);
     messageDiv.appendChild(contentDiv);
+    
+    // Add log link if available
+    if (logUrl && sender !== 'user') {
+        // Create a separate container for the logs link
+        const logLinkDiv = document.createElement('div');
+        logLinkDiv.className = 'log-link';
+        
+        const logLink = document.createElement('a');
+        logLink.href = logUrl;
+        logLink.target = '_blank';
+        logLink.innerHTML = '<i title="View Execution Logs" class="fas fa-clipboard-list"></i>';
+        logLink.className = 'logs-button';
+        
+        logLinkDiv.appendChild(logLink);
+        
+        // Add the log link after the message content but still inside the message div
+        messageDiv.appendChild(logLinkDiv);
+    }
+    
     chatContainer.appendChild(messageDiv);
     
     // Scroll to bottom
