@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Execution Log</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/logs.css">
+    <style>
+        body {
+            overflow: auto;
+        }
+        .cyber-container {
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .log-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+        .log-content {
+            flex: 1;
+            min-height: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-container">
+        <div class="header-panel">
+            <div class="glow-line"></div>
+            <h1><i class="fas fa-robot"></i> Agent Execution Logs</h1>
+            <div class="execution-id">
+                <span class="label">Execution ID</span>
+                <span class="value">{{ execution_id }}</span>
+            </div>
+            {% if warning %}
+                <div class="warning-alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>{{ warning }}</span>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="log-container">
+            <div class="control-panel">
+                <div class="status-indicator">
+                    <span class="pulse"></span>
+                    <span>System Active</span>
+                </div>
+                <div class="timestamp" id="current-time">{{ current_time }}</div>
+            </div>
+            
+            <div class="log-content">
+                <div class="terminal">{{ log_content | safe }}</div>
+            </div>
+            
+            <div class="footer-panel">
+                <div class="action-buttons">
+                    <a href="/api/logs/{{ execution_id }}" class="cyber-button">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </a>
+                    <a href="/" class="cyber-button secondary">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-scroll to bottom on load
+        window.onload = function() {
+            const terminal = document.querySelector('.terminal');
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            // Format log entries
+            formatLogEntries();
+        };
+        
+        // Format log entries
+        function formatLogEntries() {
+            const terminal = document.querySelector('.terminal');
+            const content = terminal.innerHTML;
+            
+            // Format timestamps and log levels
+            let formattedContent = content.replace(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) \[([A-Z]+)\]/g, 
+                '<span class="timestamp-log">$1</span> <span levelname="$2">$2</span>');
+            
+            // Highlight errors
+            formattedContent = formattedContent.replace(/\b(Error|Exception|Failed|Failure)\b/g, '<span class="error">$1</span>');
+            
+            // Highlight success keywords
+            formattedContent = formattedContent.replace(/\b(Success|Completed)\b/gi, '<span class="success">$1</span>');
+            formattedContent = formattedContent.replace(/\b(Successful|successfully)\b/gi, '<span class="success">$1</span>');
+            
+            // Apply the formatted content
+            terminal.innerHTML = formattedContent;
+        }
+        
+        // Add current time with auto-update
+        function updateTime() {
+            const now = new Date();
+            const options = { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            };
+            document.getElementById('current-time').textContent = now.toLocaleDateString('en-US', options);
+        }
+        
+        // Initial time update
+        updateTime();
+        
+        // Update time every minute
+        setInterval(updateTime, 60000);
+        
+        // Simulate scanning effect on load
+        const terminal = document.querySelector('.terminal');
+        terminal.classList.add('scanning');
+        setTimeout(() => {
+            terminal.classList.remove('scanning');
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -11,13 +11,14 @@ from datetime import datetime, timedelta
 import shutil
 from pathlib import Path
 from langchain.tools import Tool  # If tools are needed for manager/agents
-
+from fastapi.templating import Jinja2Templates
 
 
 import logging
 import os
 from datetime import datetime
 import pytz
+import re
 
 ENABLE_AGENT_RUN = True
 MIN_AGENTSFOR_MULTI = 1
@@ -47,6 +48,10 @@ app.mount("/logs", StaticFiles(directory=LOG_DIR), name="logs")
 # Mount uploads directory
 UPLOAD_DIR = Path("uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+# Set up Jinja2 templates
+templates = Jinja2Templates(directory="static/pages")
 
 # Load base URL from environment variable
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
@@ -1012,54 +1017,132 @@ if ENABLE_AGENT_RUN:
                 execution_id=execution_id,
                 log_url=log_url
             )
+        
+
+    # List of keys to mask in JSON objects
+    MASKED_KEYS = ["db_config", "api_key", "password", "credentials_json"]
+    
+
+    # Utility to mask sensitive keys in a JSON object
+    def mask_sensitive_data(data: Any, masked_keys: List[str]) -> Any:
+        if isinstance(data, dict):
+            return {
+                key: "XXXXXXXXXXXXXXX" if key.lower() in [k.lower() for k in masked_keys] else mask_sensitive_data(value, masked_keys)
+                for key, value in data.items()
+            }
+        elif isinstance(data, list):
+            return [mask_sensitive_data(item, masked_keys) for item in data]
+        return data
+
+    # Utility to reconstruct JSON strings that may span multiple lines
+    def reconstruct_json_lines(lines: List[str]) -> List[str]:
+        reconstructed_lines = []
+        json_buffer = ""
+        in_json = False
+        brace_count = 0
+
+        for line in lines:
+            if not in_json:
+                # Look for the start of a JSON object
+                if "{" in line:
+                    in_json = True
+                    json_buffer = line
+                    brace_count = line.count("{") - line.count("}")
+                    if brace_count == 0:
+                        # Complete JSON in one line
+                        in_json = False
+                        reconstructed_lines.append(json_buffer)
+                        json_buffer = ""
+                    continue
+            else:
+                json_buffer += line
+                brace_count += line.count("{") - line.count("}")
+                if brace_count == 0:
+                    # Complete JSON object
+                    in_json = False
+                    reconstructed_lines.append(json_buffer)
+                    json_buffer = ""
+                    continue
+            if not in_json:
+                reconstructed_lines.append(line)
+
+        if json_buffer:
+            # Handle incomplete JSON
+            reconstructed_lines.append(json_buffer)
+        return reconstructed_lines
+
 
     @app.get("/api/logs/{execution_id}", response_class=HTMLResponse)
-    async def get_log_file(execution_id: str):
+    async def get_log_file(execution_id: str, request: Request):
         log_file = os.path.join(LOG_DIR, f"agent_execution_{execution_id}.log")
         
         if not os.path.exists(log_file):
             raise HTTPException(status_code=404, detail="Log file not found")
         
-        log_content = ""
+        log_lines = []
         warning = ""
+        logger = logging.getLogger(f"log_reader_{execution_id}")
+        
         try:
             with open(log_file, "r", encoding="utf-8") as f:
-                log_content = f.read()
+                log_lines = f.readlines()
         except UnicodeDecodeError as e:
             warning = f"Warning: Some characters in the log file could not be decoded and were replaced. Error: {sanitize_for_logging(str(e))}"
             with open(log_file, "r", encoding="utf-8", errors="replace") as f:
-                log_content = f.read()
+                log_lines = f.readlines()
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error reading log file: {sanitize_for_logging(str(e))}")
+
+        processed_lines = []
+        json_regex = r'\{(?:[^"{}]+|"(?:\\.|[^"\\])*"|\{[^{}]*\}|\[[^\[\]]*\])*\}'
+        
+        for line in log_lines:
+            processed_line = line
+            json_matches = re.finditer(json_regex, line, re.DOTALL)
+            for match in json_matches:
+                json_str = match.group(0)
+                logger.debug(f"Detected JSON in line: {sanitize_for_logging(json_str[:100])}...")
+                try:
+                    json_obj = json.loads(json_str)
+                    def has_sensitive_keys(obj):
+                        if isinstance(obj, dict):
+                            return any(
+                                key.lower() in [k.lower() for k in MASKED_KEYS] or has_sensitive_keys(value)
+                                for key, value in obj.items()
+                            )
+                        elif isinstance(obj, list):
+                            return any(has_sensitive_keys(item) for item in obj)
+                        return False
+
+                    if has_sensitive_keys(json_obj):
+                        logger.debug(f"Found sensitive keys in JSON: {sanitize_for_logging(json_str[:100])}...")
+                    masked_json_obj = mask_sensitive_data(json_obj, MASKED_KEYS)
+                    masked_json_str = json.dumps(masked_json_obj, ensure_ascii=False)
+                    processed_line = processed_line.replace(json_str, masked_json_str, 1)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse JSON in line: {sanitize_for_logging(json_str[:100])}... Error: {sanitize_for_logging(str(e))}")
+                    continue
+            processed_lines.append(processed_line)
+        
+        log_content = "".join(processed_lines)
         
         # Escape log content for safe HTML rendering
-        log_content = log_content.replace("<", "<").replace(">", ">").replace("\n", "<br>")
+        log_content = log_content.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
         
-        # HTML template with Tailwind CSS
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Agent Execution Log</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-        </head>
-        <body class="bg-gray-100 font-sans">
-            <div class="container mx-auto p-6">
-                <h1 class="text-3xl font-bold text-gray-800 mb-4">Agent Execution Log</h1>
-                <p class="text-gray-600 mb-4">Execution ID: {execution_id}</p>
-                {"<p class='text-yellow-600 mb-4'>" + warning + "</p>" if warning else ""}
-                <div class="bg-white shadow-md rounded-lg p-6">
-                    <pre class="text-sm text-gray-700 whitespace-pre-wrap">{log_content}</pre>
-                </div>
-                <a href="/api/logs/{execution_id}" class="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Refresh</a>
-            </div>
-        </body>
-        </html>
-        """
+        # Get current time for the futuristic UI
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        return HTMLResponse(content=html_content)
+        # Render the template with dynamic data
+        return templates.TemplateResponse(
+            "logs.html",
+            {
+                "request": request,
+                "execution_id": execution_id,
+                "warning": warning,
+                "log_content": log_content,
+                "current_time": current_time
+            }
+        )
 
     class MultiAgentInferenceRequest(BaseModel):
         multi_agent_id: str
