@@ -6,6 +6,7 @@ function getFormData() {
         goal: document.getElementById('agentGoal').value,
         expectedOutput: document.getElementById('expectedOutput').value,
         backstory: document.getElementById('agentBackstory').value,
+        sample_user_input: document.getElementById('sampleUserInput').value,
         instructions: document.getElementById('agentInstructions').value,
         tools: getSelectedTools(),
         llmProvider: document.getElementById('llmProvider').value,

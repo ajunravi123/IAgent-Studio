@@ -95,6 +95,7 @@ class Agent(BaseModel):
     features: AgentFeatures
     tools: List[str] = []  # List of tool IDs
     advanced_tools: List[str] = []  # List of advanced tool IDs
+    sample_user_input: str = ""  # Sample user input for the agent
 
 class AgentCreate(BaseModel):
     name: str
@@ -111,6 +112,7 @@ class AgentCreate(BaseModel):
     features: AgentFeatures
     tools: List[str] = []  # List of tool IDs
     advanced_tools: List[str] = []
+    sample_user_input: str = ""  # Sample user input for the agent
 
 class Tool(BaseModel):
     id: str

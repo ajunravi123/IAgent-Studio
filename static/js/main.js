@@ -219,15 +219,69 @@ function refreshAgents() {
     loadAgents();
 }
 
+// Reset all fields in the agent form
+function resetAgentForm() {
+    // Wait for the DOM to be ready after page load
+    setTimeout(() => {
+        // Clear form fields
+        const formElements = [
+            'agentName',
+            'agentDescription',
+            'agentRole',
+            'agentGoal',
+            'expectedOutput',
+            'agentBackstory',
+            'sampleUserInput',
+            'agentInstructions'
+        ];
+        
+        formElements.forEach(elementId => {
+            const element = document.getElementById(elementId);
+            if (element) element.value = '';
+        });
+        
+        // Reset checkboxes
+        const managerAgentCheckbox = document.getElementById('managerAgent');
+        if (managerAgentCheckbox) managerAgentCheckbox.checked = false;
+        
+        const knowledgeBaseCheckbox = document.getElementById('knowledgeBase');
+        if (knowledgeBaseCheckbox) knowledgeBaseCheckbox.checked = false;
+        
+        const dataQueryCheckbox = document.getElementById('dataQuery');
+        if (dataQueryCheckbox) dataQueryCheckbox.checked = false;
+        
+        // Set default LLM settings
+        const llmProviderSelect = document.getElementById('llmProvider');
+        if (llmProviderSelect) llmProviderSelect.value = 'impact';
+        
+        const llmModelSelect = document.getElementById('llmModel');
+        if (llmModelSelect) llmModelSelect.value = 'impact-storm-11';
+        
+        // Update the page header
+        const pageHeader = document.querySelector('.page-header h1');
+        if (pageHeader) pageHeader.textContent = 'Create Agent';
+        
+        // Update button text
+        const buttonText = document.getElementById('buttonText');
+        if (buttonText) buttonText.textContent = 'Create Agent';
+    }, 100);
+}
+
 // Updated createNewAgent function
 function createNewAgent() {
     // Show loader
     togglePageLoader(true);
     
+    // Reset the selectedAgentId to prevent updating existing agent
+    selectedAgentId = null;
+    
     // Clear selected tools before loading the create agent page
     selectedTools.clear();
     selectedAdvancedTools.clear();
     loadPage('create-agent');
+    
+    // Reset all form fields
+    resetAgentForm();
 } 
 
 function goBack() {
@@ -242,10 +296,13 @@ function goBack() {
         return;
     }
     
+    // Clear any selected agent ID when going back from any agent page
+    selectedAgentId = null;
+    
     // Handle based on current pathname
     const currentPath = window.location.pathname;
-    if (currentPath === '/launch-agent' || currentPath.startsWith('/agents/') || currentPath.includes('/agents/')) {
-        window.selectedAgentId = null; // Clear selected agent ID
+    if (currentPath === '/launch-agent' || currentPath.startsWith('/agents/') || 
+        currentPath.includes('/agents/') || currentPath === '/create-agent') {
         loadPage('agents'); // Navigate to main agents page
     } else if (currentPath === '/agents') {
         // Already on the main agents page, no navigation needed
@@ -499,6 +556,11 @@ function populateAgentData(agent, retriesLeft, delay = 150) {
     const agentBackstoryInput = document.getElementById('agentBackstory');
     if (agentBackstoryInput) {
         agentBackstoryInput.value = agent.backstory || '';
+    }
+    
+    const sampleUserInputField = document.getElementById('sampleUserInput');
+    if (sampleUserInputField) {
+        sampleUserInputField.value = agent.sample_user_input || '';
     }
     
     const agentInstructionsInput = document.getElementById('agentInstructions');
@@ -1740,6 +1802,7 @@ function saveAgent() {
         goal: document.getElementById('agentGoal').value,
         expectedOutput: document.getElementById('expectedOutput').value,
         backstory: document.getElementById('agentBackstory').value,
+        sample_user_input: document.getElementById('sampleUserInput')?.value || "",
         instructions: document.getElementById('agentInstructions').value,
         verbose: document.getElementById('managerAgent').checked,
         tools: Array.from(selectedTools),
@@ -1767,6 +1830,7 @@ function saveAgent() {
         return response.json();
     })
     .then(() => {
+        // Reset everything after successful save
         selectedAgentId = null;
         selectedTools.clear();
         selectedAdvancedTools.clear();
@@ -1807,7 +1871,7 @@ function editAgent(agentId) {
                         hideLoading();
 
                         // Update UI elements
-                        pageHeader.textContent = agent.name;
+                        pageHeader.textContent = 'Edit Agent: ' + agent.name;
                         buildButton.textContent = 'Save';
                         buttonText.textContent = 'Save';
 
@@ -1821,6 +1885,7 @@ function editAgent(agentId) {
                         document.getElementById('agentGoal').value = agent.goal || '';
                         document.getElementById('expectedOutput').value = agent.expectedOutput || '';
                         document.getElementById('agentBackstory').value = agent.backstory || '';
+                        document.getElementById('sampleUserInput').value = agent.sample_user_input || '';
                         document.getElementById('agentInstructions').value = agent.instructions;
                         document.getElementById('managerAgent').checked = agent.verbose;
                         document.getElementById('knowledgeBase').checked = agent.features.knowledgeBase;
@@ -3208,6 +3273,7 @@ function saveAgentChanges() {
         goal: document.getElementById('agentGoal').value,
         expectedOutput: document.getElementById('expectedOutput').value,
         backstory: document.getElementById('agentBackstory').value,
+        sample_user_input: document.getElementById('sampleUserInput')?.value || "",
         instructions: document.getElementById('agentInstructions').value,
         llmProvider: document.getElementById('llmProvider').value,
         llmModel: document.getElementById('llmModel').value,
