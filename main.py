@@ -847,8 +847,9 @@ if ENABLE_AGENT_RUN:
 
     @app.post("/api/agent/infer")
     async def agent_infer(
-        agentId: str = Form(...),
-        userInput: str = Form(...),
+        request: Request,
+        agentId: Optional[str] = Form(None),
+        userInput: Optional[str] = Form(None),
         file: Optional[UploadFile] = File(None)
     ):
         # Generate execution ID
@@ -875,7 +876,47 @@ if ENABLE_AGENT_RUN:
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        # Sanitize inputs for logging
+        # Check content type to determine if it's JSON or form data
+        content_type = request.headers.get("content-type", "")
+        logger.info(f"Request content type: {content_type}")
+        
+        # Handle JSON request
+        if "application/json" in content_type:
+            try:
+                json_data = await request.json()
+                agentId = json_data.get("agentId")
+                userInput = json_data.get("userInput")
+                file = None  # File uploads not supported in JSON mode
+                logger.info(f"Processed JSON request: agentId={agentId}, userInput={sanitize_for_logging(userInput)}")
+            except Exception as e:
+                logger.error(f"Error parsing JSON request: {sanitize_for_logging(str(e))}")
+                return MessageResponse(
+                    type="error",
+                    content=ErrorData(
+                        message="Invalid JSON payload",
+                        details=str(e)
+                    ),
+                    execution_id=execution_id,
+                    log_url=log_url
+                )
+                
+        # Validate required parameters
+        if not agentId:
+            logger.error("Missing agentId parameter")
+            return MessageResponse(
+                type="error",
+                content=ErrorData(
+                    message="Missing parameters",
+                    details="agentId is required"
+                ),
+                execution_id=execution_id,
+                log_url=log_url
+            )
+            
+        if not userInput:
+            userInput = ""  # Allow empty input
+        
+        # Log request details
         sanitized_user_input = sanitize_for_logging(userInput)
         sanitized_file_name = sanitize_for_logging(file.filename if file else "None")
         logger.info(f"Received request: agentId={agentId}, userInput={sanitized_user_input}, file={sanitized_file_name}")

@@ -1,8 +1,52 @@
+// Override click handlers for API links at the top level to prevent conflicts
+// This code should be at the top of the file to take precedence
+(function setupAPILinks() {
+    // Keep track of whether our event handler has been attached
+    const HANDLER_ATTACHED_KEY = 'apiLinksHandlerAttached';
+    
+    // Function to handle all API link clicks in one place
+    function handleAPILinkClicks(event) {
+        // Check for agent API link
+        const agentApiLink = event.target.closest('.agent-api-link');
+        if (agentApiLink) {
+            console.log('Opening Agent API popup from consolidated handler');
+            event.preventDefault();
+            event.stopPropagation(); // Prevent other handlers from firing
+            
+            // Use global function if available, otherwise use local
+            if (typeof window.showAgentAPIPopup === 'function') {
+                window.showAgentAPIPopup();
+            } else if (typeof showAgentAPIPopup === 'function') {
+                showAgentAPIPopup();
+            }
+            return;
+        }
+        
+        // Check for multi-agent API link
+        const multiAgentApiLink = event.target.closest('.multi-agent-api-link');
+        if (multiAgentApiLink) {
+            console.log('Opening Multi-Agent API popup from consolidated handler');
+            event.preventDefault();
+            event.stopPropagation(); // Prevent other handlers from firing
+            showMultiAgentAPIPopup();
+            return;
+        }
+    }
+    
+    // Only attach once to avoid duplicates
+    if (!window[HANDLER_ATTACHED_KEY]) {
+        // Use capture phase to intercept events before they reach other handlers
+        document.addEventListener('click', handleAPILinkClicks, true);
+        window[HANDLER_ATTACHED_KEY] = true;
+        console.log('API Links handler attached at the top level');
+    }
+})();
+
 function showMultiAgentAPIPopup() {
-    let modal = document.getElementById('agentAPIModal');
+    let modal = document.getElementById('multiAgentAPIModal');
     if (!modal) {
         modal = document.createElement('div');
-        modal.id = 'agentAPIModal';
+        modal.id = 'multiAgentAPIModal';
         modal.className = 'modal';
         
         // Use the multi-agent endpoint and ID
@@ -11,7 +55,7 @@ function showMultiAgentAPIPopup() {
     -H "X-API-Key: your_api_key_here" \\
     -d '{ 
         "multi_agent_id": "${window.selectedMultiAgentId || 'your_multi_agent_id'}",
-        "userInput": "Specify the input here"
+        "user_input": "Specify the input here"
     }'`;
         
         modal.innerHTML = `
@@ -21,7 +65,7 @@ function showMultiAgentAPIPopup() {
                         <h2>Multi-Agent API Reference</h2>
                         <p class="api-description">Use this API endpoint to interact with your multi-agent orchestration programmatically.</p>
                     </div>
-                    <button class="btn-close" onclick="closeAgentAPIPopup()">×</button>
+                    <button class="btn-close" onclick="closeMultiAgentAPIPopup()">×</button>
                 </div>
                 <div class="modal-body">
                     <div class="api-section">
@@ -59,7 +103,7 @@ function showMultiAgentAPIPopup() {
                                     <td>The unique identifier of your multi-agent orchestration</td>
                                 </tr>
                                 <tr>
-                                    <td>userInput</td>
+                                    <td>user_input</td>
                                     <td>string</td>
                                     <td>The message or query to send to the multi-agent orchestration</td>
                                 </tr>
@@ -71,11 +115,11 @@ function showMultiAgentAPIPopup() {
         `;
         
         // Add styles if not already present
-        if (!document.getElementById('agentAPIModalStyles')) {
+        if (!document.getElementById('multiAgentAPIModalStyles')) {
             const style = document.createElement('style');
-            style.id = 'agentAPIModalStyles';
+            style.id = 'multiAgentAPIModalStyles';
             style.textContent = `
-                #agentAPIModal {
+                #multiAgentAPIModal {
                     position: fixed;
                     top: 0;
                     left: 0;
@@ -88,11 +132,11 @@ function showMultiAgentAPIPopup() {
                     padding: 20px;
                 }
 
-                #agentAPIModal.show {
+                #multiAgentAPIModal.show {
                     display: block;
                 }
 
-                #agentAPIModal .modal-content {
+                #multiAgentAPIModal .modal-content {
                     background: linear-gradient(145deg, #1a1f35, #2a2f45);
                     border: 1px solid rgba(99, 179, 237, 0.1);
                     border-radius: 16px;
@@ -107,7 +151,7 @@ function showMultiAgentAPIPopup() {
                     flex-direction: column;
                 }
 
-                #agentAPIModal .modal-header {
+                #multiAgentAPIModal .modal-header {
                     background: linear-gradient(180deg, rgba(26, 31, 53, 0.8), transparent);
                     padding: 24px;
                     border-bottom: 1px solid rgba(99, 179, 237, 0.1);
@@ -117,13 +161,13 @@ function showMultiAgentAPIPopup() {
                     backdrop-filter: blur(5px);
                 }
 
-                #agentAPIModal .modal-body {
+                #multiAgentAPIModal .modal-body {
                     padding: 24px;
                     overflow-y: auto;
                     flex: 1;
                 }
 
-                #agentAPIModal .modal-content::before {
+                #multiAgentAPIModal .modal-content::before {
                     content: '';
                     position: absolute;
                     top: 0;
@@ -136,7 +180,7 @@ function showMultiAgentAPIPopup() {
                         transparent);
                 }
 
-                #agentAPIModal h2 {
+                #multiAgentAPIModal h2 {
                     color: #63b3ed;
                     font-size: 24px;
                     margin: 0;
@@ -145,19 +189,19 @@ function showMultiAgentAPIPopup() {
                     text-shadow: 0 0 10px rgba(99, 179, 237, 0.3);
                 }
 
-                #agentAPIModal .api-description {
+                #multiAgentAPIModal .api-description {
                     color: #a0aec0;
                     margin-top: 8px;
                     font-size: 14px;
                     line-height: 1.5;
                 }
 
-                #agentAPIModal .api-section {
+                #multiAgentAPIModal .api-section {
                     margin-bottom: 32px;
                     animation: fadeInUp 0.5s ease-out;
                 }
 
-                #agentAPIModal .api-section h3 {
+                #multiAgentAPIModal .api-section h3 {
                     color: #63b3ed;
                     font-size: 18px;
                     margin-bottom: 16px;
@@ -166,7 +210,7 @@ function showMultiAgentAPIPopup() {
                     gap: 8px;
                 }
 
-                #agentAPIModal .api-section h3::before {
+                #multiAgentAPIModal .api-section h3::before {
                     content: '';
                     display: block;
                     width: 4px;
@@ -175,7 +219,7 @@ function showMultiAgentAPIPopup() {
                     border-radius: 2px;
                 }
 
-                #agentAPIModal .endpoint-info {
+                #multiAgentAPIModal .endpoint-info {
                     background: rgba(26, 31, 53, 0.6);
                     border: 1px solid rgba(99, 179, 237, 0.2);
                     border-radius: 8px;
@@ -186,7 +230,7 @@ function showMultiAgentAPIPopup() {
                     overflow: hidden;
                 }
 
-                #agentAPIModal .endpoint-info::before {
+                #multiAgentAPIModal .endpoint-info::before {
                     content: '';
                     position: absolute;
                     top: -50%;
@@ -203,14 +247,14 @@ function showMultiAgentAPIPopup() {
                     pointer-events: none;
                 }
 
-                #agentAPIModal .code-block {
+                #multiAgentAPIModal .code-block {
                     background: rgba(26, 31, 53, 0.6);
                     border: 1px solid rgba(99, 179, 237, 0.2);
                     border-radius: 8px;
                     overflow: hidden;
                 }
 
-                #agentAPIModal .code-header {
+                #multiAgentAPIModal .code-header {
                     background: rgba(26, 31, 53, 0.8);
                     padding: 12px 16px;
                     display: flex;
@@ -219,14 +263,14 @@ function showMultiAgentAPIPopup() {
                     border-bottom: 1px solid rgba(99, 179, 237, 0.2);
                 }
 
-                #agentAPIModal .code-language {
+                #multiAgentAPIModal .code-language {
                     color: #63b3ed;
                     font-size: 12px;
                     text-transform: uppercase;
                     letter-spacing: 1px;
                 }
 
-                #agentAPIModal .copy-code {
+                #multiAgentAPIModal .copy-code {
                     background: rgba(99, 179, 237, 0.1);
                     border: 1px solid rgba(99, 179, 237, 0.2);
                     color: #63b3ed;
@@ -236,94 +280,107 @@ function showMultiAgentAPIPopup() {
                     transition: all 0.3s ease;
                 }
 
-                #agentAPIModal .copy-code:hover {
+                #multiAgentAPIModal .copy-code:hover {
                     background: rgba(99, 179, 237, 0.2);
                     transform: translateY(-1px);
                     box-shadow: 0 2px 8px rgba(99, 179, 237, 0.2);
                 }
 
-                #agentAPIModal pre {
+                #multiAgentAPIModal pre {
                     margin: 0;
                     padding: 20px;
                     overflow-x: auto;
                 }
 
-                #agentAPIModal code {
+                #multiAgentAPIModal code {
                     color: #a0aec0;
                     font-family: 'Monaco', monospace;
-                    line-height: 1.5;
                 }
 
-                #agentAPIModal .api-params {
+                #multiAgentAPIModal .api-params {
                     width: 100%;
-                    border-collapse: separate;
-                    border-spacing: 0;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    border: 1px solid rgba(99, 179, 237, 0.2);
+                    border-collapse: collapse;
+                    margin-top: 16px;
                 }
 
-                #agentAPIModal .api-params th {
+                #multiAgentAPIModal .api-params th {
+                    text-align: left;
+                    padding: 12px 16px;
                     background: rgba(26, 31, 53, 0.8);
                     color: #63b3ed;
                     font-weight: 500;
-                    text-align: left;
-                    padding: 16px;
+                    font-size: 14px;
                     border-bottom: 1px solid rgba(99, 179, 237, 0.2);
                 }
 
-                #agentAPIModal .api-params td {
-                    padding: 16px;
-                    color: #a0aec0;
+                #multiAgentAPIModal .api-params td {
+                    padding: 12px 16px;
                     border-bottom: 1px solid rgba(99, 179, 237, 0.1);
-                    background: rgba(26, 31, 53, 0.4);
+                    color: #a0aec0;
+                    font-size: 14px;
                 }
 
-                #agentAPIModal .api-params tr:last-child td {
+                #multiAgentAPIModal .api-params tr:last-child td {
                     border-bottom: none;
                 }
 
-                #agentAPIModal .btn-close {
-                    background: none;
-                    border: none;
+                #multiAgentAPIModal .btn-close {
+                    background: rgba(26, 31, 53, 0.8);
+                    border: 1px solid rgba(99, 179, 237, 0.3);
                     color: #63b3ed;
-                    font-size: 24px;
-                    cursor: pointer;
-                    padding: 4px;
                     border-radius: 50%;
-                    width: 32px;
-                    height: 32px;
+                    width: 36px;
+                    height: 36px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    cursor: pointer;
+                    font-size: 18px;
                     transition: all 0.3s ease;
                     position: relative;
                     overflow: hidden;
+                    box-shadow: 0 0 15px rgba(99, 179, 237, 0.1);
                 }
 
-                #agentAPIModal .btn-close:hover {
-                    background: rgba(99, 179, 237, 0.1);
-                    transform: rotate(90deg);
+                #multiAgentAPIModal .btn-close:hover {
+                    background: rgba(99, 179, 237, 0.2);
+                    transform: translateY(-2px);
+                    box-shadow: 0 5px 15px rgba(99, 179, 237, 0.2);
                 }
 
-                #agentAPIModal .btn-close:before {
+                #multiAgentAPIModal .btn-close:before {
                     content: '';
                     position: absolute;
-                    width: 100%;
-                    height: 100%;
-                    background: radial-gradient(circle, rgba(99, 179, 237, 0.2) 0%, transparent 70%);
-                    opacity: 0;
-                    transition: opacity 0.3s ease;
+                    top: -50%;
+                    left: -50%;
+                    width: 200%;
+                    height: 200%;
+                    background: linear-gradient(
+                        45deg,
+                        transparent,
+                        rgba(99, 179, 237, 0.1),
+                        transparent
+                    );
+                    transition: all 0.3s ease;
                 }
 
-                #agentAPIModal .btn-close:hover:before {
-                    opacity: 1;
+                #multiAgentAPIModal .btn-close:hover:before {
+                    animation: shimmer 1.5s linear infinite;
+                }
+
+                @keyframes shimmer {
+                    0% {
+                        transform: translateX(-100%);
+                    }
+                    100% {
+                        transform: translateX(100%);
+                    }
                 }
 
                 @keyframes fadeInUp {
                     from {
                         opacity: 0;
-                        transform: translateY(10px);
+                        transform: translateY(20px);
                     }
                     to {
                         opacity: 1;
@@ -331,36 +388,26 @@ function showMultiAgentAPIPopup() {
                     }
                 }
 
-                @keyframes shimmer {
-                    0% {
-                        transform: translateX(-100%) rotate(45deg);
-                    }
-                    100% {
-                        transform: translateX(100%) rotate(45deg);
-                    }
-                }
-
-                /* Scrollbar styling */
-                #agentAPIModal pre::-webkit-scrollbar,
-                #agentAPIModal .modal-body::-webkit-scrollbar {
+                #multiAgentAPIModal pre::-webkit-scrollbar,
+                #multiAgentAPIModal .modal-body::-webkit-scrollbar {
                     width: 8px;
                     height: 8px;
                 }
 
-                #agentAPIModal pre::-webkit-scrollbar-track,
-                #agentAPIModal .modal-body::-webkit-scrollbar-track {
-                    background: rgba(26, 31, 53, 0.4);
+                #multiAgentAPIModal pre::-webkit-scrollbar-track,
+                #multiAgentAPIModal .modal-body::-webkit-scrollbar-track {
+                    background: rgba(26, 31, 53, 0.6);
                     border-radius: 4px;
                 }
 
-                #agentAPIModal pre::-webkit-scrollbar-thumb,
-                #agentAPIModal .modal-body::-webkit-scrollbar-thumb {
+                #multiAgentAPIModal pre::-webkit-scrollbar-thumb,
+                #multiAgentAPIModal .modal-body::-webkit-scrollbar-thumb {
                     background: rgba(99, 179, 237, 0.3);
                     border-radius: 4px;
                 }
 
-                #agentAPIModal pre::-webkit-scrollbar-thumb:hover,
-                #agentAPIModal .modal-body::-webkit-scrollbar-thumb:hover {
+                #multiAgentAPIModal pre::-webkit-scrollbar-thumb:hover,
+                #multiAgentAPIModal .modal-body::-webkit-scrollbar-thumb:hover {
                     background: rgba(99, 179, 237, 0.5);
                 }
             `;
@@ -368,14 +415,14 @@ function showMultiAgentAPIPopup() {
         }
         document.body.appendChild(modal);
     } else {
-        // If modal exists, just update the code with current agent ID
+        // If modal exists, just update the code with current multi-agent ID
         const codeBlock = modal.querySelector('code');
-        const sampleCurl = `curl -X POST "<HOST>/api/multi_agent/infer" \\
+        const sampleCurl = `curl -X POST "${window.location.origin}/api/multi_agent/infer" \\
     -H "Content-Type: application/json" \\
     -H "X-API-Key: your_api_key_here" \\
     -d '{ 
         "multi_agent_id": "${window.selectedMultiAgentId || 'your_multi_agent_id'}",
-        "userInput": "Specify the input here"
+        "user_input": "Specify the input here"
     }'`;
         codeBlock.textContent = sampleCurl;
     }
@@ -384,8 +431,8 @@ function showMultiAgentAPIPopup() {
     modal.classList.add('show');
 }
 
-function closeAgentAPIPopup() {
-    const modal = document.getElementById('agentAPIModal');
+function closeMultiAgentAPIPopup() {
+    const modal = document.getElementById('multiAgentAPIModal');
     if (modal) {
         modal.classList.remove('show');
     }
@@ -412,8 +459,13 @@ function copyAPICode(button) {
                 button.disabled = false;
             }, 2000);
         }
+        
+        // Show toast notification
+        showToast('API code copied to clipboard', 'success');
     }).catch(err => {
         console.error('Failed to copy text: ', err);
+        // Show error toast
+        showToast('Failed to copy code', 'error');
         // Fallback or error message (optional)
         alert('Failed to copy code. Please try copying manually.');
     });
@@ -1434,53 +1486,87 @@ function handleSendMessage() {
     // Show loading message
     showLoading("Agent is processing the request...");
 
-    // Prepare FormData for the request
-    const formData = new FormData();
-    formData.append('agentId', selectedAgentId);
-    formData.append('userInput', userInput);
+    // If there's a file, use FormData, otherwise use JSON
     if (file) {
+        // Use FormData for file uploads
+        const formData = new FormData();
+        formData.append('agentId', selectedAgentId);
+        formData.append('userInput', userInput);
         formData.append('file', file);
         console.log('File attached:', file.name);
-    }
-
-    clearFileSelection();
-
-
-    // Send to backend
-    fetch('/api/agent/infer', {
-        method: 'POST',
-        body: formData // Use FormData instead of JSON.stringify
-        // Note: Do not set 'Content-Type' header manually; let the browser set it to multipart/form-data with the correct boundary
-    })
-    .then(response => {
-        hideLoading();
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        hideLoading();
-        console.log('Response received:', data);
-        appendMessage(data, 'agent');
         
-        // Clear file input after successful submission
-        if (file && fileInput) {
-            fileInput.value = '';
-            removeFilePreview();
-        }
-    })
-    .catch(error => {
-        hideLoading();
-        console.error('Error:', error);
-        appendMessage({
-            type: 'error',
-            content: {
-                message: 'Error processing request',
-                details: error.message
+        // Send to backend with FormData
+        fetch('/api/agent/infer', {
+            method: 'POST',
+            body: formData // FormData automatically sets content-type to multipart/form-data
+        })
+        .then(response => {
+            hideLoading();
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
-        }, 'agent');
-    });
+            return response.json();
+        })
+        .then(data => {
+            hideLoading();
+            console.log('Response received:', data);
+            appendMessage(data, 'agent');
+            
+            // Clear file input after successful submission
+            if (fileInput) {
+                fileInput.value = '';
+                removeFilePreview();
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error:', error);
+            appendMessage({
+                type: 'error',
+                content: {
+                    message: 'Error processing request',
+                    details: error.message
+                }
+            }, 'agent');
+        });
+    } else {
+        // Use JSON payload for text-only requests
+        fetch('/api/agent/infer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                agentId: selectedAgentId,
+                userInput: userInput
+            })
+        })
+        .then(response => {
+            hideLoading();
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            hideLoading();
+            console.log('Response received:', data);
+            appendMessage(data, 'agent');
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error:', error);
+            appendMessage({
+                type: 'error',
+                content: {
+                    message: 'Error processing request',
+                    details: error.message
+                }
+            }, 'agent');
+        });
+    }
+    
+    clearFileSelection();
 }
 
 // Function to handle file upload
@@ -4575,5 +4661,73 @@ async function saveBigQueryConnection(isEditing = false) {
 
 
 function showToolUniverse() {
-    window.open('http://ajunsmachine.theworkpc.com:8004', '_blank');
+    // Create a loading animation effect before opening
+    const toolUniverseBtn = document.querySelector('.tool_universe');
+    if (toolUniverseBtn) {
+        // Add a class for click animation
+        toolUniverseBtn.classList.add('tool-universe-clicked');
+        
+        // Show a subtle loading indicator
+        const originalText = toolUniverseBtn.innerHTML;
+        toolUniverseBtn.innerHTML = `
+            <div class="universe-loading-spinner"></div>
+            <span>Connecting</span>
+        `;
+        
+        // After a short delay, restore and open the universe
+        setTimeout(() => {
+            window.open('http://ajunsmachine.theworkpc.com:8004', '_blank');
+            
+            // Restore the button after a short delay
+            setTimeout(() => {
+                toolUniverseBtn.innerHTML = originalText;
+                toolUniverseBtn.classList.remove('tool-universe-clicked');
+            }, 500);
+        }, 600);
+    } else {
+        // Fallback if button not found
+        window.open('http://ajunsmachine.theworkpc.com:8004', '_blank');
+    }
+}
+
+// Add better event delegation for API links
+document.addEventListener('DOMContentLoaded', function() {
+    // Delegate all clicks on the document
+    document.addEventListener('click', function(event) {
+        // Handle agent API link
+        const agentApiLink = event.target.closest('.agent-api-link');
+        if (agentApiLink) {
+            event.preventDefault();
+            console.log('Opening Agent API Reference');
+            // Make sure we're calling the one from main.js
+            if (typeof window.showAgentAPIPopup === 'function') {
+                window.showAgentAPIPopup();
+            } else {
+                showAgentAPIPopup();
+            }
+            return;
+        }
+        
+        // Handle multi-agent API link
+        const multiAgentApiLink = event.target.closest('.multi-agent-api-link');
+        if (multiAgentApiLink) {
+            event.preventDefault();
+            console.log('Opening Multi-Agent API Reference');
+            showMultiAgentAPIPopup();
+            return;
+        }
+    });
+});
+
+// Function to close agent API popup - for compatibility
+function closeAgentAPIPopup() {
+    const modal = document.getElementById('agentAPIModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// Export showAgentAPIPopup to window object if it exists in this file but not in main.js
+if (typeof window.showAgentAPIPopup !== 'function' && typeof showAgentAPIPopup === 'function') {
+    window.showAgentAPIPopup = showAgentAPIPopup;
 }
