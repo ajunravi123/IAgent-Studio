@@ -181,13 +181,29 @@ class MultiAgentExecutor:
             logger.error(f"No paths found in schema (Execution ID: {self.execution_id})")
             return {"error": "No paths in schema"}
 
-        request_schema = paths.get(next(iter(paths)), {}).get("post", {}).get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema", {})
+        path_key = next(iter(paths))
+        method = next((m for m in paths[path_key] if m.lower() in ["get", "post"]), "post")
         
+        # Determine request schema based on method
+        request_schema = {}
+        required_fields = []
+        properties = {}
+        if method == "get":
+            parameters = paths[path_key].get(method, {}).get("parameters", [])
+            if parameters:
+                request_schema = {"parameters": parameters}
+                required_fields = [param["name"] for param in parameters if param.get("required", False)]
+                properties = {param["name"]: param.get("schema", {}) for param in parameters}
+        else:  # method == "post"
+            request_body = paths[path_key].get(method, {}).get("requestBody", {})
+            if request_body:
+                request_schema = request_body.get("content", {}).get("application/json", {}).get("schema", {})
+                required_fields = request_schema.get("required", [])
+                properties = request_schema.get("properties", {})
+
         connector_info = f"Tool Data Connector:\n{json.dumps(tool_data_connector, indent=2, ensure_ascii=False)}\n" if tool_data_connector else ""
         
         # Parse time if required by schema
-        required_fields = request_schema.get("required", [])
-        properties = request_schema.get("properties", {})
         time_field = None
         for prop, details in properties.items():
             if details.get("type") == "integer" and "hour" in prop.lower():
@@ -207,9 +223,11 @@ class MultiAgentExecutor:
                 Request Schema: {json.dumps(request_schema, indent=2, ensure_ascii=False)}
                 Full Schema: {json.dumps(schema, indent=2, ensure_ascii=False)}
                 {connector_info}
-                Generate a valid JSON payload and the endpoint URL for the API call.
+                Generate a valid JSON payload (if required) and the endpoint URL for the API call.
+                For GET requests, return a dictionary of query parameters if parameters are defined in the schema, otherwise return null.
+                For POST requests, generate a JSON payload if a requestBody is defined in the schema, otherwise return null.
                 Return a JSON object with two keys:
-                - "payload": The JSON payload for the POST request, satisfying all schema requirements (required fields: {required_fields}).
+                - "payload": The JSON payload or query parameters (or null if not applicable, required fields: {required_fields}).
                 - "endpoint_url": The full URL for the API endpoint, using the appropriate server URL from the schema's "servers" field and the correct path from the "paths" field.
                 For the payload:
                 - Extract relevant information from the user input.
@@ -217,9 +235,9 @@ class MultiAgentExecutor:
                 - If a time-related field (e.g., {time_field}) is required, use the parsed time {default_payload.get(time_field, 'N/A')} (24-hour format, 0-23).
                 - Validate against schema constraints (e.g., min/max, patterns).
                 - Ensure compatibility with the tool_data_connector if provided.
-                Ensure the endpoint_url is valid and corresponds to a POST endpoint in the schema.
+                Ensure the endpoint_url is valid and corresponds to the {method.upper()} endpoint in the schema.
                 Log any validation errors or default substitutions.
-                If no valid payload or URL can be determined, return {{"payload": {{}}, "endpoint_url": ""}}.
+                If no valid URL can be determined, return {{"payload": {json.dumps(default_payload)}, "endpoint_url": ""}}.
             """,
             expected_output="JSON object with 'payload' and 'endpoint_url'",
             agent=self.payload_agent
@@ -232,18 +250,19 @@ class MultiAgentExecutor:
             payload = result_json.get("payload")
             endpoint_url = result_json.get("endpoint_url")
             
-            if not payload or not endpoint_url:
-                logger.error(f"Missing payload or endpoint_url in agent response (Execution ID: {self.execution_id})")
-                return {"error": "Missing payload or endpoint_url in agent response"}
+            if not endpoint_url:
+                logger.error(f"Missing endpoint_url in agent response (Execution ID: {self.execution_id})")
+                return {"error": "Missing endpoint_url in agent response"}
             
-            # Validate required fields
-            missing_fields = [f for f in required_fields if f not in payload or payload[f] is None]
-            if missing_fields:
-                logger.warning(f"Missing required fields {missing_fields}, using defaults (Execution ID: {self.execution_id})")
-                for field in missing_fields:
-                    payload[field] = None
+            # Validate required fields if payload exists
+            if payload:
+                missing_fields = [f for f in required_fields if f not in payload or payload[f] is None]
+                if missing_fields:
+                    logger.warning(f"Missing required fields {missing_fields}, using defaults (Execution ID: {self.execution_id})")
+                    for field in missing_fields:
+                        payload[field] = None
 
-            logger.info(f"Generated payload: {self._sanitize_for_logging(json.dumps(payload, ensure_ascii=False))} (Execution ID: {self.execution_id})")
+            logger.info(f"Generated payload: {self._sanitize_for_logging(json.dumps(payload, ensure_ascii=False) if payload else 'null')} (Execution ID: {self.execution_id})")
             logger.info(f"Generated endpoint URL: {self._sanitize_for_logging(endpoint_url)} (Execution ID: {self.execution_id})")
             return {"payload": payload, "endpoint_url": endpoint_url}
         except (json.JSONDecodeError, AttributeError) as e:
@@ -267,8 +286,8 @@ class MultiAgentExecutor:
                 logger.warning(f"Skipping invalid schema for tool {tool_config.get('id')} in agent {agent_id} (Execution ID: {self.execution_id})")
                 continue
 
-            tool_headers = tool_config.get("auth", {}).get("headers", {})
-            tool_params = tool_config.get("auth", {}).get("params", {})
+            tool_headers = tool_config.get("auth", {}).get("headers", {}) or {}
+            tool_params = tool_config.get("auth", {}).get("params", {}) or {}
             tool_data_connector = tool_config.get("data_connector", None)
 
             def create_api_caller(schema: Dict, headers: Dict, params: Dict, agent_id: str, tool_data_connector: Optional[dict] = None):
@@ -286,17 +305,48 @@ class MultiAgentExecutor:
 
                         payload = result.get("payload")
                         endpoint_url = result.get("endpoint_url")
-                        if not payload or not endpoint_url:
-                            logger.error(f"Missing payload or endpoint URL for agent {agent_id} (Execution ID: {self.execution_id})")
-                            return {"error": "Missing payload or endpoint URL"}
+                        if not endpoint_url:
+                            logger.error(f"Missing endpoint URL for agent {agent_id} (Execution ID: {self.execution_id})")
+                            return {"error": "Missing endpoint URL"}
 
-                        logger.info(f"Agent {agent_id} calling POST {endpoint_url} with payload: {self._sanitize_for_logging(json.dumps(payload, ensure_ascii=False))} (Execution ID: {self.execution_id})")
-                        response = requests.post(
-                            endpoint_url,
-                            headers=headers,
-                            params=params,
-                            json=payload
-                        )
+                        # Determine HTTP method from schema
+                        paths = schema.get("paths", {})
+                        if not paths:
+                            logger.error(f"No paths found in schema for agent {agent_id} (Execution ID: {self.execution_id})")
+                            return {"error": "No paths found in schema"}
+
+                        path_key = next(iter(paths))
+                        method = None
+                        for m in paths[path_key]:
+                            if m.lower() in ["get", "post"]:
+                                method = m.lower()
+                                break
+                        if not method:
+                            logger.error(f"No supported HTTP method (GET/POST) found in schema for agent {agent_id} (Execution ID: {self.execution_id})")
+                            return {"error": "No supported HTTP method (GET/POST) found in schema"}
+
+                        # Ensure headers and params are dictionaries
+                        request_headers = headers or {}
+                        request_params = params or {}
+
+                        if method == "get":
+                            # For GET, payload contains query parameters (if any)
+                            if payload:
+                                request_params.update(payload)
+                            logger.info(f"Agent {agent_id} calling GET {endpoint_url} with params: {self._sanitize_for_logging(json.dumps(request_params, ensure_ascii=False) if request_params else 'none')} (Execution ID: {self.execution_id})")
+                            response = requests.get(
+                                endpoint_url,
+                                headers=request_headers,
+                                params=request_params if request_params else None
+                            )
+                        else:  # method == "post"
+                            logger.info(f"Agent {agent_id} calling POST {endpoint_url} with payload: {self._sanitize_for_logging(json.dumps(payload, ensure_ascii=False) if payload else 'none')} (Execution ID: {self.execution_id})")
+                            response = requests.post(
+                                endpoint_url,
+                                headers=request_headers,
+                                params=request_params if request_params else None,
+                                json=payload if payload else None
+                            )
 
                         if 200 <= response.status_code < 300:
                             try:

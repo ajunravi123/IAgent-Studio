@@ -112,21 +112,55 @@ class TaskExecutor:
 
                             payload = result.get("payload")
                             endpoint_url = result.get("endpoint_url")
-                            if not payload or not endpoint_url:
-                                return {"error": "Missing payload or endpoint URL"}
+                            if not endpoint_url:
+                                return {"error": "Missing endpoint URL"}
 
-                            response = requests.post(
-                                endpoint_url,
-                                headers=tool_headers,
-                                params=tool_params,
-                                json=payload
-                            )
+                            # Determine HTTP method from schema
+                            paths = tool_schema.get("paths", {})
+                            if not paths:
+                                return {"error": "No paths found in schema"}
+
+                            path_key = next(iter(paths))
+                            method = None
+                            for m in paths[path_key]:
+                                if m.lower() in ["get", "post"]:
+                                    method = m.lower()
+                                    break
+                            if not method:
+                                return {"error": "No supported HTTP method (GET/POST) found in schema"}
+
+                            # Prepare request
+                            headers = tool_headers.copy() if tool_headers else {}
+                            params = tool_params.copy() if tool_params else {}
+
+                            if method == "get":
+                                # For GET, payload contains query parameters (if any)
+                                if payload:
+                                    params.update(payload)
+                                response = requests.get(
+                                    endpoint_url,
+                                    headers=headers,
+                                    params=params if params else None
+                                )
+                            else:  # method == "post"
+                                response = requests.post(
+                                    endpoint_url,
+                                    headers=headers,
+                                    params=params if params else None,
+                                    json=payload if payload else None
+                                )
+
                             if response.status_code == 200:
-                                self.logger.debug(f"Tool Response: {str(response.json())}")
-                                return response.json()
+                                try:
+                                    return response.json()
+                                except ValueError:
+                                    return {"result": response.text}
                             else:
                                 self.logger.debug(f"Tool returned status code: {response.status_code}")
-                                return {"error": response.json().get('detail', str(response.status_code))}
+                                try:
+                                    return {"error": response.json().get('detail', str(response.status_code))}
+                                except ValueError:
+                                    return {"error": response.text or str(response.status_code)}
                         except Exception as e:
                             self.logger.debug(f"Tool returned error: {sanitize_for_logging(e)}")
                             return {"error": sanitize_for_logging(e)}
@@ -161,14 +195,13 @@ class TaskExecutor:
         self.logger.debug("Analyzing schema")
         schema_str = json.dumps(schema, indent=2, ensure_ascii=False)
         analysis_task = Task(
-            description=f"Analyze OpenAPI schema:\n{schema_str}\nFocus on required fields, types, constraints, and response structure.",
-            expected_output="Summary of schema requirements",
+            description=f"Analyze OpenAPI schema:\n{schema_str}\nFocus on required fields, types, constraints, parameters, and response structure.",
+            expected_output="Summary of schema requirements including HTTP method, parameters, and payload requirements",
             agent=self.schema_agent
         )
         crew = Crew(agents=[self.schema_agent], tasks=[analysis_task], process=Process.sequential)
         result = crew.kickoff()
         sanitized_result = sanitize_for_logging(result)
-        # self.logger.debug(f"Schema analysis result: {sanitized_result}")
         return str(result)  # Return unsanitized result to preserve accuracy
 
     def generate_payload(self, user_input: str, schema: dict, tool_data_connector: Optional[dict] = None) -> Dict[str, Any]:
@@ -179,11 +212,22 @@ class TaskExecutor:
             return {"error": "No paths in schema"}
 
         schema_analysis = self.analyze_schema(schema)
-        request_schema = paths.get(next(iter(paths)), {}).get("post", {}).get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema", {})
+        path_key = next(iter(paths))
+        method = next((m for m in paths[path_key] if m.lower() in ["get", "post"]), "post")
         
+        # Determine request schema based on method
+        request_schema = {}
+        if method == "get":
+            parameters = paths[path_key].get(method, {}).get("parameters", [])
+            if parameters:
+                request_schema = {"parameters": parameters}
+        else:  # method == "post"
+            request_body = paths[path_key].get(method, {}).get("requestBody", {})
+            if request_body:
+                request_schema = request_body.get("content", {}).get("application/json", {}).get("schema", {})
+
         connector_info = f"Tool Data Connector:\n{json.dumps(tool_data_connector, indent=2, ensure_ascii=False)}\n" if tool_data_connector else ""
         
-        # Extend payload_task to generate both payload and endpoint_url
         payload_task = Task(
             description=f"""
             User Input: '{user_input}'
@@ -191,11 +235,13 @@ class TaskExecutor:
             Request Schema: {json.dumps(request_schema, indent=2, ensure_ascii=False)}
             Full Schema: {json.dumps(schema, indent=2, ensure_ascii=False)}
             {connector_info}
-            Generate a valid JSON payload and the endpoint URL for the API call.
+            Generate a valid JSON payload (if required) and the endpoint URL for the API call.
+            For GET requests, return a dictionary of query parameters if parameters are defined in the schema, otherwise return null.
+            For POST requests, generate a JSON payload if a requestBody is defined in the schema, otherwise return null.
             Return the response as a JSON object with two keys:
-            - "payload": The JSON payload for the POST request.
+            - "payload": The JSON payload or query parameters (or null if not applicable).
             - "endpoint_url": The full URL for the API endpoint, constructed using the appropriate server URL from the schema's "servers" field and the correct path from the "paths" field.
-            Ensure the endpoint_url is valid and corresponds to a POST endpoint in the schema.
+            Ensure the endpoint_url is valid and corresponds to the {method.upper()} endpoint in the schema.
             """,
             expected_output="JSON object with 'payload' and 'endpoint_url'",
             agent=self.payload_agent
@@ -209,11 +255,11 @@ class TaskExecutor:
             payload = result_json.get("payload")
             endpoint_url = result_json.get("endpoint_url")
             
-            if not payload or not endpoint_url:
-                self.logger.error("Missing payload or endpoint_url in agent response")
-                return {"error": "Missing payload or endpoint_url in agent response"}
+            if not endpoint_url:
+                self.logger.error("Missing endpoint_url in agent response")
+                return {"error": "Missing endpoint_url in agent response"}
             
-            self.logger.debug(f"Generated payload: {json.dumps(payload, ensure_ascii=False)}")
+            self.logger.debug(f"Generated payload: {json.dumps(payload, ensure_ascii=False) if payload else 'null'}")
             self.logger.debug(f"Generated endpoint URL: {endpoint_url}")
             return {"payload": payload, "endpoint_url": endpoint_url}
         except (json.JSONDecodeError, AttributeError) as e:
