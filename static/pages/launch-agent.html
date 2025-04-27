@@ -210,6 +210,28 @@
     .logs-button i {
         font-size: 11px;
     }
+    
+    /* Custom placeholder styling for the typing animation */
+    #userInput::placeholder {
+        opacity: 1;
+        color: #888;
+    }
+    
+    /* Add a blinking cursor effect to the input */
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
+    
+    .typing-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 16px;
+        background-color: #888;
+        margin-left: 2px;
+        animation: blink 1s infinite;
+        vertical-align: middle;
+    }
 </style>
 
 <script>
@@ -336,6 +358,8 @@
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
     });
+
+    // The animated placeholder is now handled in main.js after agent data is loaded
 
     console.log('Chat script initialized');
 </script>

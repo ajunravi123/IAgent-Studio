@@ -561,7 +561,12 @@ function populateAgentData(agent, retriesLeft, delay = 150) {
     const sampleUserInputField = document.getElementById('sampleUserInput');
     if (sampleUserInputField) {
         sampleUserInputField.value = agent.sample_user_input || '';
+        
+        // Initialize animated placeholder after we've set the sample value
+        initAnimatedPlaceholder(agent.sample_user_input || '');
     }
+    
+    // We don't need to set placeholder here anymore as it's handled by the animated placeholder script
     
     const agentInstructionsInput = document.getElementById('agentInstructions');
     if (agentInstructionsInput) {
@@ -3804,4 +3809,76 @@ async function loadDataConnectorsForCustomTool() {
     } catch (error) {
         console.error('Error loading data connectors:', error);
     }
+}
+
+// Function to initialize animated placeholder for chat input
+function initAnimatedPlaceholder(sampleText) {
+    const userInput = document.getElementById('userInput');
+    if (!userInput || !sampleText) return;
+    
+    console.log("Initializing typing animation placeholder with sample:", sampleText);
+    
+    // Default placeholder when not animating
+    const defaultText = "Type your input here";
+    
+    // Start with default text
+    userInput.placeholder = defaultText;
+    
+    // Track if animation is running
+    let isAnimating = false;
+    
+    // Function to run the typing animation
+    const runTypingAnimation = () => {
+        // Only animate if the input is empty and not already animating
+        if (!userInput.value && !isAnimating) {
+            isAnimating = true;
+            
+            // Start with empty placeholder
+            userInput.placeholder = "";
+            
+            // Type the sample text character by character
+            let i = 0;
+            const typeInterval = setInterval(() => {
+                if (i < sampleText.length) {
+                    userInput.placeholder += sampleText.charAt(i);
+                    i++;
+                } else {
+                    // Typing finished
+                    clearInterval(typeInterval);
+                    
+                    // Wait before clearing
+                    setTimeout(() => {
+                        // Reset to default placeholder with backspace effect
+                        let fullText = userInput.placeholder;
+                        let backspaceInterval = setInterval(() => {
+                            if (fullText.length > 0) {
+                                fullText = fullText.substring(0, fullText.length - 1);
+                                userInput.placeholder = fullText;
+                            } else {
+                                clearInterval(backspaceInterval);
+                                userInput.placeholder = defaultText;
+                                
+                                // Mark animation as complete
+                                isAnimating = false;
+                            }
+                        }, 30); // Backspace speed - 30ms
+                    }, 2000); // Wait time after typing - 2 seconds
+                }
+            }, 60); // Typing speed - 60ms
+        }
+    };
+    
+    // Run the animation initially after a short delay
+    setTimeout(runTypingAnimation, 1000); // Initial delay - 1 second
+    
+    // Set up interval to periodically run the animation
+    setInterval(runTypingAnimation, 9000); // Animation frequency - 9 seconds
+    
+    // Also trigger animation when user clears the input
+    userInput.addEventListener('input', () => {
+        if (userInput.value === "") {
+            // Reset the animation cycle when user clears input
+            setTimeout(runTypingAnimation, 1000); // Delay before restarting - 1 second
+        }
+    });
 }
