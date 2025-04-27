@@ -446,9 +446,8 @@ function copyAPICode(button) {
     }
     const codeToCopy = codeBlock.textContent;
     
-    // Use modern Clipboard API
-    navigator.clipboard.writeText(codeToCopy).then(() => {
-        // Success: Show feedback
+    // Success feedback function
+    const showSuccessFeedback = () => {
         const icon = button.querySelector('i');
         if (icon) {
             const originalIconClass = icon.className;
@@ -459,16 +458,58 @@ function copyAPICode(button) {
                 button.disabled = false;
             }, 2000);
         }
-        
         // Show toast notification
         showToast('API code copied to clipboard', 'success');
-    }).catch(err => {
+    };
+    
+    // Error feedback function
+    const showErrorFeedback = (err) => {
         console.error('Failed to copy text: ', err);
-        // Show error toast
         showToast('Failed to copy code', 'error');
-        // Fallback or error message (optional)
-        alert('Failed to copy code. Please try copying manually.');
-    });
+    };
+
+    // Check if Clipboard API is available
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        // Modern approach - Clipboard API
+        navigator.clipboard.writeText(codeToCopy).then(() => {
+            showSuccessFeedback();
+        }).catch(err => {
+            // Try fallback if Clipboard API fails
+            fallbackCopyTextToClipboard(codeToCopy, showSuccessFeedback, showErrorFeedback);
+        });
+    } else {
+        // Fallback for browsers without Clipboard API
+        fallbackCopyTextToClipboard(codeToCopy, showSuccessFeedback, showErrorFeedback);
+    }
+}
+
+// Fallback copy method using execCommand (older browsers)
+function fallbackCopyTextToClipboard(text, onSuccess, onError) {
+    try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Make the textarea out of viewport
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        
+        // Select and copy
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+            onSuccess();
+        } else {
+            onError(new Error('execCommand returned false'));
+        }
+    } catch (err) {
+        onError(err);
+    }
 }
 
 // Add event listener for the API link
