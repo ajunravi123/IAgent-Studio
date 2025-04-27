@@ -1048,7 +1048,7 @@ function appendMultiAgentMessage(message, sender, senderName = null, logUrl = nu
         // Format code blocks with syntax highlighting
         const formattedMessage = message.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, language, code) {
             return `<pre class="code-block ${language}"><code>${
-                code.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                code.replace(/&/g, '&lt;').replace(/>/g, '&gt;')
             }</code></pre>`;
         });
         textDiv.innerHTML = formattedMessage;
@@ -1623,8 +1623,13 @@ function appendMessage(messageData, sender) {
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
             
-            // Replace newlines with <br> tags
-            text = text.replace(/\n/g, '<br>');
+            // Trim backtick symbols from the beginning and end of the response if coming from agent
+            if (sender === 'agent') {
+                text = text.replace(/^```/, '').replace(/```$/, '');
+            }
+            
+            // Replace literal '\n' with actual newlines, then replace all newlines with <br> tags
+            text = text.replace(/\\n/g, '\n').replace(/\n/g, '<br>');
             
             // Regular expression to match URLs
             const urlRegex = /(https?:\/\/[^\s<]+)/g;
