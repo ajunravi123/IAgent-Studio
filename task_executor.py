@@ -152,6 +152,7 @@ class TaskExecutor:
 
                             if response.status_code == 200:
                                 try:
+                                    self.logger.debug(f"Tool returned response: {response.json()}")
                                     return response.json()
                                 except ValueError:
                                     return {"result": response.text}
@@ -211,7 +212,6 @@ class TaskExecutor:
             self.logger.error("No paths in schema")
             return {"error": "No paths in schema"}
 
-        schema_analysis = self.analyze_schema(schema)
         path_key = next(iter(paths))
         method = next((m for m in paths[path_key] if m.lower() in ["get", "post"]), "post")
         
@@ -228,22 +228,33 @@ class TaskExecutor:
 
         connector_info = f"Tool Data Connector:\n{json.dumps(tool_data_connector, indent=2, ensure_ascii=False)}\n" if tool_data_connector else ""
         
+        # Combine schema analysis and payload generation in a single task
         payload_task = Task(
             description=f"""
             User Input: '{user_input}'
-            Schema Analysis: {schema_analysis}
             Request Schema: {json.dumps(request_schema, indent=2, ensure_ascii=False)}
             Full Schema: {json.dumps(schema, indent=2, ensure_ascii=False)}
             {connector_info}
-            Generate a valid JSON payload (if required) and the endpoint URL for the API call.
-            For GET requests, return a dictionary of query parameters if parameters are defined in the schema, otherwise return null.
-            For POST requests, generate a JSON payload if a requestBody is defined in the schema, otherwise return null.
-            Return the response as a JSON object with two keys:
+            
+            Perform the following steps:
+            1. Analyze the provided OpenAPI schema, focusing on required fields, types, constraints, parameters, and response structure.
+            2. Validate that the user input contains all necessary information to generate a valid JSON payload (for POST) or query parameters (for GET) based on the schema's required fields.
+               - If any required fields are missing in the user input, return an error JSON object with the key "error" and a message listing the missing required fields. Do NOT use example values or defaults from the schema.
+               - For GET requests, check if required query parameters are provided in the input.
+               - For POST requests, check if required properties in the requestBody schema are provided in the input.
+            3. If validation passes, generate a valid JSON payload (if required) and the endpoint URL for the API call.
+               - For GET requests, return a dictionary of query parameters if parameters are defined in the schema, otherwise return null.
+               - For POST requests, generate a JSON payload if a requestBody is defined in the schema, otherwise return null.
+            4. Construct the endpoint URL using the appropriate server URL from the schema's "servers" field and the correct path from the "paths" field.
+            
+            Return the response as a JSON object with two keys (unless an error occurs):
             - "payload": The JSON payload or query parameters (or null if not applicable).
-            - "endpoint_url": The full URL for the API endpoint, constructed using the appropriate server URL from the schema's "servers" field and the correct path from the "paths" field.
-            Ensure the endpoint_url is valid and corresponds to the {method.upper()} endpoint in the schema.
+            - "endpoint_url": The full URL for the API endpoint, corresponding to the {method.upper()} endpoint in the schema.
+            If an error occurs due to missing required fields, return a JSON object with a single key:
+            - "error": A message describing the missing required fields.
+            Ensure the endpoint_url is valid and matches the schema. Do NOT use example values from the schema unless explicitly provided in the user input.
             """,
-            expected_output="JSON object with 'payload' and 'endpoint_url'",
+            expected_output="JSON object with 'payload' and 'endpoint_url', or 'error' if required fields are missing",
             agent=self.payload_agent
         )
         crew = Crew(agents=[self.payload_agent], tasks=[payload_task], process=Process.sequential)
@@ -252,6 +263,9 @@ class TaskExecutor:
             # Parse the agent's response
             result_str = str(result.raw if hasattr(result, 'raw') else result).strip('`').strip('json').strip()
             result_json = json.loads(result_str)
+            if "error" in result_json:
+                self.logger.error(f"Payload generation failed: {sanitize_for_logging(result_json['error'])}")
+                return {"error": result_json["error"]}
             payload = result_json.get("payload")
             endpoint_url = result_json.get("endpoint_url")
             
