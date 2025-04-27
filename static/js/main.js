@@ -428,77 +428,92 @@ function launchAgent(agentId) {
     fetch(`/api/agents/${agentId}`)
         .then(response => response.json())
         .then(agent => {
-            setTimeout(() => {
-
-                hideLoading();
-
-                // Update page title
-                const header = document.querySelector('.page-header h1');
-                if (header) {
-                    header.textContent = ` ${agent.name} ⛳ Playground`;
-                }
-                
-                // Fill form fields - Check if element exists before setting value
-                const agentNameInput = document.getElementById('agentName');
-                if (agentNameInput) {
-                    agentNameInput.value = agent.name;
-                }
-                
-                const agentDescriptionInput = document.getElementById('agentDescription');
-                if (agentDescriptionInput) {
-                    agentDescriptionInput.value = agent.description;
-                }
-
-                const llmProviderSelect = document.getElementById('llmProvider');
-                if (llmProviderSelect) {
-                    llmProviderSelect.value = agent.llmProvider;
-                }
-
-                const llmModelSelect = document.getElementById('llmModel');
-                if (llmModelSelect) {
-                    llmModelSelect.value = agent.llmModel;
-                }
-
-                const apiKeyInput = document.getElementById('apiKey');
-                if (apiKeyInput) {
-                    apiKeyInput.value = agent.apiKey;
-                }
-
-                const agentRoleInput = document.getElementById('agentRole');
-                if (agentRoleInput) {
-                    agentRoleInput.value = agent.role;
-                }
-
-                const agentGoalInput = document.getElementById('agentGoal');
-                if (agentGoalInput) {
-                    agentGoalInput.value = agent.goal || '';
-                }
-
-                const expectedOutputInput = document.getElementById('expectedOutput');
-                if (expectedOutputInput) {
-                    expectedOutputInput.value = agent.expectedOutput || '';
-                }
-                
-                const agentBackstoryInput = document.getElementById('agentBackstory');
-                if (agentBackstoryInput) {
-                    agentBackstoryInput.value = agent.backstory || '';
-                }
-                
-                const agentInstructionsInput = document.getElementById('agentInstructions');
-                if (agentInstructionsInput) {
-                    agentInstructionsInput.value = agent.instructions;
-                }
-                
-                // Initialize LLM provider change handler
-                handleLLMProviderChange();
-                
-                // Initialize selectedTools with agent's tools
-                selectedTools = new Set(agent.tools || []);
-                
-                // Load agent tools
-                loadAgentTools(agent.tools);
-            }, 100); // Keeping the timeout for now, but the checks add safety
+            // Use a retry mechanism to ensure DOM elements are ready
+            populateAgentData(agent, 5); // Try up to 5 times
         });
+}
+
+// New function to handle populating agent data with retries
+function populateAgentData(agent, retriesLeft, delay = 150) {
+    if (retriesLeft <= 0) {
+        console.error("Failed to populate agent data after multiple retries");
+        hideLoading();
+        return;
+    }
+    
+    // Check if critical DOM elements are available
+    const header = document.querySelector('.page-header h1');
+    const agentNameInput = document.getElementById('agentName');
+    
+    if (!header || !agentNameInput) {
+        // Elements not ready yet, retry after delay
+        console.log(`DOM elements not ready, retrying... (${retriesLeft} attempts left)`);
+        setTimeout(() => populateAgentData(agent, retriesLeft - 1, delay * 1.5), delay);
+        return;
+    }
+    
+    // Elements are ready, populate the data
+    hideLoading();
+    
+    // Update page title
+    header.textContent = ` ${agent.name} ⛳ Playground`;
+    
+    // Fill form fields
+    agentNameInput.value = agent.name;
+    
+    const agentDescriptionInput = document.getElementById('agentDescription');
+    if (agentDescriptionInput) {
+        agentDescriptionInput.value = agent.description;
+    }
+
+    const llmProviderSelect = document.getElementById('llmProvider');
+    if (llmProviderSelect) {
+        llmProviderSelect.value = agent.llmProvider;
+    }
+
+    const llmModelSelect = document.getElementById('llmModel');
+    if (llmModelSelect) {
+        llmModelSelect.value = agent.llmModel;
+    }
+
+    const apiKeyInput = document.getElementById('apiKey');
+    if (apiKeyInput) {
+        apiKeyInput.value = agent.apiKey;
+    }
+
+    const agentRoleInput = document.getElementById('agentRole');
+    if (agentRoleInput) {
+        agentRoleInput.value = agent.role;
+    }
+
+    const agentGoalInput = document.getElementById('agentGoal');
+    if (agentGoalInput) {
+        agentGoalInput.value = agent.goal || '';
+    }
+
+    const expectedOutputInput = document.getElementById('expectedOutput');
+    if (expectedOutputInput) {
+        expectedOutputInput.value = agent.expectedOutput || '';
+    }
+    
+    const agentBackstoryInput = document.getElementById('agentBackstory');
+    if (agentBackstoryInput) {
+        agentBackstoryInput.value = agent.backstory || '';
+    }
+    
+    const agentInstructionsInput = document.getElementById('agentInstructions');
+    if (agentInstructionsInput) {
+        agentInstructionsInput.value = agent.instructions;
+    }
+    
+    // Initialize LLM provider change handler
+    handleLLMProviderChange();
+    
+    // Initialize selectedTools with agent's tools
+    selectedTools = new Set(agent.tools || []);
+    
+    // Load agent tools
+    loadAgentTools(agent.tools);
 }
 
 function loadAgentTools(toolIds) {
@@ -581,7 +596,12 @@ function addMessageToChat(type, message) {
 
 function refreshAgent() {
     if (selectedAgentId) {
-        launchAgent(selectedAgentId);
+        showLoading();
+        fetch(`/api/agents/${selectedAgentId}`)
+            .then(response => response.json())
+            .then(agent => {
+                populateAgentData(agent, 5); // Use the same retry mechanism
+            });
     }
 }
 
