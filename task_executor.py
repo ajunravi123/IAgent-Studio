@@ -122,10 +122,13 @@ class TaskExecutor:
                                 json=payload
                             )
                             if response.status_code == 200:
+                                self.logger.debug(f"Tool Response: {str(response.json())}")
                                 return response.json()
                             else:
+                                self.logger.debug(f"Tool returned status code: {response.status_code}")
                                 return {"error": response.json().get('detail', str(response.status_code))}
                         except Exception as e:
+                            self.logger.debug(f"Tool returned error: {sanitize_for_logging(e)}")
                             return {"error": sanitize_for_logging(e)}
                     return api_caller
 
@@ -165,7 +168,7 @@ class TaskExecutor:
         crew = Crew(agents=[self.schema_agent], tasks=[analysis_task], process=Process.sequential)
         result = crew.kickoff()
         sanitized_result = sanitize_for_logging(result)
-        self.logger.debug(f"Schema analysis result: {sanitized_result}")
+        # self.logger.debug(f"Schema analysis result: {sanitized_result}")
         return str(result)  # Return unsanitized result to preserve accuracy
 
     def generate_payload(self, user_input: str, schema: dict, tool_data_connector: Optional[dict] = None) -> Dict[str, Any]:
