@@ -39,7 +39,7 @@ class MultiAgentExecutor:
 
         # Initialize LLM client
         self.llm_client = LLM(
-            model="gemini/gemini-2.0-flash",
+            model="gemini/gemini-2.5-flash-preview-04-17",
             api_key=self._get_api_key(),
             max_retries=3,
             retry_delay=34

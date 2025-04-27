@@ -73,7 +73,7 @@ class TaskExecutor:
         self.logger.addHandler(console_handler)
 
         API_KEY = get_api_key()
-        self.llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=API_KEY)
+        self.llm_client = LLM(model="gemini/gemini-2.5-flash-preview-04-17", api_key=API_KEY)
         self.internal_llm_client = LLM(model="gemini/gemini-2.0-flash", api_key=os.getenv("INTERNAL_GEMINI_API_KEY"))
 
         # Unmodified agent configurations
